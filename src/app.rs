@@ -42,11 +42,18 @@ pub fn build_app() -> Command {
                         .help("Count the number of genomes"),
                 )
                 .arg(
-                    Arg::new("download")
-                        .short('d')
-                        .long("download")
+                    Arg::new("raw")
+                        .short('r')
+                        .long("raw")
                         .action(ArgAction::SetTrue)
-                        .help("Download all taxon metadata"),
+                        .help("Print raw response JSON "),
+                )
+                .arg(
+                    Arg::new("id")
+                        .short('i')
+                        .long("id")
+                        .action(ArgAction::SetTrue)
+                        .help("Print only genome ID"),
                 ),
         )
 }

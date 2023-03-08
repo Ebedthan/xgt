@@ -2,6 +2,8 @@ use anyhow::Result;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 
+use super::utils;
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Genome {
@@ -46,25 +48,88 @@ impl SearchResult {
     }
 }
 
-pub fn search_gtdb(needle: &str, level: &str, partial: bool, count: bool) -> Result<(), Error> {
+pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
+    // get args
+    let needle = &args.get_needle();
+    let level = &args.get_level();
+    let gid = args.get_gid();
+    let partial = args.get_partial();
+    let count = args.get_count();
+    let raw = args.get_raw();
+
+    // format the request
     let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly=false&ncbiTypeMaterialOnly=false");
 
     let response = reqwest::blocking::get(&request_url)?;
 
     let genomes: SearchResult = response.json()?;
-    let mut genome_list = Vec::new();
 
+    // Perfom partial match or not?
     match partial {
-        true => genome_list = genomes.rows,
-        false => genome_list = genomes.search_by_level(level, needle),
-    }
+        true => {
+            let genome_list = genomes.rows;
 
-    match count {
-        true => println!("{}", genome_list.len()),
+            // Return number of genomes?
+            match count {
+                true => println!("{}", genome_list.len()),
+
+                // Return only genome id?
+                false => match gid {
+                    true => {
+                        let list: Vec<String> = genome_list.iter().map(|x| x.gid.clone()).collect();
+                        for gid in list {
+                            println!("{}", gid);
+                        }
+                    }
+                    // Pretty print json data?
+                    false => match raw {
+                        true => {
+                            for genome in genome_list {
+                                let g = serde_json::to_string(&genome).unwrap();
+                                println!("{g}");
+                            }
+                        }
+                        false => {
+                            for genome in genome_list {
+                                let g = serde_json::to_string_pretty(&genome).unwrap();
+                                println!("{g}");
+                            }
+                        }
+                    },
+                },
+            }
+        }
         false => {
-            for genome in genome_list {
-                let g = serde_json::to_string(&genome).unwrap();
-                println!("{g}");
+            let genome_list = genomes.search_by_level(level, needle);
+
+            // Return number of genomes?
+            match count {
+                true => println!("{}", genome_list.len()),
+
+                // Return only genome id?
+                false => match gid {
+                    true => {
+                        let list: Vec<String> = genome_list.iter().map(|x| x.gid.clone()).collect();
+                        for gid in list {
+                            println!("{}", gid);
+                        }
+                    }
+                    // Pretty print json data?
+                    false => match raw {
+                        true => {
+                            for genome in genome_list {
+                                let g = serde_json::to_string(&genome).unwrap();
+                                println!("{g}");
+                            }
+                        }
+                        false => {
+                            for genome in genome_list {
+                                let g = serde_json::to_string_pretty(&genome).unwrap();
+                                println!("{g}");
+                            }
+                        }
+                    },
+                },
             }
         }
     }
