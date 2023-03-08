@@ -3,6 +3,7 @@ use reqwest::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 struct Genome {
     gid: String,
     accession: String,
@@ -45,7 +46,7 @@ impl SearchResult {
     }
 }
 
-pub fn search_gtdb(needle: &str, level: &str, exact: bool, count: bool) -> Result<(), Error> {
+pub fn search_gtdb(needle: &str, level: &str, partial: bool, count: bool) -> Result<(), Error> {
     let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly=false&ncbiTypeMaterialOnly=false");
 
     let response = reqwest::blocking::get(&request_url)?;
@@ -53,9 +54,9 @@ pub fn search_gtdb(needle: &str, level: &str, exact: bool, count: bool) -> Resul
     let genomes: SearchResult = response.json()?;
     let mut genome_list = Vec::new();
 
-    match exact {
-        true => genome_list = genomes.search_by_level(level, needle),
-        false => genome_list = genomes.rows,
+    match partial {
+        true => genome_list = genomes.rows,
+        false => genome_list = genomes.search_by_level(level, needle),
     }
 
     match count {

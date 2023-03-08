@@ -21,32 +21,32 @@ pub fn build_app() -> Command {
                         .short('l')
                         .long("level")
                         .value_name("STR")
-                        .help("Set the taxon level to search")
-                        .default_value("species")
+                        .help("Taxon level to search")
+                        .default_value("genus")
                         .value_parser([
                             "species", "genus", "family", "order", "class", "phylum", "domain",
                         ]),
                 )
                 .arg(
-                    Arg::new("exact")
-                        .short('e')
-                        .long("exact")
+                    Arg::new("partial")
+                        .short('p')
+                        .long("partial")
                         .action(ArgAction::SetTrue)
-                        .help("Matching exactly the taxon name provided"),
+                        .help("Matching partially the taxon name"),
                 )
                 .arg(
                     Arg::new("count")
                         .short('c')
                         .long("count")
-                        .action(ArgAction::SetFalse)
-                        .help("Count the number of genome found for this taxonomic level"),
+                        .action(ArgAction::SetTrue)
+                        .help("Count the number of genomes"),
                 )
                 .arg(
                     Arg::new("download")
                         .short('d')
                         .long("download")
-                        .action(ArgAction::SetFalse)
-                        .help("Download all matched taxon metadata"),
+                        .action(ArgAction::SetTrue)
+                        .help("Download all taxon metadata"),
                 ),
         )
 }
