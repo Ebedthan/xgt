@@ -23,7 +23,7 @@ fn main() -> Result<()> {
                 .get_one::<bool>("exact")
                 .expect("exact match is required"),
             *sub_matches
-                .get_one::<bool>("num")
+                .get_one::<bool>("count")
                 .expect("number is required"),
         )
         .expect("Something went wrong"),
