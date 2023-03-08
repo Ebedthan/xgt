@@ -1,0 +1,13 @@
+[package]
+name = "xgt"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.69"
+clap = "4.1.8"
+reqwest = { version = "0.11.14",  features = ["blocking", "json"] }
+serde = { version ="1.0.153", features = ["derive"] }
+serde_json = "1.0.94"
