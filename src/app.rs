@@ -28,6 +28,13 @@ pub fn build_app() -> Command {
                         ]),
                 )
                 .arg(
+                    Arg::new("exact")
+                        .short('e')
+                        .long("exact")
+                        .action(ArgAction::SetTrue)
+                        .help("Matching exactly the taxon name provided"),
+                )
+                .arg(
                     Arg::new("count")
                         .short('c')
                         .long("count")
