@@ -56,9 +56,11 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
     let partial = args.get_partial();
     let count = args.get_count();
     let raw = args.get_raw();
+    let rep = args.get_rep();
+    let type_material = args.get_type_material();
 
     // format the request
-    let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly=false&ncbiTypeMaterialOnly=false");
+    let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly={rep}&ncbiTypeMaterialOnly={type_material}");
 
     let response = reqwest::blocking::get(&request_url)?;
 
@@ -78,7 +80,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
                     true => {
                         let list: Vec<String> = genome_list.iter().map(|x| x.gid.clone()).collect();
                         for gid in list {
-                            println!("{}", gid);
+                            println!("{gid}");
                         }
                     }
                     // Pretty print json data?
@@ -111,7 +113,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
                     true => {
                         let list: Vec<String> = genome_list.iter().map(|x| x.gid.clone()).collect();
                         for gid in list {
-                            println!("{}", gid);
+                            println!("{gid}");
                         }
                     }
                     // Pretty print json data?

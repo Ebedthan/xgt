@@ -14,7 +14,7 @@ pub fn build_app() -> Command {
         .arg_required_else_help(true)
         .subcommand(
             Command::new("search")
-                .about("Search GTDB by taxa level")
+                .about("Search GTDB by taxa name")
                 .arg(Arg::new("name").required(true))
                 .arg(
                     Arg::new("level")
@@ -54,6 +54,27 @@ pub fn build_app() -> Command {
                         .long("id")
                         .action(ArgAction::SetTrue)
                         .help("Print only genome ID"),
+                )
+                .arg(
+                    Arg::new("field")
+                        .short('F')
+                        .long("field")
+                        .value_name("STR")
+                        .default_value("gtdb_tax")
+                        .value_parser(["all", "gtdb_tax", "ncbi_tax", "ncbi_org", "ncbi_id"])
+                        .help("Search field"),
+                )
+                .arg(
+                    Arg::new("rep")
+                        .long("rep")
+                        .action(ArgAction::SetTrue)
+                        .help("Search GTDB species representative only"),
+                )
+                .arg(
+                    Arg::new("type")
+                        .long("type")
+                        .action(ArgAction::SetTrue)
+                        .help("Search NCBI type material only"),
                 ),
         )
 }

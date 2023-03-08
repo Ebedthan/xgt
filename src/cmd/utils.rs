@@ -6,6 +6,8 @@ pub struct SearchArgs {
     partial: bool,
     count: bool,
     raw: bool,
+    rep: bool,
+    type_material: bool,
 }
 
 impl SearchArgs {
@@ -17,6 +19,8 @@ impl SearchArgs {
             partial: false,
             count: false,
             raw: false,
+            rep: false,
+            type_material: false,
         }
     }
 
@@ -37,7 +41,7 @@ impl SearchArgs {
     }
 
     pub fn get_gid(&self) -> bool {
-        self.gid.clone()
+        self.gid
     }
 
     fn set_gid(&mut self, gvalue: &String) {
@@ -49,7 +53,7 @@ impl SearchArgs {
     }
 
     pub fn get_partial(&self) -> bool {
-        self.partial.clone()
+        self.partial
     }
 
     fn set_partial(&mut self, pvalue: &String) {
@@ -61,7 +65,7 @@ impl SearchArgs {
     }
 
     pub fn get_count(&self) -> bool {
-        self.count.clone()
+        self.count
     }
 
     fn set_count(&mut self, cvalue: &String) {
@@ -73,7 +77,7 @@ impl SearchArgs {
     }
 
     pub fn get_raw(&self) -> bool {
-        self.raw.clone()
+        self.raw
     }
 
     fn set_raw(&mut self, rvalue: &String) {
@@ -81,6 +85,30 @@ impl SearchArgs {
             self.raw = false;
         } else {
             self.raw = true
+        }
+    }
+
+    pub fn get_type_material(&self) -> bool {
+        self.type_material
+    }
+
+    fn set_type_material(&mut self, tvalue: &String) {
+        if tvalue == "false" {
+            self.type_material = false;
+        } else {
+            self.type_material = true
+        }
+    }
+
+    pub fn get_rep(&self) -> bool {
+        self.rep
+    }
+
+    fn set_rep(&mut self, rvalue: &String) {
+        if rvalue == "false" {
+            self.rep = false;
+        } else {
+            self.rep = true
         }
     }
 
@@ -98,8 +126,12 @@ impl SearchArgs {
                 new_args.set_partial(arg.1);
             } else if arg.0 == "count" {
                 new_args.set_count(arg.1);
-            } else {
+            } else if arg.0 == "raw" {
                 new_args.set_raw(arg.1);
+            } else if arg.0 == "rep" {
+                new_args.set_rep(arg.1);
+            } else {
+                new_args.set_type_material(arg.1);
             }
         }
 
