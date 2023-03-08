@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 
 use super::utils;
+use crate::api;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -50,17 +53,25 @@ impl SearchResult {
 
 pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
     // get args
-    let needle = &args.get_needle();
-    let level = &args.get_level();
+    let mut options = HashMap::new();
+    options.insert(
+        "gtdb_species_rep_only".to_owned(),
+        utils::bool_as_string(args.get_rep()),
+    );
+    options.insert(
+        "ncbi_type_material_only".to_owned(),
+        utils::bool_as_string(args.get_type_material()),
+    );
+
     let gid = args.get_gid();
     let partial = args.get_partial();
     let count = args.get_count();
     let raw = args.get_raw();
-    let rep = args.get_rep();
-    let type_material = args.get_type_material();
 
     // format the request
-    let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly={rep}&ncbiTypeMaterialOnly={type_material}");
+    let search_api = api::Search::new(args.get_needle(), options);
+
+    let request_url = search_api.request();
 
     let response = reqwest::blocking::get(&request_url)?;
 
@@ -102,7 +113,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
             }
         }
         false => {
-            let genome_list = genomes.search_by_level(level, needle);
+            let genome_list = genomes.search_by_level(&args.get_level(), &args.get_needle());
 
             // Return number of genomes?
             match count {

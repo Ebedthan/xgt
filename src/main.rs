@@ -1,5 +1,6 @@
 extern crate anyhow;
 
+mod api;
 mod app;
 mod cmd;
 
