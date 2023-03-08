@@ -7,7 +7,7 @@ pub fn build_app() -> Command {
         ColorChoice::Never
     };
 
-    let app = Command::new("xgt")
+    Command::new("xgt")
         .color(clap_color_setting)
         .about("Search and parse GTDB data")
         .subcommand_required(true)
@@ -15,7 +15,7 @@ pub fn build_app() -> Command {
         .subcommand(
             Command::new("search")
                 .about("Search GTDB by taxa level")
-                .arg(Arg::new("name"))
+                .arg(Arg::new("name").required(true))
                 .arg(
                     Arg::new("level")
                         .short('l')
@@ -41,7 +41,5 @@ pub fn build_app() -> Command {
                         .action(ArgAction::SetFalse)
                         .help("Download all matched taxon metadata"),
                 ),
-        );
-
-    app
+        )
 }

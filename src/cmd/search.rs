@@ -1,6 +1,3 @@
-use std::io;
-use std::io::Write;
-
 use anyhow::Result;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
@@ -18,7 +15,7 @@ struct Genome {
 
 impl Genome {
     fn get_gtdb_level(&self, level: &str) -> String {
-        let fields: Vec<&str> = self.gtdb_taxonomy.split(";").collect();
+        let fields: Vec<&str> = self.gtdb_taxonomy.split(';').collect();
 
         match level {
             "domain" => fields[0].replace("d__", ""),
@@ -49,7 +46,7 @@ impl SearchResult {
 }
 
 pub fn search_gtdb(needle: &str, level: &str, exact: bool, count: bool) -> Result<(), Error> {
-    let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly=false&ncbiTypeMaterialOnly=false", needle = needle);
+    let request_url = format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={needle}&page=1&itemsPerPage=100&searchField=gtdb_tax&gtdbSpeciesRepOnly=false&ncbiTypeMaterialOnly=false");
 
     let response = reqwest::blocking::get(&request_url)?;
 
@@ -62,11 +59,11 @@ pub fn search_gtdb(needle: &str, level: &str, exact: bool, count: bool) -> Resul
     }
 
     match count {
-        true => writeln!(io::stdout(), "{}", genome_list.len()).unwrap(),
+        true => println!("{}", genome_list.len()),
         false => {
             for genome in genome_list {
                 let g = serde_json::to_string(&genome).unwrap();
-                writeln!(io::stdout(), "{g}").unwrap();
+                println!("{g}");
             }
         }
     }
