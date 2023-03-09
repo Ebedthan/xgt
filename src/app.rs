@@ -78,3 +78,73 @@ pub fn build_app() -> Command {
                 ),
         )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app() {
+        let app = build_app();
+        let args = vec![
+            "xgt",
+            "search",
+            "taxon_name",
+            "-l",
+            "class",
+            "--count",
+            "--raw",
+        ];
+        let matches = app.get_matches_from(args);
+        assert_eq!(matches.subcommand_name(), Some("search"));
+        let submatches = matches.subcommand_matches("search").unwrap();
+        assert_eq!(
+            submatches.get_one::<String>("name"),
+            Some(&"taxon_name".to_owned())
+        );
+        assert_eq!(
+            submatches.get_one::<String>("level"),
+            Some(&"class".to_owned())
+        );
+        assert_eq!(submatches.get_flag("count"), true);
+        assert_eq!(submatches.get_flag("raw"), true);
+    }
+
+    #[test]
+    fn test_arg_parser() {
+        let arg_parser = build_app().get_matches_from(vec![
+            "xgt",
+            "search",
+            "taxon_name",
+            "-l",
+            "class",
+            "--count",
+            "--raw",
+            "--id",
+            "--partial",
+            "--rep",
+            "--type",
+            "--field",
+            "ncbi_tax",
+        ]);
+        let subcommand_parser = arg_parser.subcommand_matches("search").unwrap();
+        assert_eq!(subcommand_parser.get_flag("count"), true);
+        assert_eq!(subcommand_parser.get_flag("raw"), true);
+        assert_eq!(subcommand_parser.get_flag("id"), true);
+        assert_eq!(subcommand_parser.get_flag("partial"), true);
+        assert_eq!(subcommand_parser.get_flag("rep"), true);
+        assert_eq!(subcommand_parser.get_flag("type"), true);
+        assert_eq!(
+            subcommand_parser.get_one::<String>("name"),
+            Some(&"taxon_name".to_owned())
+        );
+        assert_eq!(
+            subcommand_parser.get_one::<String>("level"),
+            Some(&"class".to_owned())
+        );
+        assert_eq!(
+            subcommand_parser.get_one::<String>("field"),
+            Some(&"ncbi_tax".to_owned())
+        );
+    }
+}
