@@ -1,8 +1,8 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SearchArgs {
     needle: String,
     level: String,
-    gid: bool,
+    id: bool,
     partial: bool,
     count: bool,
     raw: bool,
@@ -15,7 +15,7 @@ impl SearchArgs {
         SearchArgs {
             needle: String::new(),
             level: String::new(),
-            gid: false,
+            id: false,
             partial: false,
             count: false,
             raw: false,
@@ -41,14 +41,14 @@ impl SearchArgs {
     }
 
     pub fn get_gid(&self) -> bool {
-        self.gid
+        self.id
     }
 
     fn set_gid(&mut self, gvalue: &String) {
         if gvalue == "false" {
-            self.gid = false;
+            self.id = false;
         } else {
-            self.gid = true
+            self.id = true
         }
     }
 
@@ -144,5 +144,187 @@ pub fn bool_as_string(b: bool) -> String {
         String::from("true")
     } else {
         String::from("false")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_needle() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_needle(), "");
+    }
+
+    #[test]
+    fn test_set_needle() {
+        let mut args = SearchArgs::new();
+        args.set_needle(&String::from("test"));
+        assert_eq!(args.get_needle(), "test");
+    }
+
+    #[test]
+    fn test_get_level() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_level(), "");
+    }
+
+    #[test]
+    fn test_set_level() {
+        let mut args = SearchArgs::new();
+        args.set_level(&String::from("level1"));
+        assert_eq!(args.get_level(), "level1");
+    }
+
+    #[test]
+    fn test_get_gid() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_gid(), false);
+    }
+
+    #[test]
+    fn test_set_gid() {
+        let mut args = SearchArgs::new();
+        args.set_gid(&String::from("true"));
+        assert_eq!(args.get_gid(), true);
+    }
+
+    #[test]
+    fn test_get_partial() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_partial(), false);
+    }
+
+    #[test]
+    fn test_set_partial() {
+        let mut args = SearchArgs::new();
+        args.set_partial(&String::from("true"));
+        assert_eq!(args.get_partial(), true);
+    }
+
+    #[test]
+    fn test_get_count() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_count(), false);
+    }
+
+    #[test]
+    fn test_set_count() {
+        let mut args = SearchArgs::new();
+        args.set_count(&String::from("true"));
+        assert_eq!(args.get_count(), true);
+    }
+
+    #[test]
+    fn test_get_raw() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_raw(), false);
+    }
+
+    #[test]
+    fn test_set_raw() {
+        let mut args = SearchArgs::new();
+        args.set_raw(&String::from("true"));
+        assert_eq!(args.get_raw(), true);
+    }
+
+    #[test]
+    fn test_get_type_material() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_type_material(), false);
+    }
+
+    #[test]
+    fn test_set_type_material() {
+        let mut args = SearchArgs::new();
+        args.set_type_material(&String::from("true"));
+        assert_eq!(args.get_type_material(), true);
+    }
+
+    #[test]
+    fn test_get_rep() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_rep(), false);
+    }
+
+    #[test]
+    fn test_set_rep() {
+        let mut args = SearchArgs::new();
+        args.set_rep(&String::from("true"));
+        assert_eq!(args.get_rep(), true);
+    }
+
+    #[test]
+    fn test_from() {
+        let t = String::from("test");
+        let l = String::from("level1");
+        let tt = String::from("true");
+        let ff = String::from("false");
+        let args = vec![
+            ("needle", &t),
+            ("level", &l),
+            ("id", &tt),
+            ("partial", &ff),
+            ("count", &tt),
+            ("raw", &ff),
+            ("rep", &tt),
+            ("type_material", &ff),
+        ];
+        let search_args = SearchArgs::from(args);
+        assert_eq!(
+            search_args,
+            SearchArgs {
+                needle: t,
+                level: l,
+                id: true,
+                partial: false,
+                count: true,
+                raw: false,
+                rep: true,
+                type_material: false
+            }
+        )
+    }
+
+    #[test]
+    fn test_new_search_args() {
+        let args = SearchArgs::new();
+        assert_eq!(args.get_needle(), "");
+        assert_eq!(args.get_level(), "");
+        assert_eq!(args.get_gid(), false);
+        assert_eq!(args.get_partial(), false);
+        assert_eq!(args.get_count(), false);
+        assert_eq!(args.get_raw(), false);
+        assert_eq!(args.get_rep(), false);
+        assert_eq!(args.get_type_material(), false);
+    }
+
+    #[test]
+    fn test_set_search_args() {
+        let mut args = SearchArgs::new();
+        args.set_needle(&String::from("test"));
+        args.set_level(&String::from("1"));
+        args.set_gid(&String::from("false"));
+        args.set_partial(&String::from("true"));
+        args.set_count(&String::from("true"));
+        args.set_raw(&String::from("false"));
+        args.set_rep(&String::from("true"));
+        args.set_type_material(&String::from("false"));
+
+        assert_eq!(args.get_needle(), "test");
+        assert_eq!(args.get_level(), "1");
+        assert_eq!(args.get_gid(), false);
+        assert_eq!(args.get_partial(), true);
+        assert_eq!(args.get_count(), true);
+        assert_eq!(args.get_raw(), false);
+        assert_eq!(args.get_rep(), true);
+        assert_eq!(args.get_type_material(), false);
+    }
+
+    #[test]
+    fn test_bool_as_string() {
+        assert_eq!(bool_as_string(true), "true");
+        assert_eq!(bool_as_string(false), "false");
     }
 }
