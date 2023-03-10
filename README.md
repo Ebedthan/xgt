@@ -1,4 +1,6 @@
 # xgt
+[![Continuous Integration](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Ebedthan/xgt/branch/main/graph/badge.svg?token=OFAOB6K5KB)](https://codecov.io/gh/Ebedthan/xgt)
 <a href="https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
 </a>
