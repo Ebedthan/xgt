@@ -1,4 +1,7 @@
 # xgt
+<a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
+</a>
 
 `xgt` is a Rust based tool that enables efficient querying and parsing of the GTDB database. `xgt` consists of a collection of commands mirroring the GTDB API and provide additionnal fast and efficient parsing capability of the result.
 
@@ -32,4 +35,6 @@ xgt genome --metadata GCA_001512625.1
 ```
 
 ### Licence
-Dual-licensed under MIT and Apache.
+xgt is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
+
+See [LICENSE-APACHE]() and [LICENSE-MIT]() for details.
