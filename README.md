@@ -1,6 +1,9 @@
 # xgt
-<a href="https://github.com/Ebedthan/sabreur/blob/master/LICENSE">
+<a href="https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
+</a>
+<a href="https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE">
+    <img src="https://img.shields.io/badge/license-APACHE-blue?style=flat">
 </a>
 
 `xgt` is a Rust based tool that enables efficient querying and parsing of the GTDB database. `xgt` consists of a collection of commands mirroring the GTDB API and provide additionnal fast and efficient parsing capability of the result.
@@ -11,9 +14,16 @@
 cargo install --release xgt
 ```
 
-Alternative:
+Alternative from source:
 
-Download a release binary and you are done!
+```
+git clone https://github.com/Ebedthan/xgt.git
+cd xgt
+
+cargo build --release
+cargo test
+cargo install --path .
+```
 
 # Quick start guide
 
@@ -37,4 +47,4 @@ xgt genome --metadata GCA_001512625.1
 ### Licence
 xgt is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
 
-See [LICENSE-APACHE]() and [LICENSE-MIT]() for details.
+See [LICENSE-APACHE](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE) and [LICENSE-MIT](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT) for details.
