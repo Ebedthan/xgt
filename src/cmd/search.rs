@@ -9,20 +9,26 @@ use crate::api;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Genome {
+struct SearchResult {
+    #[serde(deserialize_with = "utils::parse_gtdb")]
     gid: String,
+    #[serde(deserialize_with = "utils::parse_gtdb")]
     accession: String,
+    #[serde(deserialize_with = "utils::parse_gtdb")]
     ncbi_org_name: String,
+    #[serde(deserialize_with = "utils::parse_gtdb")]
     ncbi_taxonomy: String,
+    #[serde(deserialize_with = "utils::parse_gtdb")]
     gtdb_taxonomy: String,
     is_gtdb_species_rep: bool,
     is_ncbi_type_material: bool,
 }
 
-impl Genome {
+impl SearchResult {
     fn get_gtdb_level(&self, level: &str) -> String {
         // Check for Undefined (Failed Quality Check) in gtdb_taxonomy field
-        if self.gtdb_taxonomy != "Undefined (Failed Quality Check)" {
+        if self.gtdb_taxonomy != "Undefined (Failed Quality Check)" || self.gtdb_taxonomy != "null"
+        {
             let fields: Vec<&str> = self.gtdb_taxonomy.split(';').collect();
 
             match level {
@@ -42,12 +48,12 @@ impl Genome {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-struct SearchResult {
-    rows: Vec<Genome>,
+struct SearchResults {
+    rows: Vec<SearchResult>,
 }
 
-impl SearchResult {
-    fn search_by_level(&self, level: &str, needle: &str) -> Vec<Genome> {
+impl SearchResults {
+    fn search_by_level(&self, level: &str, needle: &str) -> Vec<SearchResult> {
         self.rows
             .clone()
             .into_iter()
@@ -80,7 +86,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
 
     let response = reqwest::blocking::get(&request_url)?;
 
-    let genomes: SearchResult = response.json()?;
+    let genomes: SearchResults = response.json()?;
 
     // Perfom partial match or not?
     match partial {
@@ -161,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_genome_get_gtdb_level() {
-        let genome = Genome {
+        let genome = SearchResult {
             gid: "test".to_owned(),
             accession: "test".to_owned(),
             ncbi_org_name: "test".to_owned(),
@@ -187,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_search_result_search_by_level() {
-        let genome1 = Genome {
+        let genome1 = SearchResult {
             gid: "test1".to_owned(),
             accession: "test1".to_owned(),
             ncbi_org_name: "test1".to_owned(),
@@ -196,7 +202,7 @@ mod tests {
             is_gtdb_species_rep: false,
             is_ncbi_type_material: false,
         };
-        let genome2 = Genome {
+        let genome2 = SearchResult {
             gid: "test2".to_owned(),
             accession: "test2".to_owned(),
             ncbi_org_name: "test2".to_owned(),
@@ -205,7 +211,7 @@ mod tests {
             is_gtdb_species_rep: false,
             is_ncbi_type_material: false,
         };
-        let search_result = SearchResult {
+        let search_result = SearchResults {
             rows: vec![genome1.clone(), genome2.clone()],
         };
 

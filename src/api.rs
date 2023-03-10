@@ -80,6 +80,42 @@ impl Search {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum GenomeRequestType {
+    Metadata,
+    TaxonHistory,
+    Card,
+}
+
+impl GenomeRequestType {
+    pub fn to_string(grt: GenomeRequestType) -> String {
+        match grt {
+            GenomeRequestType::Card => String::from("card"),
+            GenomeRequestType::Metadata => String::from("metadata"),
+            GenomeRequestType::TaxonHistory => String::from("taxon-history"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GenomeApi {
+    accession: String,
+}
+
+impl GenomeApi {
+    pub fn from(accession: String) -> Self {
+        GenomeApi { accession }
+    }
+
+    pub fn request(&self, request_type: GenomeRequestType) -> String {
+        format!(
+            "https://api.gtdb.ecogenomic.org/genome/{}/{}",
+            self.accession,
+            GenomeRequestType::to_string(request_type)
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

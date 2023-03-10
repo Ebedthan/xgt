@@ -7,7 +7,7 @@ mod cmd;
 use std::env;
 
 use anyhow::Result;
-use cmd::{search, utils};
+use cmd::{genome, search, utils};
 
 fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
@@ -39,6 +39,27 @@ fn main() -> Result<()> {
                 ("id", &utils::bool_as_string(sub_matches.get_flag("id"))),
             ]);
             search::search_gtdb(args).expect("Something went wrong");
+        }
+        Some(("genome", sub_matches)) => {
+            if sub_matches.get_flag("history") {
+                genome::genome_gtdb(
+                    sub_matches.get_one::<String>("accession").unwrap(),
+                    api::GenomeRequestType::TaxonHistory,
+                    sub_matches.get_flag("raw"),
+                )?;
+            } else if sub_matches.get_flag("metadata") {
+                genome::genome_gtdb(
+                    sub_matches.get_one::<String>("accession").unwrap(),
+                    api::GenomeRequestType::Metadata,
+                    sub_matches.get_flag("raw"),
+                )?;
+            } else {
+                genome::genome_gtdb(
+                    sub_matches.get_one::<String>("accession").unwrap(),
+                    api::GenomeRequestType::Card,
+                    sub_matches.get_flag("raw"),
+                )?;
+            }
         }
         _ => unreachable!("Implemented correctly"),
     };

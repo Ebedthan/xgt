@@ -77,6 +77,37 @@ pub fn build_app() -> Command {
                         .help("Search NCBI type material only"),
                 ),
         )
+        .subcommand(
+            Command::new("genome")
+                .about("Get genome informations")
+                .arg(
+                    Arg::new("accession")
+                        .required(true)
+                        .help("Genome accession"),
+                )
+                .arg(
+                    Arg::new("history")
+                        .short('H')
+                        .long("history")
+                        .action(ArgAction::SetTrue)
+                        .help("Get genome taxon history"),
+                )
+                .arg(
+                    Arg::new("metadata")
+                        .short('m')
+                        .long("metadata")
+                        .action(ArgAction::SetTrue)
+                        .conflicts_with("history")
+                        .help("Get genome metadata"),
+                )
+                .arg(
+                    Arg::new("raw")
+                        .short('r')
+                        .long("raw")
+                        .action(ArgAction::SetTrue)
+                        .help("Print raw response JSON "),
+                ),
+        )
 }
 
 #[cfg(test)]

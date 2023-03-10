@@ -1,3 +1,5 @@
+use serde::{Deserialize, Deserializer};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchArgs {
     needle: String,
@@ -145,6 +147,13 @@ pub fn bool_as_string(b: bool) -> String {
     } else {
         String::from("false")
     }
+}
+
+pub fn parse_gtdb<'de, D>(d: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or("null".to_string()))
 }
 
 #[cfg(test)]
