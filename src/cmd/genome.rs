@@ -2,6 +2,7 @@ use super::utils;
 use anyhow::Result;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
+use std::{fs, path::PathBuf};
 
 use crate::api;
 
@@ -236,6 +237,7 @@ pub fn genome_gtdb(
     accession: &String,
     request_type: api::GenomeRequestType,
     raw: bool,
+    output: PathBuf,
 ) -> Result<(), Error> {
     // format the request
     let genome_api = api::GenomeApi::from(accession.to_string());
@@ -248,21 +250,63 @@ pub fn genome_gtdb(
         let genome: GenomeMetadata = response.json()?;
 
         match raw {
-            true => println!("{}", serde_json::to_string(&genome).unwrap()),
-            false => println!("{}", serde_json::to_string_pretty(&genome).unwrap()),
+            true => {
+                if output == PathBuf::from("") {
+                    println!("{}", serde_json::to_string(&genome).unwrap());
+                } else {
+                    let file = fs::File::create(output).unwrap();
+                    serde_json::to_writer(file, &genome).unwrap();
+                }
+            }
+            false => {
+                if output == PathBuf::from("") {
+                    println!("{}", serde_json::to_string_pretty(&genome).unwrap());
+                } else {
+                    let file = fs::File::create(output).unwrap();
+                    serde_json::to_writer_pretty(file, &genome).unwrap();
+                }
+            }
         };
     } else if request_type == api::GenomeRequestType::TaxonHistory {
         let genome: TaxonHistory = response.json()?;
         match raw {
-            true => println!("{}", serde_json::to_string(&genome).unwrap()),
-            false => println!("{}", serde_json::to_string_pretty(&genome).unwrap()),
+            true => {
+                if output == PathBuf::from("") {
+                    println!("{}", serde_json::to_string(&genome).unwrap());
+                } else {
+                    let file = fs::File::create(output).unwrap();
+                    serde_json::to_writer(file, &genome).unwrap();
+                }
+            }
+            false => {
+                if output == PathBuf::from("") {
+                    println!("{}", serde_json::to_string_pretty(&genome).unwrap());
+                } else {
+                    let file = fs::File::create(output).unwrap();
+                    serde_json::to_writer_pretty(file, &genome).unwrap();
+                }
+            }
         };
     } else {
         let genome: GenomeResult = response.json()?;
 
         match raw {
-            true => println!("{}", serde_json::to_string(&genome).unwrap()),
-            false => println!("{}", serde_json::to_string_pretty(&genome).unwrap()),
+            true => {
+                if output == PathBuf::from("") {
+                    println!("{}", serde_json::to_string(&genome).unwrap());
+                } else {
+                    let file = fs::File::create(output).unwrap();
+                    serde_json::to_writer(file, &genome).unwrap();
+                }
+            }
+            false => {
+                if output == PathBuf::from("") {
+                    println!("{}", serde_json::to_string_pretty(&genome).unwrap());
+                } else {
+                    let file = fs::File::create(output).unwrap();
+                    serde_json::to_writer_pretty(file, &genome).unwrap();
+                }
+            }
         };
     }
 

@@ -1,4 +1,5 @@
-use clap::{Arg, ArgAction, ColorChoice, Command};
+use clap::{value_parser, Arg, ArgAction, ColorChoice, Command};
+use std::path::PathBuf;
 
 pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
@@ -17,36 +18,11 @@ pub fn build_app() -> Command {
                 .about("Search GTDB by taxa name")
                 .arg(Arg::new("name").required(true))
                 .arg(
-                    Arg::new("level")
-                        .short('l')
-                        .long("level")
-                        .value_name("STR")
-                        .help("Taxon level to search")
-                        .default_value("genus")
-                        .value_parser([
-                            "species", "genus", "family", "order", "class", "phylum", "domain",
-                        ]),
-                )
-                .arg(
-                    Arg::new("partial")
-                        .short('p')
-                        .long("partial")
-                        .action(ArgAction::SetTrue)
-                        .help("Matching partially the taxon name"),
-                )
-                .arg(
                     Arg::new("count")
                         .short('c')
                         .long("count")
                         .action(ArgAction::SetTrue)
                         .help("Count the number of genomes"),
-                )
-                .arg(
-                    Arg::new("raw")
-                        .short('r')
-                        .long("raw")
-                        .action(ArgAction::SetTrue)
-                        .help("Print raw response JSON "),
                 )
                 .arg(
                     Arg::new("id")
@@ -63,6 +39,39 @@ pub fn build_app() -> Command {
                         .default_value("gtdb_tax")
                         .value_parser(["all", "gtdb_tax", "ncbi_tax", "ncbi_org", "ncbi_id"])
                         .help("Search field"),
+                )
+                .arg(
+                    Arg::new("level")
+                        .short('l')
+                        .long("level")
+                        .value_name("STR")
+                        .help("Taxon level to search")
+                        .default_value("genus")
+                        .value_parser([
+                            "species", "genus", "family", "order", "class", "phylum", "domain",
+                        ]),
+                )
+                .arg(
+                    Arg::new("out")
+                        .short('o')
+                        .long("out")
+                        .help("Redirect output to FILE")
+                        .value_name("FILE")
+                        .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
+                    Arg::new("partial")
+                        .short('p')
+                        .long("partial")
+                        .action(ArgAction::SetTrue)
+                        .help("Matching partially the taxon name"),
+                )
+                .arg(
+                    Arg::new("raw")
+                        .short('r')
+                        .long("raw")
+                        .action(ArgAction::SetTrue)
+                        .help("Print raw response JSON "),
                 )
                 .arg(
                     Arg::new("rep")
@@ -106,6 +115,14 @@ pub fn build_app() -> Command {
                         .long("raw")
                         .action(ArgAction::SetTrue)
                         .help("Print raw response JSON "),
+                )
+                .arg(
+                    Arg::new("out")
+                        .short('o')
+                        .long("out")
+                        .help("Redirect output to FILE")
+                        .value_name("FILE")
+                        .value_parser(value_parser!(PathBuf)),
                 ),
         )
 }

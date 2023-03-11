@@ -4,7 +4,7 @@ mod api;
 mod app;
 mod cmd;
 
-use std::env;
+use std::{env, path::PathBuf};
 
 use anyhow::Result;
 use cmd::{genome, search, utils};
@@ -37,6 +37,12 @@ fn main() -> Result<()> {
                 ),
                 ("raw", &utils::bool_as_string(sub_matches.get_flag("raw"))),
                 ("id", &utils::bool_as_string(sub_matches.get_flag("id"))),
+                (
+                    "out",
+                    sub_matches
+                        .get_one::<String>("out")
+                        .expect("output is required"),
+                ),
             ]);
             search::search_gtdb(args).expect("Something went wrong");
         }
@@ -46,18 +52,30 @@ fn main() -> Result<()> {
                     sub_matches.get_one::<String>("accession").unwrap(),
                     api::GenomeRequestType::TaxonHistory,
                     sub_matches.get_flag("raw"),
+                    sub_matches
+                        .get_one::<PathBuf>("out")
+                        .unwrap_or(&PathBuf::from(""))
+                        .to_path_buf(),
                 )?;
             } else if sub_matches.get_flag("metadata") {
                 genome::genome_gtdb(
                     sub_matches.get_one::<String>("accession").unwrap(),
                     api::GenomeRequestType::Metadata,
                     sub_matches.get_flag("raw"),
+                    sub_matches
+                        .get_one::<PathBuf>("out")
+                        .unwrap_or(&PathBuf::from(""))
+                        .to_path_buf(),
                 )?;
             } else {
                 genome::genome_gtdb(
                     sub_matches.get_one::<String>("accession").unwrap(),
                     api::GenomeRequestType::Card,
                     sub_matches.get_flag("raw"),
+                    sub_matches
+                        .get_one::<PathBuf>("out")
+                        .unwrap_or(&PathBuf::from(""))
+                        .to_path_buf(),
                 )?;
             }
         }

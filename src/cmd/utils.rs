@@ -10,6 +10,7 @@ pub struct SearchArgs {
     raw: bool,
     rep: bool,
     type_material: bool,
+    out: String,
 }
 
 impl SearchArgs {
@@ -23,6 +24,7 @@ impl SearchArgs {
             raw: false,
             rep: false,
             type_material: false,
+            out: String::new(),
         }
     }
 
@@ -110,8 +112,16 @@ impl SearchArgs {
         if rvalue == "false" {
             self.rep = false;
         } else {
-            self.rep = true
+            self.rep = true;
         }
+    }
+
+    pub fn get_out(&self) -> String {
+        self.out.clone()
+    }
+
+    fn set_out(&mut self, file: &String) {
+        self.out = file.to_string();
     }
 
     pub fn from(args: Vec<(&str, &String)>) -> Self {
@@ -132,8 +142,10 @@ impl SearchArgs {
                 new_args.set_raw(arg.1);
             } else if arg.0 == "rep" {
                 new_args.set_rep(arg.1);
-            } else {
+            } else if arg.0 == "type_material" {
                 new_args.set_type_material(arg.1);
+            } else {
+                new_args.set_out(arg.1);
             }
         }
 
@@ -270,6 +282,7 @@ mod tests {
         let l = String::from("level1");
         let tt = String::from("true");
         let ff = String::from("false");
+        let aa = String::from("file");
         let args = vec![
             ("needle", &t),
             ("level", &l),
@@ -279,6 +292,7 @@ mod tests {
             ("raw", &ff),
             ("rep", &tt),
             ("type_material", &ff),
+            ("out", &aa),
         ];
         let search_args = SearchArgs::from(args);
         assert_eq!(
@@ -291,7 +305,8 @@ mod tests {
                 count: true,
                 raw: false,
                 rep: true,
-                type_material: false
+                type_material: false,
+                out: aa
             }
         )
     }

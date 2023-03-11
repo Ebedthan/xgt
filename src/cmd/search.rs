@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fs;
+use std::io::Write;
 
 use anyhow::Result;
 use reqwest::Error;
@@ -78,6 +80,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
     let partial = args.get_partial();
     let count = args.get_count();
     let raw = args.get_raw();
+    let output = args.get_out();
 
     // format the request
     let search_api = api::Search::new(args.get_needle(), options);
@@ -95,28 +98,56 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
 
             // Return number of genomes?
             match count {
-                true => println!("{}", genome_list.len()),
+                true => {
+                    if output.is_empty() {
+                        println!("{}", genome_list.len())
+                    } else {
+                        let mut file = fs::File::create(output).unwrap();
+                        file.write_all(&genome_list.len().to_ne_bytes()).unwrap();
+                    }
+                }
 
                 // Return only genome id?
                 false => match gid {
                     true => {
                         let list: Vec<String> = genome_list.iter().map(|x| x.gid.clone()).collect();
-                        for gid in list {
-                            println!("{gid}");
+
+                        if output.is_empty() {
+                            for gid in list {
+                                println!("{gid}");
+                            }
+                        } else {
+                            let mut file = fs::File::create(output).unwrap();
+                            for gid in list {
+                                file.write_all(gid.as_bytes()).unwrap();
+                            }
                         }
                     }
                     // Pretty print json data?
                     false => match raw {
                         true => {
+                            let out = output.clone();
                             for genome in genome_list {
                                 let g = serde_json::to_string(&genome).unwrap();
-                                println!("{g}");
+
+                                if out.is_empty() {
+                                    println!("{g}");
+                                } else {
+                                    let file = fs::File::create(output.clone()).unwrap();
+                                    serde_json::to_writer(file, &g).unwrap();
+                                }
                             }
                         }
                         false => {
                             for genome in genome_list {
                                 let g = serde_json::to_string_pretty(&genome).unwrap();
-                                println!("{g}");
+
+                                if output.is_empty() {
+                                    println!("{g}");
+                                } else {
+                                    let file = fs::File::create(output.clone()).unwrap();
+                                    serde_json::to_writer_pretty(file, &g).unwrap();
+                                }
                             }
                         }
                     },
