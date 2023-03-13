@@ -165,7 +165,7 @@ pub fn parse_gtdb<'de, D>(d: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
-    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or("null".to_string()))
+    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or_default())
 }
 
 #[cfg(test)]

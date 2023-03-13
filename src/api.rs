@@ -164,4 +164,27 @@ mod tests {
         let expected = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=false";
         assert_eq!(search.request(), expected);
     }
+
+    #[test]
+    fn test_genome_request() {
+        let genome_api = GenomeApi::from(String::from("accession"));
+
+        let metadata_request = genome_api.request(GenomeRequestType::Metadata);
+        let expected_metadata_request =
+            String::from("https://api.gtdb.ecogenomic.org/genome/accession/metadata");
+
+        assert_eq!(metadata_request, expected_metadata_request);
+
+        let taxon_history_request = genome_api.request(GenomeRequestType::TaxonHistory);
+        let expected_taxon_history_request =
+            String::from("https://api.gtdb.ecogenomic.org/genome/accession/taxon-history");
+
+        assert_eq!(taxon_history_request, expected_taxon_history_request);
+
+        let card_request = genome_api.request(GenomeRequestType::Card);
+        let expected_card_request =
+            String::from("https://api.gtdb.ecogenomic.org/genome/accession/card");
+
+        assert_eq!(card_request, expected_card_request);
+    }
 }

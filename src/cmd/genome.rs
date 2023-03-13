@@ -6,7 +6,7 @@ use std::{fs, path::PathBuf};
 
 use crate::api;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeResult {
     genome: Genome,
     metadata_nucleotide: MetadataNucleotide,
@@ -38,7 +38,7 @@ pub struct GenomeResult {
     ncbi_taxonomy_unfiltered: Vec<Taxon>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Genome {
     #[serde(deserialize_with = "utils::parse_gtdb")]
     accession: String,
@@ -46,7 +46,7 @@ pub struct Genome {
     name: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_nucleotide")]
 pub struct MetadataNucleotide {
     trna_aa_count: i32,
@@ -61,7 +61,7 @@ pub struct MetadataNucleotide {
     ambiguous_bases: i32,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_gene")]
 pub struct MetadataGene {
     #[serde(deserialize_with = "utils::parse_gtdb")]
@@ -82,7 +82,7 @@ pub struct MetadataGene {
     coding_density: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_ncbi")]
 pub struct MetadataNcbi {
     #[serde(deserialize_with = "utils::parse_gtdb")]
@@ -143,7 +143,7 @@ pub struct MetadataNcbi {
     ncbi_wgs_master: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", rename = "metadata_type_material")]
 pub struct MetadataTypeMaterial {
     #[serde(deserialize_with = "utils::parse_gtdb")]
@@ -159,7 +159,7 @@ pub struct MetadataTypeMaterial {
     gtdb_type_species_of_genus: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadataTaxonomy")]
 pub struct MetadataTaxonomy {
     #[serde(deserialize_with = "utils::parse_gtdb")]
@@ -188,7 +188,7 @@ pub struct MetadataTaxonomy {
     gtdb_species: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Taxon {
     #[serde(deserialize_with = "utils::parse_gtdb")]
@@ -198,7 +198,7 @@ pub struct Taxon {
 }
 
 // GTDB Genome metadata API Struct
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeMetadata {
     #[serde(deserialize_with = "utils::parse_gtdb")]
     accession: String,
@@ -207,7 +207,7 @@ pub struct GenomeMetadata {
 }
 
 // GTDB Genome history API structs
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct History {
     #[serde(deserialize_with = "utils::parse_gtdb")]
     release: String,
@@ -311,4 +311,41 @@ pub fn genome_gtdb(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_genome_gtdb() {
+        assert!(genome_gtdb(
+            &"GCA_001512625.1".to_owned(),
+            api::GenomeRequestType::Card,
+            false,
+            PathBuf::from("")
+        )
+        .is_ok());
+        assert!(genome_gtdb(
+            &"GCA_001512625.1".to_owned(),
+            api::GenomeRequestType::TaxonHistory,
+            false,
+            PathBuf::from("")
+        )
+        .is_ok());
+        assert!(genome_gtdb(
+            &"GCA_001512625.1".to_owned(),
+            api::GenomeRequestType::Metadata,
+            false,
+            PathBuf::from("")
+        )
+        .is_ok());
+        assert!(genome_gtdb(
+            &"".to_owned(),
+            api::GenomeRequestType::Card,
+            false,
+            PathBuf::from("")
+        )
+        .is_err())
+    }
 }
