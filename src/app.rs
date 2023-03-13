@@ -195,4 +195,9 @@ mod tests {
             Some(&"ncbi_tax".to_owned())
         );
     }
+
+    #[test]
+    fn verify_cmd() {
+        build_app().debug_assert();
+    }
 }
