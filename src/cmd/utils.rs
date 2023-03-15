@@ -77,7 +77,10 @@ impl SearchArgs {
                 raw: args.get_flag("raw"),
                 rep: args.get_flag("rep"),
                 type_material: args.get_flag("type"),
-                out: args.get_one::<String>("out").unwrap().to_string(),
+                out: args
+                    .get_one::<String>("out")
+                    .unwrap_or(&"".to_string())
+                    .to_string(),
             }
         } else {
             SearchArgs {

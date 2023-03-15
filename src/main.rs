@@ -15,11 +15,11 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         Some(("search", sub_matches)) => {
             let args = utils::SearchArgs::from_arg_matches(sub_matches);
-            search::search_gtdb(args).unwrap();
+            search::search_gtdb(args)?;
         }
         Some(("genome", sub_matches)) => {
             let args = utils::GenomeArgs::from_arg_matches(sub_matches);
-            genome::genome_gtdb(args).unwrap();
+            genome::genome_gtdb(args)?;
         }
         _ => unreachable!("Implemented correctly"),
     };
