@@ -36,6 +36,9 @@ xgt search 'Aminobacter'
 # Search all genomes with genus name containing aminobacter
 xgt search -p 'aminobacter'
 
+# Search a list of taxon name
+xgt search -f list.txt
+
 # Get GTDB genome information
 xgt genome GCA_001512625.1
 
