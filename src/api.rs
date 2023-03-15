@@ -144,8 +144,8 @@ mod tests {
         assert_eq!(search.sort_desc, "false");
         assert_eq!(search.search_field, "all");
         assert_eq!(search.filter_text, "example");
-        assert_eq!(search.gtdb_species_rep_only, true);
-        assert_eq!(search.ncbi_type_material_only, false);
+        assert!(search.gtdb_species_rep_only);
+        assert!(!search.ncbi_type_material_only);
     }
 
     #[test]

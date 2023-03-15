@@ -162,8 +162,8 @@ mod tests {
             submatches.get_one::<String>("level"),
             Some(&"class".to_owned())
         );
-        assert_eq!(submatches.get_flag("count"), true);
-        assert_eq!(submatches.get_flag("raw"), true);
+        assert!(submatches.get_flag("count"));
+        assert!(submatches.get_flag("raw"));
     }
 
     #[test]
@@ -184,12 +184,12 @@ mod tests {
             "ncbi_tax",
         ]);
         let subcommand_parser = arg_parser.subcommand_matches("search").unwrap();
-        assert_eq!(subcommand_parser.get_flag("count"), true);
-        assert_eq!(subcommand_parser.get_flag("raw"), true);
-        assert_eq!(subcommand_parser.get_flag("id"), true);
-        assert_eq!(subcommand_parser.get_flag("partial"), true);
-        assert_eq!(subcommand_parser.get_flag("rep"), true);
-        assert_eq!(subcommand_parser.get_flag("type"), true);
+        assert!(subcommand_parser.get_flag("count"));
+        assert!(subcommand_parser.get_flag("raw"));
+        assert!(subcommand_parser.get_flag("id"));
+        assert!(subcommand_parser.get_flag("partial"));
+        assert!(subcommand_parser.get_flag("rep"));
+        assert!(subcommand_parser.get_flag("type"));
         assert_eq!(
             subcommand_parser.get_one::<String>("name"),
             Some(&"taxon_name".to_owned())

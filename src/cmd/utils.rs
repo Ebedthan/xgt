@@ -69,7 +69,7 @@ impl SearchArgs {
                 .collect();
 
             SearchArgs {
-                needle: needle,
+                needle,
                 level: args.get_one::<String>("level").unwrap().to_string(),
                 id: args.get_flag("id"),
                 partial: args.get_flag("partial"),
@@ -115,7 +115,7 @@ impl GenomeArgs {
     }
 
     pub fn get_request_type(&self) -> GenomeRequestType {
-        self.request_type.clone()
+        self.request_type
     }
 
     pub fn get_raw(&self) -> bool {
@@ -133,7 +133,7 @@ impl GenomeArgs {
                     .get_one::<String>("accession")
                     .unwrap()
                     .to_string(),
-                request_type: GenomeRequestType::Metadata,
+                request_type: GenomeRequestType::TaxonHistory,
                 raw: arg_matches.get_flag("raw"),
                 output: arg_matches
                     .get_one::<PathBuf>("out")
@@ -222,7 +222,7 @@ mod tests {
             output: PathBuf::from("output.txt"),
         };
 
-        assert_eq!(genome_args.get_raw(), true);
+        assert!(genome_args.get_raw());
     }
 
     #[test]

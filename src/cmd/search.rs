@@ -269,7 +269,7 @@ mod tests {
         );
         assert_eq!(
             search_result.search_by_level("genus", "Streptomyces"),
-            vec![genome1.clone()]
+            vec![genome1]
         );
         assert_eq!(
             search_result.search_by_level("genus", "Lactobacillus"),
