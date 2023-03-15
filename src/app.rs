@@ -16,7 +16,7 @@ pub fn build_app() -> Command {
         .subcommand(
             Command::new("search")
                 .about("Search GTDB by taxa name")
-                .arg(Arg::new("name").required(true))
+                .arg(Arg::new("name").conflicts_with("file"))
                 .arg(
                     Arg::new("count")
                         .short('c')
@@ -39,6 +39,14 @@ pub fn build_app() -> Command {
                         .default_value("gtdb_tax")
                         .value_parser(["all", "gtdb_tax", "ncbi_tax", "ncbi_org", "ncbi_id"])
                         .help("Search field"),
+                )
+                .arg(
+                    Arg::new("file")
+                        .short('f')
+                        .long("file")
+                        .value_name("FILE")
+                        .value_parser(value_parser!(PathBuf))
+                        .help("Search from name in FILE"),
                 )
                 .arg(
                     Arg::new("level")

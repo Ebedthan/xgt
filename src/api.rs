@@ -14,7 +14,7 @@ pub struct Search {
 }
 
 impl Search {
-    pub fn new(search: String, options: HashMap<String, String>) -> Self {
+    pub fn new(search: String, options: &HashMap<String, String>) -> Self {
         Search {
             search,
             page: options
@@ -24,7 +24,7 @@ impl Search {
                 .unwrap(),
             items_per_page: options
                 .get("items_per_page")
-                .unwrap_or(&String::from("100"))
+                .unwrap_or(&String::from("100000000"))
                 .parse::<i32>()
                 .unwrap(),
             sort_by: String::from(options.get("sort_by").unwrap_or(&String::from(""))),
@@ -136,7 +136,7 @@ mod tests {
         .iter()
         .cloned()
         .collect();
-        let search = Search::new("test".to_string(), options);
+        let search = Search::new("test".to_string(), &options);
         assert_eq!(search.search, "test");
         assert_eq!(search.page, 1);
         assert_eq!(search.items_per_page, 20);

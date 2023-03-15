@@ -1,10 +1,11 @@
-use super::utils;
+use super::utils::{self, GenomeArgs};
 use anyhow::Result;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
-use crate::api;
+use crate::api::GenomeApi;
+use crate::api::GenomeRequestType;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeResult {
@@ -233,20 +234,19 @@ pub struct TaxonHistory {
     data: Vec<History>,
 }
 
-pub fn genome_gtdb(
-    accession: &String,
-    request_type: api::GenomeRequestType,
-    raw: bool,
-    output: PathBuf,
-) -> Result<(), Error> {
+pub fn genome_gtdb(args: GenomeArgs) -> Result<(), Error> {
     // format the request
-    let genome_api = api::GenomeApi::from(accession.to_string());
+    let genome_api = GenomeApi::from(args.get_accession());
+
+    let request_type = args.get_request_type();
+    let raw = args.get_raw();
+    let output = args.get_output();
 
     let request_url = genome_api.request(request_type);
 
     let response = reqwest::blocking::get(request_url)?;
 
-    if request_type == api::GenomeRequestType::Metadata {
+    if request_type == GenomeRequestType::Metadata {
         let genome: GenomeMetadata = response.json()?;
 
         match raw {
@@ -267,7 +267,7 @@ pub fn genome_gtdb(
                 }
             }
         };
-    } else if request_type == api::GenomeRequestType::TaxonHistory {
+    } else if request_type == GenomeRequestType::TaxonHistory {
         let genome: TaxonHistory = response.json()?;
         match raw {
             true => {
@@ -318,34 +318,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_genome_gtdb() {
-        assert!(genome_gtdb(
-            &"GCA_001512625.1".to_owned(),
-            api::GenomeRequestType::Card,
-            false,
-            PathBuf::from("")
-        )
-        .is_ok());
-        assert!(genome_gtdb(
-            &"GCA_001512625.1".to_owned(),
-            api::GenomeRequestType::TaxonHistory,
-            false,
-            PathBuf::from("")
-        )
-        .is_ok());
-        assert!(genome_gtdb(
-            &"GCA_001512625.1".to_owned(),
-            api::GenomeRequestType::Metadata,
-            false,
-            PathBuf::from("")
-        )
-        .is_ok());
-        assert!(genome_gtdb(
-            &"".to_owned(),
-            api::GenomeRequestType::Card,
-            false,
-            PathBuf::from("")
-        )
-        .is_err())
+    fn test_genome_gtdb_1() {
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Card,
+            raw: false,
+            output: PathBuf::from(""),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_2() {
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Metadata,
+            raw: false,
+            output: PathBuf::from(""),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_3() {
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::TaxonHistory,
+            raw: false,
+            output: PathBuf::from(""),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_4() {
+        let args = utils::GenomeArgs {
+            accession: "".to_owned(),
+            request_type: GenomeRequestType::Card,
+            raw: false,
+            output: PathBuf::from(""),
+        };
+
+        assert!(genome_gtdb(args).is_err())
     }
 }
