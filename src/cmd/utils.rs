@@ -242,4 +242,28 @@ mod tests {
         assert_eq!(bool_as_string(true), "true");
         assert_eq!(bool_as_string(false), "false");
     }
+
+    #[test]
+    fn test_get_needle() {
+        let args = SearchArgs {
+            needle: vec!["needle".to_string()],
+            level: "level".to_string(),
+            id: false,
+            partial: false,
+            count: false,
+            raw: false,
+            rep: false,
+            type_material: false,
+            out: "".to_string(),
+        };
+        assert_eq!(args.get_needle(), vec!["needle".to_string()]);
+        assert_eq!(args.get_level(), "level".to_string());
+        assert!(!args.get_gid());
+        assert!(!args.get_partial());
+        assert!(!args.get_count());
+        assert!(!args.get_raw());
+        assert!(!args.get_rep());
+        assert!(!args.get_type_material());
+        assert_eq!(args.get_out(), "".to_string());
+    }
 }
