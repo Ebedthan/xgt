@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/badge/license-APACHE-blue?style=flat">
 </a>
 
-`xgt` is a Rust based tool that enables efficient querying and parsing of the GTDB database. `xgt` consists of a collection of commands mirroring the GTDB API and provide additionnal fast and efficient parsing capability of the result.
+`xgt` is a Rust tool that enables efficient querying and parsing of the GTDB database. `xgt` consists of a collection of commands mirroring the GTDB API and providing additional parsing capability.
 
 # Installation
 
