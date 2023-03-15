@@ -22,7 +22,6 @@ cargo install --path .
 ```
 
 # Quick start guide
-
 ```
 # Search all Aminobacter genomes
 xgt search 'Aminobacter'

@@ -10,15 +10,15 @@ use std::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchArgs {
-    needle: Vec<String>,
-    level: String,
-    id: bool,
-    partial: bool,
-    count: bool,
-    raw: bool,
-    rep: bool,
-    type_material: bool,
-    out: String,
+    pub(crate) needle: Vec<String>,
+    pub(crate) level: String,
+    pub(crate) id: bool,
+    pub(crate) partial: bool,
+    pub(crate) count: bool,
+    pub(crate) raw: bool,
+    pub(crate) rep: bool,
+    pub(crate) type_material: bool,
+    pub(crate) out: String,
 }
 
 impl SearchArgs {

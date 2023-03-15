@@ -221,6 +221,16 @@ mod tests {
             is_ncbi_type_material: false,
         };
 
+        let genome1 = SearchResult {
+            gid: "test".to_owned(),
+            accession: "test".to_owned(),
+            ncbi_org_name: "test".to_owned(),
+            ncbi_taxonomy: "test".to_owned(),
+            gtdb_taxonomy: "".to_owned(),
+            is_gtdb_species_rep: false,
+            is_ncbi_type_material: false,
+        };
+
         assert_eq!(genome.get_gtdb_level("domain"), "Bacteria");
         assert_eq!(genome.get_gtdb_level("phylum"), "Actinobacteriota");
         assert_eq!(genome.get_gtdb_level("class"), "Actinobacteria");
@@ -228,11 +238,7 @@ mod tests {
         assert_eq!(genome.get_gtdb_level("family"), "Streptomycetaceae");
         assert_eq!(genome.get_gtdb_level("genus"), "Streptomyces");
         assert_eq!(genome.get_gtdb_level("species"), "");
-        /*
-        assert!(matches!(
-            genome.get_gtdb_level("invalid"),
-            _ if true // the `_ => unreachable!()` branch will be executed, so this should always panic
-        ));*/
+        assert_eq!(genome1.get_gtdb_level("genus"), "".to_owned());
     }
 
     #[test]
@@ -275,5 +281,35 @@ mod tests {
             search_result.search_by_level("genus", "Lactobacillus"),
             vec![genome2]
         );
+    }
+
+    #[test]
+    fn test_search_gtdb_() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: false,
+            partial: false,
+            rep: false,
+            raw: false,
+            type_material: false,
+            count: false,
+            out: String::from(""),
+        };
+
+        let args1 = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: true,
+            partial: true,
+            rep: true,
+            raw: true,
+            type_material: true,
+            count: true,
+            out: String::from(""),
+        };
+
+        assert!(search_gtdb(args).is_ok());
+        assert!(search_gtdb(args1).is_ok());
     }
 }
