@@ -150,6 +150,33 @@ mod tests {
     }
 
     #[test]
+    fn test_new_next() {
+        let options: HashMap<String, String> = [
+            ("items_per_page".to_string(), "20".to_string()),
+            ("sort_by".to_string(), "".to_string()),
+            ("sort_desc".to_string(), "".to_string()),
+            ("search_field".to_string(), "all".to_string()),
+            ("filter_text".to_string(), "".to_string()),
+            ("gtdb_species_rep_only".to_string(), "false".to_string()),
+            ("ncbi_type_material_only".to_string(), "false".to_string()),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let search = Search::new("test".to_string(), &options);
+        assert_eq!(search.search, "test");
+        assert_eq!(search.page, 1);
+        assert_eq!(search.items_per_page, 20);
+        assert_eq!(search.sort_by, "");
+        assert_eq!(search.sort_desc, "");
+        assert_eq!(search.search_field, "all");
+        assert_eq!(search.filter_text, "");
+        assert!(!search.gtdb_species_rep_only);
+        assert!(!search.ncbi_type_material_only);
+    }
+
+    #[test]
     fn test_request() {
         let search = Search {
             search: "test".to_string(),
