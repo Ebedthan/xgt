@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
-        ColorChoice::Always
+        ColorChoice::Auto
     } else {
         ColorChoice::Never
     };
@@ -141,6 +141,7 @@ mod tests {
 
     #[test]
     fn test_app() {
+        std::env::set_var("NO_COLOR", "true");
         let app = build_app();
         let args = vec![
             "xgt",
