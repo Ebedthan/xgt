@@ -65,7 +65,7 @@ pub fn build_app() -> Command {
                         .long("out")
                         .help("Redirect output to FILE")
                         .value_name("FILE")
-                        .value_parser(value_parser!(PathBuf)),
+                        .value_parser(clap::builder::NonEmptyStringValueParser::new()),
                 )
                 .arg(
                     Arg::new("partial")

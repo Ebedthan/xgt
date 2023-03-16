@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
@@ -78,12 +79,16 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
     let partial = args.get_partial();
     let count = args.get_count();
     let raw = args.get_raw();
-
     let output = args.get_out();
-    let mut redirect_output = false;
-    if !output.is_empty() {
-        redirect_output = true;
+
+    if let Some(filename) = output.clone() {
+        let path = Path::new(&filename);
+        if path.exists() {
+            eprintln!("error: file should not already exist");
+            std::process::exit(1);
+        }
     }
+
     let needles = args.get_needle();
 
     for needle in needles {
@@ -109,11 +114,12 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
                 // Return number of genomes?
                 match count {
                     true => {
-                        if !redirect_output {
-                            println!("{}", genome_list.len());
-                        } else {
-                            let mut file = fs::File::create(oneedle).unwrap();
+                        if let Some(filename) = output.clone() {
+                            let mut file =
+                                fs::File::create(filename).expect("file path should be correct");
                             file.write_all(&genome_list.len().to_ne_bytes()).unwrap();
+                        } else {
+                            println!("{}", genome_list.len());
                         }
                     }
 
@@ -123,41 +129,46 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
                             let list: Vec<String> =
                                 genome_list.iter().map(|x| x.gid.clone()).collect();
 
-                            if !redirect_output {
-                                for gid in list {
-                                    println!("{gid}");
-                                }
-                            } else {
-                                let mut file = fs::File::create(oneedle).unwrap();
+                            if let Some(filename) = output.clone() {
+                                let mut file = fs::File::create(filename)
+                                    .expect("file path should be correct");
                                 for gid in list {
                                     file.write_all(gid.as_bytes()).unwrap();
                                 }
+                            } else {
+                                for gid in list {
+                                    println!("{gid}");
+                                }
                             }
                         }
-                        // Pretty print json data?
+                        // Return all data in pretty print json?
                         false => match raw {
                             true => {
-                                let out = output.clone();
-                                for genome in genome_list {
-                                    let g = serde_json::to_string(&genome).unwrap();
-
-                                    if out.is_empty() {
+                                if let Some(filename) = output.clone() {
+                                    let file = fs::File::create(filename)
+                                        .expect("file path should be correct");
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string(&genome).unwrap();
+                                        serde_json::to_writer(&file, &g).unwrap();
+                                    }
+                                } else {
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string(&genome).unwrap();
                                         println!("{g}");
-                                    } else {
-                                        let file = fs::File::create(output.clone()).unwrap();
-                                        serde_json::to_writer(file, &g).unwrap();
                                     }
                                 }
                             }
                             false => {
-                                for genome in genome_list {
-                                    let g = serde_json::to_string_pretty(&genome).unwrap();
-
-                                    if output.is_empty() {
+                                if let Some(filename) = output.clone() {
+                                    let file = fs::File::create(filename)
+                                        .expect("file path should be correct");
+                                    for genome in genome_list {
+                                        serde_json::to_writer_pretty(&file, &genome).unwrap();
+                                    }
+                                } else {
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string_pretty(&genome).unwrap();
                                         println!("{g}");
-                                    } else {
-                                        let file = fs::File::create(output.clone()).unwrap();
-                                        serde_json::to_writer_pretty(file, &g).unwrap();
                                     }
                                 }
                             }
@@ -170,29 +181,64 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<(), Error> {
 
                 // Return number of genomes?
                 match count {
-                    true => println!("{}", genome_list.len()),
+                    true => {
+                        if let Some(filename) = output.clone() {
+                            let mut file =
+                                fs::File::create(filename).expect("file path should be correct");
+                            file.write_all(&genome_list.len().to_ne_bytes()).unwrap();
+                        } else {
+                            println!("{}", genome_list.len());
+                        }
+                    }
 
                     // Return only genome id?
                     false => match gid {
                         true => {
                             let list: Vec<String> =
                                 genome_list.iter().map(|x| x.gid.clone()).collect();
-                            for gid in list {
-                                println!("{gid}");
+
+                            if let Some(filename) = output.clone() {
+                                let mut file = fs::File::create(filename)
+                                    .expect("file path should be correct");
+                                for gid in list {
+                                    file.write_all(gid.as_bytes()).unwrap();
+                                }
+                            } else {
+                                for gid in list {
+                                    println!("{gid}");
+                                }
                             }
                         }
-                        // Pretty print json data?
+                        // Return all data in pretty print json?
                         false => match raw {
                             true => {
-                                for genome in genome_list {
-                                    let g = serde_json::to_string(&genome).unwrap();
-                                    println!("{g}");
+                                if let Some(filename) = output.clone() {
+                                    let file = fs::File::create(filename)
+                                        .expect("file path should be correct");
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string(&genome).unwrap();
+                                        serde_json::to_writer(&file, &g).unwrap();
+                                    }
+                                } else {
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string(&genome).unwrap();
+                                        println!("{g}");
+                                    }
                                 }
                             }
                             false => {
-                                for genome in genome_list {
-                                    let g = serde_json::to_string_pretty(&genome).unwrap();
-                                    println!("{g}");
+                                if let Some(filename) = output.clone() {
+                                    let file = fs::File::create(filename)
+                                        .expect("file path should be correct");
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string_pretty(&genome).unwrap();
+                                        serde_json::to_writer_pretty(&file, &g).unwrap();
+                                    }
+                                } else {
+                                    for genome in genome_list {
+                                        let g = serde_json::to_string_pretty(&genome).unwrap();
+                                        println!("{g}");
+                                    }
                                 }
                             }
                         },
@@ -237,7 +283,7 @@ mod tests {
         assert_eq!(genome.get_gtdb_level("order"), "Actinomycetales");
         assert_eq!(genome.get_gtdb_level("family"), "Streptomycetaceae");
         assert_eq!(genome.get_gtdb_level("genus"), "Streptomyces");
-        assert_eq!(genome.get_gtdb_level("species"), "");
+        assert_eq!(genome.get_gtdb_level("species"), "".to_owned());
         assert_eq!(genome1.get_gtdb_level("genus"), "".to_owned());
     }
 
@@ -284,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn test_search_gtdb_() {
+    fn test_search_gtdb() {
         let args = utils::SearchArgs {
             needle: vec!["Aminobacter".to_owned()],
             level: "genus".to_owned(),
@@ -294,7 +340,7 @@ mod tests {
             raw: false,
             type_material: false,
             count: false,
-            out: String::from(""),
+            out: None,
         };
 
         let args1 = utils::SearchArgs {
@@ -306,7 +352,7 @@ mod tests {
             raw: true,
             type_material: true,
             count: true,
-            out: String::from(""),
+            out: None,
         };
 
         assert!(search_gtdb(args).is_ok());

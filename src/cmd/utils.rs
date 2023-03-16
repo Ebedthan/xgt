@@ -18,7 +18,7 @@ pub struct SearchArgs {
     pub(crate) raw: bool,
     pub(crate) rep: bool,
     pub(crate) type_material: bool,
-    pub(crate) out: String,
+    pub(crate) out: Option<String>,
 }
 
 impl SearchArgs {
@@ -54,14 +54,14 @@ impl SearchArgs {
         self.rep
     }
 
-    pub fn get_out(&self) -> String {
+    pub fn get_out(&self) -> Option<String> {
         self.out.clone()
     }
 
     pub fn from_arg_matches(args: &ArgMatches) -> Self {
         if args.contains_id("file") {
             let file = File::open(args.get_one::<PathBuf>("file").unwrap())
-                .expect("File cannot be openned");
+                .expect("file should be well-formatted");
 
             let needle = BufReader::new(file)
                 .lines()
@@ -77,14 +77,20 @@ impl SearchArgs {
                 raw: args.get_flag("raw"),
                 rep: args.get_flag("rep"),
                 type_material: args.get_flag("type"),
-                out: args
-                    .get_one::<String>("out")
-                    .unwrap_or(&"".to_string())
-                    .to_string(),
+                out: if args.contains_id("out") {
+                    args.get_one::<String>("out").cloned()
+                } else {
+                    None
+                },
             }
         } else {
             SearchArgs {
-                needle: vec![args.get_one::<String>("name").unwrap().to_string()],
+                needle: if let Some(_) = args.get_one::<String>("name") {
+                    vec![args.get_one::<String>("name").unwrap().to_string()]
+                } else {
+                    eprintln!("error: search string should be supplied");
+                    std::process::exit(1);
+                },
                 level: args.get_one::<String>("level").unwrap().to_string(),
                 id: args.get_flag("id"),
                 partial: args.get_flag("partial"),
@@ -92,10 +98,11 @@ impl SearchArgs {
                 raw: args.get_flag("raw"),
                 rep: args.get_flag("rep"),
                 type_material: args.get_flag("type"),
-                out: args
-                    .get_one::<String>("out")
-                    .unwrap_or(&String::from(""))
-                    .to_string(),
+                out: if args.contains_id("out") {
+                    args.get_one::<String>("out").cloned()
+                } else {
+                    None
+                },
             }
         }
     }
@@ -254,7 +261,7 @@ mod tests {
             raw: false,
             rep: false,
             type_material: false,
-            out: "".to_string(),
+            out: Some(String::from("test")),
         };
         assert_eq!(args.get_needle(), vec!["needle".to_string()]);
         assert_eq!(args.get_level(), "level".to_string());
@@ -264,6 +271,6 @@ mod tests {
         assert!(!args.get_raw());
         assert!(!args.get_rep());
         assert!(!args.get_type_material());
-        assert_eq!(args.get_out(), "".to_string());
+        assert_eq!(args.get_out(), Some(String::from("test")));
     }
 }
