@@ -130,12 +130,13 @@ mod tests {
             ("sort_desc".to_string(), "false".to_string()),
             ("search_field".to_string(), "all".to_string()),
             ("filter_text".to_string(), "example".to_string()),
-            ("gtdb_species_rep_only".to_string(), "true".to_string()),
+            ("gtdb_species_rep_only".to_string(), "false".to_string()),
             ("ncbi_type_material_only".to_string(), "false".to_string()),
         ]
         .iter()
         .cloned()
         .collect();
+
         let search = Search::new("test".to_string(), &options);
         assert_eq!(search.search, "test");
         assert_eq!(search.page, 1);
@@ -144,7 +145,7 @@ mod tests {
         assert_eq!(search.sort_desc, "false");
         assert_eq!(search.search_field, "all");
         assert_eq!(search.filter_text, "example");
-        assert!(search.gtdb_species_rep_only);
+        assert!(!search.gtdb_species_rep_only);
         assert!(!search.ncbi_type_material_only);
     }
 
