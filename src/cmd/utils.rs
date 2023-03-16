@@ -85,7 +85,7 @@ impl SearchArgs {
             }
         } else {
             SearchArgs {
-                needle: if let Some(_) = args.get_one::<String>("name") {
+                needle: if args.get_one::<String>("name").is_some() {
                     vec![args.get_one::<String>("name").unwrap().to_string()]
                 } else {
                     eprintln!("error: search string should be supplied");
