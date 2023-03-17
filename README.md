@@ -24,10 +24,10 @@ cargo install --path .
 # Quick start guide
 ```
 # Search all Aminobacter genomes
-xgt search 'Aminobacter'
+xgt search Aminobacter
 
 # Search all genomes with genus name containing aminobacter
-xgt search -p 'aminobacter'
+xgt search -p aminobacter
 
 # Search a list of taxon name
 xgt search -f list.txt
