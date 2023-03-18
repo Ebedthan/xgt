@@ -381,6 +381,7 @@ mod tests {
             is_gtdb_species_rep: false,
             is_ncbi_type_material: false,
         };
+
         let genome2 = SearchResult {
             gid: "test2".to_owned(),
             accession: "test2".to_owned(),
@@ -390,6 +391,7 @@ mod tests {
             is_gtdb_species_rep: false,
             is_ncbi_type_material: false,
         };
+
         let search_result = SearchResults {
             rows: vec![genome1.clone(), genome2.clone()],
         };
@@ -440,5 +442,93 @@ mod tests {
 
         assert!(search_gtdb(args).is_ok());
         assert!(search_gtdb(args1).is_ok());
+    }
+
+    #[test]
+    fn test_search_gtdb_file_count_true() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: false,
+            partial: false,
+            rep: false,
+            raw: false,
+            type_material: false,
+            count: true,
+            out: Some(String::from("/tmp/search")),
+        };
+
+        assert!(search_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("/tmp/search")).unwrap();
+    }
+
+    #[test]
+    fn test_search_gtdb_file_count_false() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: false,
+            partial: false,
+            rep: false,
+            raw: false,
+            type_material: false,
+            count: false,
+            out: Some(String::from("/tmp/search")),
+        };
+
+        assert!(search_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("/tmp/search")).unwrap();
+    }
+
+    #[test]
+    fn test_search_gtdb_file_gid_true() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: true,
+            partial: false,
+            rep: false,
+            raw: false,
+            type_material: false,
+            count: false,
+            out: Some(String::from("/tmp/search")),
+        };
+
+        assert!(search_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("/tmp/search")).unwrap();
+    }
+
+    #[test]
+    fn test_search_gtdb_file_gid_false() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: false,
+            partial: false,
+            rep: false,
+            raw: true,
+            type_material: false,
+            count: false,
+            out: None,
+        };
+
+        assert!(search_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_search_gtdb_file_gid_false_no_out() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: true,
+            partial: false,
+            rep: false,
+            raw: true,
+            type_material: false,
+            count: false,
+            out: None,
+        };
+
+        assert!(search_gtdb(args).is_ok());
     }
 }
