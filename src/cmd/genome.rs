@@ -257,12 +257,12 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if let Some(path) = output.clone() {
+                if let Some(path) = output {
                     let path_clone = path.clone();
                     let mut file = fs::File::create(path)
-                        .with_context(|| format!("Failed to create file {}", path_clone))?;
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
                 } else {
                     writeln!(io::stdout(), "{genome_string}")?;
                 }
@@ -271,12 +271,12 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if let Some(path) = output.clone() {
+                if let Some(path) = output {
                     let path_clone = path.clone();
                     let mut file = fs::File::create(path)
-                        .with_context(|| format!("Failed to create file {}", path_clone))?;
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
                 } else {
                     writeln!(io::stdout(), "{genome_string}")?;
                 }
@@ -291,12 +291,12 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if let Some(path) = output.clone() {
+                if let Some(path) = output {
                     let path_clone = path.clone();
                     let mut file = fs::File::create(path)
-                        .with_context(|| format!("Failed to create file {}", path_clone))?;
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
                 } else {
                     writeln!(io::stdout(), "{genome_string}")?;
                 }
@@ -305,12 +305,12 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if let Some(path) = output.clone() {
+                if let Some(path) = output {
                     let path_clone = path.clone();
                     let mut file = fs::File::create(path)
-                        .with_context(|| format!("Failed to create file {}", path_clone))?;
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
                 } else {
                     writeln!(io::stdout(), "{genome_string}")?;
                 }
@@ -326,12 +326,12 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if let Some(path) = output.clone() {
+                if let Some(path) = output {
                     let path_clone = path.clone();
                     let mut file = fs::File::create(path)
-                        .with_context(|| format!("Failed to create file {}", path_clone))?;
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
                 } else {
                     writeln!(io::stdout(), "{genome_string}")?;
                 }
@@ -340,12 +340,12 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if let Some(path) = output.clone() {
+                if let Some(path) = output {
                     let path_clone = path.clone();
                     let mut file = fs::File::create(path)
-                        .with_context(|| format!("Failed to create file {}", path_clone))?;
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
                 } else {
                     writeln!(io::stdout(), "{genome_string}")?;
                 }
