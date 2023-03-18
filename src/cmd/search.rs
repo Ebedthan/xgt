@@ -152,50 +152,64 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                             }
                         }
                         // Return all data in pretty print json?
-                        false => {
-                            match raw {
-                                true => {
-                                    if let Some(path) = output.clone() {
-                                        let path_clone = path.clone();
-                                        let mut file = File::create(path).with_context(|| {
-                                            format!("Failed to create {path_clone}")
-                                        })?;
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            file.write_all(genome_string.as_bytes()).with_context(
-                                                || format!("Failed to write to {path_clone}"),
-                                            )?;
-                                        }
-                                    } else {
-                                        let mut stdout_lock = io::stdout().lock();
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            writeln!(stdout_lock, "{genome_string}")?;
-                                        }
+                        false => match raw {
+                            true => {
+                                if let Some(path) = output.clone() {
+                                    let path_clone = path.clone();
+                                    let mut file = File::create(path).with_context(|| {
+                                        format!("Failed to create {path_clone}")
+                                    })?;
+                                    for genome in genome_list {
+                                        let genome_string = serde_json::to_string(&genome)
+                                            .with_context(|| {
+                                                "Failed to convert search result to json string"
+                                                    .to_string()
+                                            })?;
+                                        file.write_all(genome_string.as_bytes()).with_context(
+                                            || format!("Failed to write to {path_clone}"),
+                                        )?;
                                     }
-                                }
-                                false => {
-                                    if let Some(path) = output.clone() {
-                                        let path_clone = path.clone();
-                                        let mut file = File::create(path).with_context(|| {
-                                            format!("Failed to create {path_clone}")
-                                        })?;
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string_pretty(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            file.write_all(genome_string.as_bytes()).with_context(
-                                                || format!("Failed to write to {path_clone}"),
-                                            )?;
-                                        }
-                                    } else {
-                                        let mut stdout_lock = io::stdout().lock();
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string_pretty(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            writeln!(stdout_lock, "{genome_string}")?;
-                                        }
+                                } else {
+                                    let mut stdout_lock = io::stdout().lock();
+                                    for genome in genome_list {
+                                        let genome_string = serde_json::to_string(&genome)
+                                            .with_context(|| {
+                                                "Failed to convert search result to json string"
+                                                    .to_string()
+                                            })?;
+                                        writeln!(stdout_lock, "{genome_string}")?;
                                     }
                                 }
                             }
-                        }
+                            false => {
+                                if let Some(path) = output.clone() {
+                                    let path_clone = path.clone();
+                                    let mut file = File::create(path).with_context(|| {
+                                        format!("Failed to create {path_clone}")
+                                    })?;
+                                    for genome in genome_list {
+                                        let genome_string = serde_json::to_string_pretty(&genome)
+                                            .with_context(|| {
+                                            "Failed to convert search result to json string"
+                                                .to_string()
+                                        })?;
+                                        file.write_all(genome_string.as_bytes()).with_context(
+                                            || format!("Failed to write to {path_clone}"),
+                                        )?;
+                                    }
+                                } else {
+                                    let mut stdout_lock = io::stdout().lock();
+                                    for genome in genome_list {
+                                        let genome_string = serde_json::to_string_pretty(&genome)
+                                            .with_context(|| {
+                                            "Failed to convert search result to json string"
+                                                .to_string()
+                                        })?;
+                                        writeln!(stdout_lock, "{genome_string}")?;
+                                    }
+                                }
+                            }
+                        },
                     },
                 }
             }
@@ -241,50 +255,67 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                 }
                             }
                             // Return all data in pretty print json?
-                            false => match raw {
-                                true => {
-                                    if let Some(path) = output.clone() {
-                                        let path_clone = path.clone();
-                                        let mut file = File::create(path).with_context(|| {
-                                            format!("Failed to create {path_clone}")
-                                        })?;
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            file.write_all(genome_string.as_bytes()).with_context(
-                                                || format!("Failed to write to {path_clone}"),
-                                            )?;
-                                        }
-                                    } else {
-                                        let mut stdout_lock = io::stdout();
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            writeln!(stdout_lock, "{genome_string}")?;
+                            false => {
+                                match raw {
+                                    true => {
+                                        if let Some(path) = output.clone() {
+                                            let path_clone = path.clone();
+                                            let mut file =
+                                                File::create(path).with_context(|| {
+                                                    format!("Failed to create {path_clone}")
+                                                })?;
+                                            for genome in genome_list {
+                                                let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
+                                                file.write_all(genome_string.as_bytes())
+                                                    .with_context(|| {
+                                                        format!("Failed to write to {path_clone}")
+                                                    })?;
+                                            }
+                                        } else {
+                                            let mut stdout_lock = io::stdout();
+                                            for genome in genome_list {
+                                                let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
+                                                writeln!(stdout_lock, "{genome_string}")?;
+                                            }
                                         }
                                     }
-                                }
-                                false => {
-                                    if let Some(path) = output.clone() {
-                                        let path_clone = path.clone();
-                                        let mut file = File::create(path).with_context(|| {
-                                            format!("Failed to create {path_clone}")
-                                        })?;
-                                        for genome in genome_list {
-                                            let genome_string =
-                                            serde_json::to_string_pretty(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            file.write_all(genome_string.as_bytes()).with_context(
-                                                || format!("Failed to write to {path_clone}"),
-                                            )?;
-                                        }
-                                    } else {
-                                        let mut stdout_lock = io::stdout();
+                                    false => {
+                                        if let Some(path) = output.clone() {
+                                            let path_clone = path.clone();
+                                            let mut file =
+                                                File::create(path).with_context(|| {
+                                                    format!("Failed to create {path_clone}")
+                                                })?;
+                                            for genome in genome_list {
+                                                let genome_string = serde_json::to_string_pretty(
+                                                    &genome,
+                                                )
+                                                .with_context(|| {
+                                                    "Failed to convert search result to json string"
+                                                        .to_string()
+                                                })?;
+                                                file.write_all(genome_string.as_bytes())
+                                                    .with_context(|| {
+                                                        format!("Failed to write to {path_clone}")
+                                                    })?;
+                                            }
+                                        } else {
+                                            let mut stdout_lock = io::stdout();
 
-                                        for genome in genome_list {
-                                            let genome_string = serde_json::to_string_pretty(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
-                                            writeln!(stdout_lock, "{genome_string}")?;
+                                            for genome in genome_list {
+                                                let genome_string = serde_json::to_string_pretty(
+                                                    &genome,
+                                                )
+                                                .with_context(|| {
+                                                    "Failed to convert search result to json string"
+                                                        .to_string()
+                                                })?;
+                                                writeln!(stdout_lock, "{genome_string}")?;
+                                            }
                                         }
                                     }
                                 }
-                            },
+                            }
                         }
                     }
                 }

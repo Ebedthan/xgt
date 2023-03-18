@@ -1,7 +1,7 @@
 use super::utils::{self, GenomeArgs};
-use anyhow::Result;
-use reqwest::Error;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::io::{self, Write};
 use std::{fs, path::PathBuf};
 
 use crate::api::GenomeApi;
@@ -234,7 +234,7 @@ pub struct TaxonHistory {
     data: Vec<History>,
 }
 
-pub fn genome_gtdb(args: GenomeArgs) -> Result<(), Error> {
+pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
     // format the request
     let genome_api = GenomeApi::from(args.get_accession());
 
@@ -244,67 +244,110 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<(), Error> {
 
     let request_url = genome_api.request(request_type);
 
-    let response = reqwest::blocking::get(request_url)?;
+    let response = reqwest::blocking::get(request_url)
+        .with_context(|| format!("Failed to get response from GTDB API"))?;
 
     if request_type == GenomeRequestType::Metadata {
-        let genome: GenomeMetadata = response.json()?;
+        let genome: GenomeMetadata = response.json().with_context(|| {
+            format!("Failed to convert request response to genome metadata structure")
+        })?;
 
         match raw {
             true => {
+                let genome_string = serde_json::to_string(&genome).with_context(|| {
+                    format!("Failed to convert genome metadata structure to json string")
+                })?;
                 if output == PathBuf::from("") {
-                    println!("{}", serde_json::to_string(&genome).unwrap());
+                    writeln!(io::stdout(), "{}", genome_string)?;
                 } else {
-                    let file = fs::File::create(output).unwrap();
-                    serde_json::to_writer(file, &genome).unwrap();
+                    let path = output.clone();
+                    let mut file = fs::File::create(output)
+                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {}", path.display()))?;
                 }
             }
             false => {
+                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
+                    format!("Failed to convert genome metadata structure to json string")
+                })?;
                 if output == PathBuf::from("") {
-                    println!("{}", serde_json::to_string_pretty(&genome).unwrap());
+                    writeln!(io::stdout(), "{}", genome_string)?;
                 } else {
-                    let file = fs::File::create(output).unwrap();
-                    serde_json::to_writer_pretty(file, &genome).unwrap();
+                    let path = output.clone();
+                    let mut file = fs::File::create(output)
+                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {}", path.display()))?;
                 }
             }
         };
     } else if request_type == GenomeRequestType::TaxonHistory {
-        let genome: TaxonHistory = response.json()?;
+        let genome: TaxonHistory = response.json().with_context(|| {
+            format!("Failed to convert request response to genome metadata structure")
+        })?;
         match raw {
             true => {
+                let genome_string = serde_json::to_string(&genome).with_context(|| {
+                    format!("Failed to convert genome metadata structure to json string")
+                })?;
                 if output == PathBuf::from("") {
-                    println!("{}", serde_json::to_string(&genome).unwrap());
+                    writeln!(io::stdout(), "{}", genome_string)?;
                 } else {
-                    let file = fs::File::create(output).unwrap();
-                    serde_json::to_writer(file, &genome).unwrap();
+                    let path = output.clone();
+                    let mut file = fs::File::create(output)
+                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {}", path.display()))?;
                 }
             }
             false => {
+                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
+                    format!("Failed to convert genome metadata structure to json string")
+                })?;
                 if output == PathBuf::from("") {
-                    println!("{}", serde_json::to_string_pretty(&genome).unwrap());
+                    writeln!(io::stdout(), "{}", genome_string)?;
                 } else {
-                    let file = fs::File::create(output).unwrap();
-                    serde_json::to_writer_pretty(file, &genome).unwrap();
+                    let path = output.clone();
+                    let mut file = fs::File::create(output)
+                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {}", path.display()))?;
                 }
             }
         };
     } else {
-        let genome: GenomeResult = response.json()?;
+        let genome: GenomeResult = response.json().with_context(|| {
+            format!("Failed to convert genome metadata structure to json string")
+        })?;
 
         match raw {
             true => {
+                let genome_string = serde_json::to_string(&genome).with_context(|| {
+                    format!("Failed to convert genome metadata structure to json string")
+                })?;
                 if output == PathBuf::from("") {
-                    println!("{}", serde_json::to_string(&genome).unwrap());
+                    writeln!(io::stdout(), "{}", genome_string)?;
                 } else {
-                    let file = fs::File::create(output).unwrap();
-                    serde_json::to_writer(file, &genome).unwrap();
+                    let path = output.clone();
+                    let mut file = fs::File::create(output)
+                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {}", path.display()))?;
                 }
             }
             false => {
+                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
+                    format!("Failed to convert genome metadata structure to json string")
+                })?;
                 if output == PathBuf::from("") {
-                    println!("{}", serde_json::to_string_pretty(&genome).unwrap());
+                    writeln!(io::stdout(), "{}", genome_string)?;
                 } else {
-                    let file = fs::File::create(output).unwrap();
-                    serde_json::to_writer_pretty(file, &genome).unwrap();
+                    let path = output.clone();
+                    let mut file = fs::File::create(output)
+                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {}", path.display()))?;
                 }
             }
         };
