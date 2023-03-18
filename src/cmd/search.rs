@@ -60,6 +60,10 @@ impl SearchResults {
             .filter(|x| x.get_gtdb_level(level) == needle)
             .collect()
     }
+
+    fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
 }
 
 pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
@@ -83,7 +87,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
     if let Some(filename) = output.clone() {
         let path = Path::new(&filename);
         if path.exists() {
-            eprintln!("error: file should not already exist");
+            writeln!(io::stderr(), "error: file should not already exist")?;
             std::process::exit(1);
         }
     }
@@ -110,6 +114,10 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
         let genomes: SearchResults = response.json().with_context(|| {
             "Failed to deserialize request response to search result structure".to_string()
         })?;
+
+        if genomes.is_empty() {
+            writeln!(io::stdout(), "No matching data found in GTDB")?;
+        }
 
         // Perfom partial match or not?
         match partial {
@@ -385,6 +393,8 @@ mod tests {
         let search_result = SearchResults {
             rows: vec![genome1.clone(), genome2.clone()],
         };
+
+        assert!(!search_result.is_empty());
 
         assert_eq!(
             search_result.search_by_level("phylum", "Actinobacteriota"),

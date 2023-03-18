@@ -1,7 +1,7 @@
+use crate::api::GenomeRequestType;
+use anyhow::Result;
 use clap::ArgMatches;
 use serde::{Deserialize, Deserializer};
-
-use crate::api::GenomeRequestType;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
