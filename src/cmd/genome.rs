@@ -1,11 +1,12 @@
 use super::utils::{self, GenomeArgs};
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::{self, Write};
-
 use crate::api::GenomeApi;
 use crate::api::GenomeRequestType;
+
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::fs::OpenOptions;
+use std::io::{self, Write};
+use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeResult {
@@ -243,6 +244,14 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
     let request_type = args.get_request_type();
     let raw = args.get_raw();
 
+    if let Some(filename) = args.get_output() {
+        let path = Path::new(&filename);
+        if path.exists() {
+            writeln!(io::stderr(), "error: file should not already exist")?;
+            std::process::exit(1);
+        }
+    }
+
     for accession in genome_api {
         let request_url = accession.request(request_type);
 
@@ -262,8 +271,9 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                     let output = args.get_output();
                     if let Some(path) = output {
                         let path_clone = path.clone();
-                        let mut file = fs::OpenOptions::new()
+                        let mut file = OpenOptions::new()
                             .append(true)
+                            .create(true)
                             .open(path)
                             .with_context(|| format!("Failed to create file {path_clone}"))?;
                         file.write_all(genome_string.as_bytes())
@@ -280,8 +290,9 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                     let output = args.get_output();
                     if let Some(path) = output {
                         let path_clone = path.clone();
-                        let mut file = fs::OpenOptions::new()
+                        let mut file = OpenOptions::new()
                             .append(true)
+                            .create(true)
                             .open(path)
                             .with_context(|| format!("Failed to create file {path_clone}"))?;
                         file.write_all(genome_string.as_bytes())
@@ -303,8 +314,9 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                     let output = args.get_output();
                     if let Some(path) = output {
                         let path_clone = path.clone();
-                        let mut file = fs::OpenOptions::new()
+                        let mut file = OpenOptions::new()
                             .append(true)
+                            .create(true)
                             .open(path)
                             .with_context(|| format!("Failed to create file {path_clone}"))?;
                         file.write_all(genome_string.as_bytes())
@@ -321,8 +333,9 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                     let output = args.get_output();
                     if let Some(path) = output {
                         let path_clone = path.clone();
-                        let mut file = fs::OpenOptions::new()
+                        let mut file = OpenOptions::new()
                             .append(true)
+                            .create(true)
                             .open(path)
                             .with_context(|| format!("Failed to create file {path_clone}"))?;
                         file.write_all(genome_string.as_bytes())
@@ -345,8 +358,9 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                     let output = args.get_output();
                     if let Some(path) = output {
                         let path_clone = path.clone();
-                        let mut file = fs::OpenOptions::new()
+                        let mut file = OpenOptions::new()
                             .append(true)
+                            .create(true)
                             .open(path)
                             .with_context(|| format!("Failed to create file {path_clone}"))?;
                         file.write_all(genome_string.as_bytes())
@@ -363,8 +377,9 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                     let output = args.get_output();
                     if let Some(path) = output {
                         let path_clone = path.clone();
-                        let mut file = fs::OpenOptions::new()
+                        let mut file = OpenOptions::new()
                             .append(true)
+                            .create(true)
                             .open(path)
                             .with_context(|| format!("Failed to create file {path_clone}"))?;
                         file.write_all(genome_string.as_bytes())
