@@ -359,6 +359,7 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_genome_gtdb_card_1() {
@@ -389,6 +390,84 @@ mod tests {
             request_type: GenomeRequestType::Metadata,
             raw: false,
             output: None,
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_metadata_out() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().as_os_str().to_str().unwrap();
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Metadata,
+            raw: false,
+            output: Some(String::from(path)),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_metadata_out_1() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().as_os_str().to_str().unwrap();
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Metadata,
+            raw: true,
+            output: Some(String::from(path)),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_card_out_1() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().as_os_str().to_str().unwrap();
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Card,
+            raw: true,
+            output: Some(String::from(path)),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_card_out_2() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().as_os_str().to_str().unwrap();
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Card,
+            raw: false,
+            output: Some(String::from(path)),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_tx_out_1() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().as_os_str().to_str().unwrap();
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::TaxonHistory,
+            raw: true,
+            output: Some(String::from(path)),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_tx_out_2() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().as_os_str().to_str().unwrap();
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::TaxonHistory,
+            raw: false,
+            output: Some(String::from(path)),
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -436,5 +515,34 @@ mod tests {
         };
 
         assert!(genome_gtdb(args).is_err())
+    }
+
+    #[test]
+    fn test_response_failure() {
+        let args = utils::GenomeArgs {
+            accession: "&&&&^^^^^||||".to_owned(),
+            request_type: GenomeRequestType::Card,
+            raw: true,
+            output: None,
+        };
+        assert!(
+            genome_gtdb(args).is_err(),
+            "Failed to get response from GTDB API"
+        );
+    }
+
+    #[test]
+    fn test_genome_metadata_json_err() {
+        let args = utils::GenomeArgs {
+            accession: "".to_owned(),
+            request_type: GenomeRequestType::Metadata,
+            raw: true,
+            output: None,
+        };
+
+        assert!(
+            genome_gtdb(args).is_err(),
+            "Failed to convert genome metadata structure to json string"
+        );
     }
 }
