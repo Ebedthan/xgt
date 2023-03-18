@@ -60,10 +60,6 @@ impl SearchResults {
             .filter(|x| x.get_gtdb_level(level) == needle)
             .collect()
     }
-
-    fn is_empty(&self) -> bool {
-        self.rows.is_empty()
-    }
 }
 
 pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
@@ -115,14 +111,14 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
             "Failed to deserialize request response to search result structure".to_string()
         })?;
 
-        if genomes.is_empty() {
-            writeln!(io::stdout(), "No matching data found in GTDB")?;
-        }
-
         // Perfom partial match or not?
         match partial {
             true => {
                 let genome_list = genomes.rows;
+                if genome_list.is_empty() {
+                    writeln!(io::stdout(), "No matching data found in GTDB")?;
+                    std::process::exit(0);
+                }
 
                 // Return number of genomes?
                 match count {
@@ -223,6 +219,10 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
             }
             false => {
                 let genome_list = genomes.search_by_level(&args.get_level(), &oneedle);
+                if genome_list.is_empty() {
+                    writeln!(io::stdout(), "No matching data found in GTDB.")?;
+                    std::process::exit(0);
+                }
 
                 // Return number of genomes?
                 match count {
@@ -393,8 +393,6 @@ mod tests {
         let search_result = SearchResults {
             rows: vec![genome1.clone(), genome2.clone()],
         };
-
-        assert!(!search_result.is_empty());
 
         assert_eq!(
             search_result.search_by_level("phylum", "Actinobacteriota"),
