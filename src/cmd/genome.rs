@@ -318,7 +318,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_genome_gtdb_1() {
+    fn test_genome_gtdb_card_1() {
         let args = utils::GenomeArgs {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::Card,
@@ -329,7 +329,18 @@ mod tests {
     }
 
     #[test]
-    fn test_genome_gtdb_2() {
+    fn test_genome_gtdb_card_2() {
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Card,
+            raw: true,
+            output: PathBuf::from(""),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_metadata_1() {
         let args = utils::GenomeArgs {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::Metadata,
@@ -340,7 +351,18 @@ mod tests {
     }
 
     #[test]
-    fn test_genome_gtdb_3() {
+    fn test_genome_gtdb_metadata_2() {
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::Metadata,
+            raw: true,
+            output: PathBuf::from(""),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
+    fn test_genome_gtdb_taxon_history_1() {
         let args = utils::GenomeArgs {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::TaxonHistory,
@@ -351,11 +373,22 @@ mod tests {
     }
 
     #[test]
+    fn test_genome_gtdb_taxon_history_2() {
+        let args = utils::GenomeArgs {
+            accession: "GCA_001512625.1".to_owned(),
+            request_type: GenomeRequestType::TaxonHistory,
+            raw: true,
+            output: PathBuf::from(""),
+        };
+        assert!(genome_gtdb(args).is_ok());
+    }
+
+    #[test]
     fn test_genome_gtdb_4() {
         let args = utils::GenomeArgs {
             accession: "".to_owned(),
             request_type: GenomeRequestType::Card,
-            raw: false,
+            raw: true,
             output: PathBuf::from(""),
         };
 
