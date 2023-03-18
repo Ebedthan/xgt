@@ -455,11 +455,11 @@ mod tests {
             raw: false,
             type_material: false,
             count: true,
-            out: Some(String::from("/tmp/search")),
+            out: Some(String::from("search")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("/tmp/search")).unwrap();
+        std::fs::remove_file(Path::new("search")).unwrap();
     }
 
     #[test]
@@ -473,11 +473,11 @@ mod tests {
             raw: false,
             type_material: false,
             count: false,
-            out: Some(String::from("/tmp/search")),
+            out: Some(String::from("search")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("/tmp/search")).unwrap();
+        std::fs::remove_file(Path::new("search")).unwrap();
     }
 
     #[test]
@@ -491,11 +491,11 @@ mod tests {
             raw: false,
             type_material: false,
             count: false,
-            out: Some(String::from("/tmp/search")),
+            out: Some(String::from("search")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("/tmp/search")).unwrap();
+        std::fs::remove_file(Path::new("search")).unwrap();
     }
 
     #[test]
