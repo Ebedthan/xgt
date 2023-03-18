@@ -16,7 +16,7 @@ pub fn build_app() -> Command {
         .subcommand(
             Command::new("search")
                 .about("Search GTDB by taxa name")
-                .arg(Arg::new("name").conflicts_with("file"))
+                .arg(Arg::new("name").conflicts_with("file").help("taxon name"))
                 .arg(
                     Arg::new("count")
                         .short('c')
@@ -99,8 +99,16 @@ pub fn build_app() -> Command {
                 .about("Get GTDB genome informations")
                 .arg(
                     Arg::new("accession")
-                        .required(true)
+                        .conflicts_with("file")
                         .help("Genome accession"),
+                )
+                .arg(
+                    Arg::new("file")
+                        .short('f')
+                        .long("file")
+                        .value_name("FILE")
+                        .value_parser(value_parser!(PathBuf))
+                        .help("Search from name in FILE"),
                 )
                 .arg(
                     Arg::new("history")

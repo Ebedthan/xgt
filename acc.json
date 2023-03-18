@@ -1,0 +1,439 @@
+{
+  "genome": {
+    "accession": "GCA_900445235.1",
+    "name": "GCF_900445235.1"
+  },
+  "metadata_nucleotide": {
+    "trna_aa_count": 20,
+    "contig_count": 5,
+    "n50_contigs": 4995958,
+    "longest_contig": 4995958,
+    "scaffold_count": 5,
+    "n50_scaffolds": 4995958,
+    "longest_scaffold": 4995958,
+    "genome_size": 5886880,
+    "gc_percentage": 63.18640774060283,
+    "ambiguous_bases": 0
+  },
+  "metadata_gene": {
+    "checkm_completeness": "99.3",
+    "checkm_contamination": "0.51",
+    "checkm_strain_heterogeneity": "0.0",
+    "lsu_5s_count": "3",
+    "ssu_count": "3",
+    "lsu_23s_count": "3",
+    "protein_count": "5655",
+    "coding_density": "88.2214347837904"
+  },
+  "metadata_ncbi": {
+    "ncbi_genbank_assembly_accession": "GCA_900445235.1",
+    "ncbi_strain_identifiers": "NCTC10684",
+    "ncbi_assembly_level": "Contig",
+    "ncbi_assembly_name": "53618_D01",
+    "ncbi_assembly_type": "na",
+    "ncbi_bioproject": "PRJNA224116",
+    "ncbi_biosample": "SAMEA101156668",
+    "ncbi_country": "",
+    "ncbi_date": "2018-08-08",
+    "ncbi_genome_category": "",
+    "ncbi_isolate": "",
+    "ncbi_isolation_source": "",
+    "ncbi_lat_lon": "",
+    "ncbi_molecule_count": "0",
+    "ncbi_cds_count": "5652",
+    "ncbi_refseq_category": "representative genome",
+    "ncbi_seq_rel_date": "2018/08/08",
+    "ncbi_spanned_gaps": "0",
+    "ncbi_species_taxid": "83263",
+    "ncbi_ssu_count": "3",
+    "ncbi_submitter": "SC",
+    "ncbi_taxid": "83263",
+    "ncbi_total_gap_length": "0",
+    "ncbi_translation_table": "11",
+    "ncbi_trna_count": "53",
+    "ncbi_unspanned_gaps": "0",
+    "ncbi_version_status": "latest",
+    "ncbi_wgs_master": "UFSM00000000.1"
+  },
+  "metadata_type_material": {
+    "gtdbTypeDesignation": "type strain of species",
+    "gtdbTypeDesignationSources": "LPSN",
+    "lpsnTypeDesignation": "type strain of species",
+    "dsmzTypeDesignation": "type strain of species",
+    "lpsnPriorityYear": 1926,
+    "gtdbTypeSpeciesOfGenus": true
+  },
+  "metadata_taxonomy": {
+    "ncbi_taxonomy": "d__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Hyphomicrobiales;f__Phyllobacteriaceae;g__Aminobacter;s__Aminobacter aminovorans",
+    "ncbi_taxonomy_unfiltered": "d__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Hyphomicrobiales;f__Phyllobacteriaceae;g__Aminobacter;s__Aminobacter aminovorans",
+    "gtdb_representative": true,
+    "gtdb_genome_representative": "RS_GCF_900445235.1",
+    "ncbi_type_material_designation": "assembly from type material",
+    "gtdb_domain": "d__Bacteria",
+    "gtdb_phylum": "p__Proteobacteria",
+    "gtdb_class": "c__Alphaproteobacteria",
+    "gtdb_order": "o__Rhizobiales",
+    "gtdb_family": "f__Rhizobiaceae",
+    "gtdb_genus": "g__Aminobacter",
+    "gtdb_species": "s__Aminobacter aminovorans"
+  },
+  "gtdb_type_designation": "type strain of species",
+  "subunit_summary": "5S/16S/23S",
+  "species_rep_name": "GCA_900445235.1",
+  "species_cluster_count": 2,
+  "lpsn_url": "https://lpsn.dsmz.de/species/aminobacter-aminovorans",
+  "link_ncbi_taxonomy": "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1224\">p__Proteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=28211\">c__Alphaproteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=356\">o__Hyphomicrobiales</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=69277\">f__Phyllobacteriaceae</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=31988\">g__Aminobacter</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=83263\">s__Aminobacter aminovorans</a>",
+  "link_ncbi_taxonomy_unfiltered": "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1224\">p__Proteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=28211\">c__Alphaproteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=356\">o__Hyphomicrobiales</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=69277\">f__Phyllobacteriaceae</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=31988\">g__Aminobacter</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=83263\">s__Aminobacter aminovorans</a>",
+  "ncbi_taxonomy_filtered": [
+    {
+      "taxon": "d__Bacteria",
+      "taxonId": "2"
+    },
+    {
+      "taxon": "p__Proteobacteria",
+      "taxonId": "1224"
+    },
+    {
+      "taxon": "c__Alphaproteobacteria",
+      "taxonId": "28211"
+    },
+    {
+      "taxon": "o__Hyphomicrobiales",
+      "taxonId": "356"
+    },
+    {
+      "taxon": "f__Phyllobacteriaceae",
+      "taxonId": "69277"
+    },
+    {
+      "taxon": "g__Aminobacter",
+      "taxonId": "31988"
+    },
+    {
+      "taxon": "s__Aminobacter aminovorans",
+      "taxonId": "83263"
+    }
+  ],
+  "ncbi_taxonomy_unfiltered": [
+    {
+      "taxon": "d__Bacteria",
+      "taxonId": "2"
+    },
+    {
+      "taxon": "p__Proteobacteria",
+      "taxonId": "1224"
+    },
+    {
+      "taxon": "c__Alphaproteobacteria",
+      "taxonId": "28211"
+    },
+    {
+      "taxon": "o__Hyphomicrobiales",
+      "taxonId": "356"
+    },
+    {
+      "taxon": "f__Phyllobacteriaceae",
+      "taxonId": "69277"
+    },
+    {
+      "taxon": "g__Aminobacter",
+      "taxonId": "31988"
+    },
+    {
+      "taxon": "s__Aminobacter aminovorans",
+      "taxonId": "83263"
+    }
+  ]
+}{
+  "genome": {
+    "accession": "GCA_018555685.1",
+    "name": "GCF_018555685.1"
+  },
+  "metadata_nucleotide": {
+    "trna_aa_count": 20,
+    "contig_count": 30,
+    "n50_contigs": 670596,
+    "longest_contig": 999464,
+    "scaffold_count": 30,
+    "n50_scaffolds": 670596,
+    "longest_scaffold": 999464,
+    "genome_size": 6717907,
+    "gc_percentage": 62.58057755190717,
+    "ambiguous_bases": 0
+  },
+  "metadata_gene": {
+    "checkm_completeness": "99.3",
+    "checkm_contamination": "2.4",
+    "checkm_strain_heterogeneity": "9.09",
+    "lsu_5s_count": "1",
+    "ssu_count": "1",
+    "lsu_23s_count": "1",
+    "protein_count": "6503",
+    "coding_density": "86.73201340834281"
+  },
+  "metadata_ncbi": {
+    "ncbi_genbank_assembly_accession": "GCA_018555685.1",
+    "ncbi_strain_identifiers": "LMG 26462",
+    "ncbi_assembly_level": "Contig",
+    "ncbi_assembly_name": "ASM1855568v1",
+    "ncbi_assembly_type": "na",
+    "ncbi_bioproject": "PRJNA224116",
+    "ncbi_biosample": "SAMN18148366",
+    "ncbi_country": "",
+    "ncbi_date": "2021-05-27",
+    "ncbi_genome_category": "",
+    "ncbi_isolate": "",
+    "ncbi_isolation_source": "",
+    "ncbi_lat_lon": "",
+    "ncbi_molecule_count": "0",
+    "ncbi_cds_count": "6485",
+    "ncbi_refseq_category": "na",
+    "ncbi_seq_rel_date": "2021/05/27",
+    "ncbi_spanned_gaps": "0",
+    "ncbi_species_taxid": "1035067",
+    "ncbi_ssu_count": "1",
+    "ncbi_submitter": "Roma Tre University",
+    "ncbi_taxid": "1035067",
+    "ncbi_total_gap_length": "0",
+    "ncbi_translation_table": "11",
+    "ncbi_trna_count": "51",
+    "ncbi_unspanned_gaps": "0",
+    "ncbi_version_status": "latest",
+    "ncbi_wgs_master": "JAFLWW000000000.1"
+  },
+  "metadata_type_material": {
+    "gtdbTypeDesignation": "type strain of species",
+    "gtdbTypeDesignationSources": "LPSN",
+    "lpsnTypeDesignation": "type strain of species",
+    "dsmzTypeDesignation": "",
+    "lpsnPriorityYear": 2013,
+    "gtdbTypeSpeciesOfGenus": false
+  },
+  "metadata_taxonomy": {
+    "ncbi_taxonomy": "d__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Hyphomicrobiales;f__Phyllobacteriaceae;g__Aminobacter;s__Aminobacter anthyllidis",
+    "ncbi_taxonomy_unfiltered": "d__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Hyphomicrobiales;f__Phyllobacteriaceae;g__Aminobacter;s__Aminobacter anthyllidis",
+    "gtdb_representative": true,
+    "gtdb_genome_representative": "RS_GCF_018555685.1",
+    "ncbi_type_material_designation": "assembly from type material",
+    "gtdb_domain": "d__Bacteria",
+    "gtdb_phylum": "p__Proteobacteria",
+    "gtdb_class": "c__Alphaproteobacteria",
+    "gtdb_order": "o__Rhizobiales",
+    "gtdb_family": "f__Rhizobiaceae",
+    "gtdb_genus": "g__Aminobacter",
+    "gtdb_species": "s__Aminobacter anthyllidis"
+  },
+  "gtdb_type_designation": "type strain of species",
+  "subunit_summary": "5S/16S/23S",
+  "species_rep_name": "GCA_018555685.1",
+  "species_cluster_count": 1,
+  "lpsn_url": "https://lpsn.dsmz.de/species/aminobacter-anthyllidis",
+  "link_ncbi_taxonomy": "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1224\">p__Proteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=28211\">c__Alphaproteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=356\">o__Hyphomicrobiales</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=69277\">f__Phyllobacteriaceae</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=31988\">g__Aminobacter</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1035067\">s__Aminobacter anthyllidis</a>",
+  "link_ncbi_taxonomy_unfiltered": "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1224\">p__Proteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=28211\">c__Alphaproteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=356\">o__Hyphomicrobiales</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=69277\">f__Phyllobacteriaceae</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=31988\">g__Aminobacter</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1035067\">s__Aminobacter anthyllidis</a>",
+  "ncbi_taxonomy_filtered": [
+    {
+      "taxon": "d__Bacteria",
+      "taxonId": "2"
+    },
+    {
+      "taxon": "p__Proteobacteria",
+      "taxonId": "1224"
+    },
+    {
+      "taxon": "c__Alphaproteobacteria",
+      "taxonId": "28211"
+    },
+    {
+      "taxon": "o__Hyphomicrobiales",
+      "taxonId": "356"
+    },
+    {
+      "taxon": "f__Phyllobacteriaceae",
+      "taxonId": "69277"
+    },
+    {
+      "taxon": "g__Aminobacter",
+      "taxonId": "31988"
+    },
+    {
+      "taxon": "s__Aminobacter anthyllidis",
+      "taxonId": "1035067"
+    }
+  ],
+  "ncbi_taxonomy_unfiltered": [
+    {
+      "taxon": "d__Bacteria",
+      "taxonId": "2"
+    },
+    {
+      "taxon": "p__Proteobacteria",
+      "taxonId": "1224"
+    },
+    {
+      "taxon": "c__Alphaproteobacteria",
+      "taxonId": "28211"
+    },
+    {
+      "taxon": "o__Hyphomicrobiales",
+      "taxonId": "356"
+    },
+    {
+      "taxon": "f__Phyllobacteriaceae",
+      "taxonId": "69277"
+    },
+    {
+      "taxon": "g__Aminobacter",
+      "taxonId": "31988"
+    },
+    {
+      "taxon": "s__Aminobacter anthyllidis",
+      "taxonId": "1035067"
+    }
+  ]
+}{
+  "genome": {
+    "accession": "GCA_900445235.1",
+    "name": "GCF_900445235.1"
+  },
+  "metadata_nucleotide": {
+    "trna_aa_count": 20,
+    "contig_count": 5,
+    "n50_contigs": 4995958,
+    "longest_contig": 4995958,
+    "scaffold_count": 5,
+    "n50_scaffolds": 4995958,
+    "longest_scaffold": 4995958,
+    "genome_size": 5886880,
+    "gc_percentage": 63.18640774060283,
+    "ambiguous_bases": 0
+  },
+  "metadata_gene": {
+    "checkm_completeness": "99.3",
+    "checkm_contamination": "0.51",
+    "checkm_strain_heterogeneity": "0.0",
+    "lsu_5s_count": "3",
+    "ssu_count": "3",
+    "lsu_23s_count": "3",
+    "protein_count": "5655",
+    "coding_density": "88.2214347837904"
+  },
+  "metadata_ncbi": {
+    "ncbi_genbank_assembly_accession": "GCA_900445235.1",
+    "ncbi_strain_identifiers": "NCTC10684",
+    "ncbi_assembly_level": "Contig",
+    "ncbi_assembly_name": "53618_D01",
+    "ncbi_assembly_type": "na",
+    "ncbi_bioproject": "PRJNA224116",
+    "ncbi_biosample": "SAMEA101156668",
+    "ncbi_country": "",
+    "ncbi_date": "2018-08-08",
+    "ncbi_genome_category": "",
+    "ncbi_isolate": "",
+    "ncbi_isolation_source": "",
+    "ncbi_lat_lon": "",
+    "ncbi_molecule_count": "0",
+    "ncbi_cds_count": "5652",
+    "ncbi_refseq_category": "representative genome",
+    "ncbi_seq_rel_date": "2018/08/08",
+    "ncbi_spanned_gaps": "0",
+    "ncbi_species_taxid": "83263",
+    "ncbi_ssu_count": "3",
+    "ncbi_submitter": "SC",
+    "ncbi_taxid": "83263",
+    "ncbi_total_gap_length": "0",
+    "ncbi_translation_table": "11",
+    "ncbi_trna_count": "53",
+    "ncbi_unspanned_gaps": "0",
+    "ncbi_version_status": "latest",
+    "ncbi_wgs_master": "UFSM00000000.1"
+  },
+  "metadata_type_material": {
+    "gtdbTypeDesignation": "type strain of species",
+    "gtdbTypeDesignationSources": "LPSN",
+    "lpsnTypeDesignation": "type strain of species",
+    "dsmzTypeDesignation": "type strain of species",
+    "lpsnPriorityYear": 1926,
+    "gtdbTypeSpeciesOfGenus": true
+  },
+  "metadata_taxonomy": {
+    "ncbi_taxonomy": "d__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Hyphomicrobiales;f__Phyllobacteriaceae;g__Aminobacter;s__Aminobacter aminovorans",
+    "ncbi_taxonomy_unfiltered": "d__Bacteria;p__Proteobacteria;c__Alphaproteobacteria;o__Hyphomicrobiales;f__Phyllobacteriaceae;g__Aminobacter;s__Aminobacter aminovorans",
+    "gtdb_representative": true,
+    "gtdb_genome_representative": "RS_GCF_900445235.1",
+    "ncbi_type_material_designation": "assembly from type material",
+    "gtdb_domain": "d__Bacteria",
+    "gtdb_phylum": "p__Proteobacteria",
+    "gtdb_class": "c__Alphaproteobacteria",
+    "gtdb_order": "o__Rhizobiales",
+    "gtdb_family": "f__Rhizobiaceae",
+    "gtdb_genus": "g__Aminobacter",
+    "gtdb_species": "s__Aminobacter aminovorans"
+  },
+  "gtdb_type_designation": "type strain of species",
+  "subunit_summary": "5S/16S/23S",
+  "species_rep_name": "GCA_900445235.1",
+  "species_cluster_count": 2,
+  "lpsn_url": "https://lpsn.dsmz.de/species/aminobacter-aminovorans",
+  "link_ncbi_taxonomy": "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1224\">p__Proteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=28211\">c__Alphaproteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=356\">o__Hyphomicrobiales</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=69277\">f__Phyllobacteriaceae</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=31988\">g__Aminobacter</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=83263\">s__Aminobacter aminovorans</a>",
+  "link_ncbi_taxonomy_unfiltered": "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=1224\">p__Proteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=28211\">c__Alphaproteobacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=356\">o__Hyphomicrobiales</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=69277\">f__Phyllobacteriaceae</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=31988\">g__Aminobacter</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=83263\">s__Aminobacter aminovorans</a>",
+  "ncbi_taxonomy_filtered": [
+    {
+      "taxon": "d__Bacteria",
+      "taxonId": "2"
+    },
+    {
+      "taxon": "p__Proteobacteria",
+      "taxonId": "1224"
+    },
+    {
+      "taxon": "c__Alphaproteobacteria",
+      "taxonId": "28211"
+    },
+    {
+      "taxon": "o__Hyphomicrobiales",
+      "taxonId": "356"
+    },
+    {
+      "taxon": "f__Phyllobacteriaceae",
+      "taxonId": "69277"
+    },
+    {
+      "taxon": "g__Aminobacter",
+      "taxonId": "31988"
+    },
+    {
+      "taxon": "s__Aminobacter aminovorans",
+      "taxonId": "83263"
+    }
+  ],
+  "ncbi_taxonomy_unfiltered": [
+    {
+      "taxon": "d__Bacteria",
+      "taxonId": "2"
+    },
+    {
+      "taxon": "p__Proteobacteria",
+      "taxonId": "1224"
+    },
+    {
+      "taxon": "c__Alphaproteobacteria",
+      "taxonId": "28211"
+    },
+    {
+      "taxon": "o__Hyphomicrobiales",
+      "taxonId": "356"
+    },
+    {
+      "taxon": "f__Phyllobacteriaceae",
+      "taxonId": "69277"
+    },
+    {
+      "taxon": "g__Aminobacter",
+      "taxonId": "31988"
+    },
+    {
+      "taxon": "s__Aminobacter aminovorans",
+      "taxonId": "83263"
+    }
+  ]
+}

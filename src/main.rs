@@ -87,7 +87,7 @@ mod tests {
         let matches = app::build_app().get_matches_from(args);
         let sub_matches = matches.subcommand_matches("genome").unwrap();
         let args = utils::GenomeArgs::from_arg_matches(sub_matches);
-        assert_eq!(args.accession, "NC_000912.1".to_string());
+        assert_eq!(args.accession, vec!["NC_000912.1".to_string()]);
         assert_eq!(args.request_type, api::GenomeRequestType::Metadata);
         assert_eq!(args.output, Some(String::from("metadata.json")));
     }

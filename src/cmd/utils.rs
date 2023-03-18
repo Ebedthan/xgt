@@ -110,14 +110,14 @@ impl SearchArgs {
 
 #[derive(Debug, Clone)]
 pub struct GenomeArgs {
-    pub(crate) accession: String,
+    pub(crate) accession: Vec<String>,
     pub(crate) request_type: GenomeRequestType,
     pub(crate) raw: bool,
     pub(crate) output: Option<String>,
 }
 
 impl GenomeArgs {
-    pub fn get_accession(&self) -> String {
+    pub fn get_accession(&self) -> Vec<String> {
         self.accession.clone()
     }
 
@@ -134,12 +134,28 @@ impl GenomeArgs {
     }
 
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
-        if arg_matches.get_flag("history") {
-            GenomeArgs {
-                accession: arg_matches
+        let mut accession = Vec::new();
+
+        if arg_matches.contains_id("file") {
+            let file = File::open(arg_matches.get_one::<PathBuf>("file").unwrap())
+                .expect("file should be well-formatted");
+
+            accession = BufReader::new(file)
+                .lines()
+                .map(|l| l.expect("Cannot parse line"))
+                .collect();
+        } else {
+            accession.push(
+                arg_matches
                     .get_one::<String>("accession")
                     .unwrap()
                     .to_string(),
+            );
+        }
+
+        if arg_matches.get_flag("history") {
+            GenomeArgs {
+                accession,
                 request_type: GenomeRequestType::TaxonHistory,
                 raw: arg_matches.get_flag("raw"),
                 output: if arg_matches.contains_id("out") {
@@ -150,10 +166,7 @@ impl GenomeArgs {
             }
         } else if arg_matches.get_flag("metadata") {
             GenomeArgs {
-                accession: arg_matches
-                    .get_one::<String>("accession")
-                    .unwrap()
-                    .to_string(),
+                accession,
                 request_type: GenomeRequestType::Metadata,
                 raw: arg_matches.get_flag("raw"),
                 output: if arg_matches.contains_id("out") {
@@ -164,10 +177,7 @@ impl GenomeArgs {
             }
         } else {
             GenomeArgs {
-                accession: arg_matches
-                    .get_one::<String>("accession")
-                    .unwrap()
-                    .to_string(),
+                accession,
                 request_type: GenomeRequestType::Card,
                 raw: arg_matches.get_flag("raw"),
                 output: if arg_matches.contains_id("out") {
@@ -202,19 +212,19 @@ mod tests {
     #[test]
     fn test_get_accession() {
         let genome_args = GenomeArgs {
-            accession: String::from("NC_000001.11"),
+            accession: vec![String::from("NC_000001.11")],
             request_type: GenomeRequestType::Card,
             raw: false,
             output: Some(String::from("output.txt")),
         };
 
-        assert_eq!(genome_args.get_accession(), "NC_000001.11");
+        assert_eq!(genome_args.get_accession(), vec!["NC_000001.11"]);
     }
 
     #[test]
     fn test_get_request_type() {
         let genome_args = GenomeArgs {
-            accession: String::from("NC_000001.11"),
+            accession: vec![String::from("NC_000001.11")],
             request_type: GenomeRequestType::Card,
             raw: false,
             output: Some(String::from("output.txt")),
@@ -226,7 +236,7 @@ mod tests {
     #[test]
     fn test_get_raw() {
         let genome_args = GenomeArgs {
-            accession: String::from("NC_000001.11"),
+            accession: vec![String::from("NC_000001.11")],
             request_type: GenomeRequestType::Card,
             raw: true,
             output: Some(String::from("output.txt")),
@@ -238,7 +248,7 @@ mod tests {
     #[test]
     fn test_get_output() {
         let genome_args = GenomeArgs {
-            accession: String::from("NC_000001.11"),
+            accession: vec![String::from("NC_000001.11")],
             request_type: GenomeRequestType::Card,
             raw: false,
             output: Some(String::from("output.txt")),

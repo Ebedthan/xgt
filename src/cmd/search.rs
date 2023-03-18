@@ -89,13 +89,12 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
     }
 
     let needles = args.get_needle();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(120))
+        .build()
+        .with_context(|| "Failed to create client to GTDB API".to_string())?;
 
     for needle in needles {
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(120))
-            .build()
-            .with_context(|| "Failed to create client to GTDB API".to_string())?;
-
         // format the request
         let oneedle = needle.clone();
         let search_api = api::Search::new(needle, &options);
