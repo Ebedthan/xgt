@@ -31,7 +31,6 @@ fn main() -> Result<()> {
 mod tests {
     use super::*;
     use std::ffi::OsString;
-    use std::path::PathBuf;
 
     #[test]
     fn test_search_command() {
@@ -90,6 +89,6 @@ mod tests {
         let args = utils::GenomeArgs::from_arg_matches(sub_matches);
         assert_eq!(args.accession, "NC_000912.1".to_string());
         assert_eq!(args.request_type, api::GenomeRequestType::Metadata);
-        assert_eq!(args.output, PathBuf::from("metadata.json"));
+        assert_eq!(args.output, Some(String::from("metadata.json")));
     }
 }

@@ -79,7 +79,7 @@ pub fn build_app() -> Command {
                         .short('r')
                         .long("raw")
                         .action(ArgAction::SetTrue)
-                        .help("Print raw response JSON "),
+                        .help("Print raw JSON response"),
                 )
                 .arg(
                     Arg::new("rep")
@@ -96,7 +96,7 @@ pub fn build_app() -> Command {
         )
         .subcommand(
             Command::new("genome")
-                .about("Get genome informations")
+                .about("Get GTDB genome informations")
                 .arg(
                     Arg::new("accession")
                         .required(true)
@@ -130,7 +130,7 @@ pub fn build_app() -> Command {
                         .long("out")
                         .help("Redirect output to FILE")
                         .value_name("FILE")
-                        .value_parser(value_parser!(PathBuf)),
+                        .value_parser(clap::builder::NonEmptyStringValueParser::new()),
                 ),
         )
 }

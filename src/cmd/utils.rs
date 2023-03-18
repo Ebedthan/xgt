@@ -113,7 +113,7 @@ pub struct GenomeArgs {
     pub(crate) accession: String,
     pub(crate) request_type: GenomeRequestType,
     pub(crate) raw: bool,
-    pub(crate) output: PathBuf,
+    pub(crate) output: Option<String>,
 }
 
 impl GenomeArgs {
@@ -129,7 +129,7 @@ impl GenomeArgs {
         self.raw
     }
 
-    pub fn get_output(&self) -> PathBuf {
+    pub fn get_output(&self) -> Option<String> {
         self.output.clone()
     }
 
@@ -142,10 +142,11 @@ impl GenomeArgs {
                     .to_string(),
                 request_type: GenomeRequestType::TaxonHistory,
                 raw: arg_matches.get_flag("raw"),
-                output: arg_matches
-                    .get_one::<PathBuf>("out")
-                    .unwrap_or(&PathBuf::from(""))
-                    .to_path_buf(),
+                output: if arg_matches.contains_id("out") {
+                    arg_matches.get_one::<String>("out").cloned()
+                } else {
+                    None
+                },
             }
         } else if arg_matches.get_flag("metadata") {
             GenomeArgs {
@@ -155,10 +156,11 @@ impl GenomeArgs {
                     .to_string(),
                 request_type: GenomeRequestType::Metadata,
                 raw: arg_matches.get_flag("raw"),
-                output: arg_matches
-                    .get_one::<PathBuf>("out")
-                    .unwrap_or(&PathBuf::from(""))
-                    .to_path_buf(),
+                output: if arg_matches.contains_id("out") {
+                    arg_matches.get_one::<String>("out").cloned()
+                } else {
+                    None
+                },
             }
         } else {
             GenomeArgs {
@@ -168,10 +170,11 @@ impl GenomeArgs {
                     .to_string(),
                 request_type: GenomeRequestType::Card,
                 raw: arg_matches.get_flag("raw"),
-                output: arg_matches
-                    .get_one::<PathBuf>("out")
-                    .unwrap_or(&PathBuf::from(""))
-                    .to_path_buf(),
+                output: if arg_matches.contains_id("out") {
+                    arg_matches.get_one::<String>("out").cloned()
+                } else {
+                    None
+                },
             }
         }
     }
@@ -202,7 +205,7 @@ mod tests {
             accession: String::from("NC_000001.11"),
             request_type: GenomeRequestType::Card,
             raw: false,
-            output: PathBuf::from("output.txt"),
+            output: Some(String::from("output.txt")),
         };
 
         assert_eq!(genome_args.get_accession(), "NC_000001.11");
@@ -214,7 +217,7 @@ mod tests {
             accession: String::from("NC_000001.11"),
             request_type: GenomeRequestType::Card,
             raw: false,
-            output: PathBuf::from("output.txt"),
+            output: Some(String::from("output.txt")),
         };
 
         assert_eq!(genome_args.get_request_type(), GenomeRequestType::Card);
@@ -226,7 +229,7 @@ mod tests {
             accession: String::from("NC_000001.11"),
             request_type: GenomeRequestType::Card,
             raw: true,
-            output: PathBuf::from("output.txt"),
+            output: Some(String::from("output.txt")),
         };
 
         assert!(genome_args.get_raw());
@@ -238,10 +241,10 @@ mod tests {
             accession: String::from("NC_000001.11"),
             request_type: GenomeRequestType::Card,
             raw: false,
-            output: PathBuf::from("output.txt"),
+            output: Some(String::from("output.txt")),
         };
 
-        assert_eq!(genome_args.get_output(), PathBuf::from("output.txt"));
+        assert_eq!(genome_args.get_output(), Some(String::from("output.txt")));
     }
 
     #[test]

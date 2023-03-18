@@ -1,8 +1,8 @@
 use super::utils::{self, GenomeArgs};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io::{self, Write};
-use std::{fs, path::PathBuf};
 
 use crate::api::GenomeApi;
 use crate::api::GenomeRequestType;
@@ -257,28 +257,28 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                } else {
-                    let path = output.clone();
-                    let mut file = fs::File::create(output)
-                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                if let Some(path) = output.clone() {
+                    let path_clone = path.clone();
+                    let mut file = fs::File::create(path)
+                        .with_context(|| format!("Failed to create file {}", path_clone))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path.display()))?;
+                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
             }
             false => {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                } else {
-                    let path = output.clone();
-                    let mut file = fs::File::create(output)
-                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                if let Some(path) = output.clone() {
+                    let path_clone = path.clone();
+                    let mut file = fs::File::create(path)
+                        .with_context(|| format!("Failed to create file {}", path_clone))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path.display()))?;
+                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
             }
         };
@@ -291,28 +291,28 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                } else {
-                    let path = output.clone();
-                    let mut file = fs::File::create(output)
-                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                if let Some(path) = output.clone() {
+                    let path_clone = path.clone();
+                    let mut file = fs::File::create(path)
+                        .with_context(|| format!("Failed to create file {}", path_clone))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path.display()))?;
+                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
             }
             false => {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                } else {
-                    let path = output.clone();
-                    let mut file = fs::File::create(output)
-                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                if let Some(path) = output.clone() {
+                    let path_clone = path.clone();
+                    let mut file = fs::File::create(path)
+                        .with_context(|| format!("Failed to create file {}", path_clone))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path.display()))?;
+                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
             }
         };
@@ -326,28 +326,28 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                } else {
-                    let path = output.clone();
-                    let mut file = fs::File::create(output)
-                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                if let Some(path) = output.clone() {
+                    let path_clone = path.clone();
+                    let mut file = fs::File::create(path)
+                        .with_context(|| format!("Failed to create file {}", path_clone))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path.display()))?;
+                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
             }
             false => {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
                     "Failed to convert genome metadata structure to json string".to_string()
                 })?;
-                if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                } else {
-                    let path = output.clone();
-                    let mut file = fs::File::create(output)
-                        .with_context(|| format!("Failed to create file {}", path.display()))?;
+                if let Some(path) = output.clone() {
+                    let path_clone = path.clone();
+                    let mut file = fs::File::create(path)
+                        .with_context(|| format!("Failed to create file {}", path_clone))?;
                     file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {}", path.display()))?;
+                        .with_context(|| format!("Failed to write to {}", path_clone))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
             }
         };
@@ -366,7 +366,7 @@ mod tests {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::Card,
             raw: false,
-            output: PathBuf::from(""),
+            output: None,
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -377,7 +377,7 @@ mod tests {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::Card,
             raw: true,
-            output: PathBuf::from(""),
+            output: None,
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -388,7 +388,7 @@ mod tests {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::Metadata,
             raw: false,
-            output: PathBuf::from(""),
+            output: None,
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -399,7 +399,7 @@ mod tests {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::Metadata,
             raw: true,
-            output: PathBuf::from(""),
+            output: None,
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -410,7 +410,7 @@ mod tests {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::TaxonHistory,
             raw: false,
-            output: PathBuf::from(""),
+            output: None,
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -421,7 +421,7 @@ mod tests {
             accession: "GCA_001512625.1".to_owned(),
             request_type: GenomeRequestType::TaxonHistory,
             raw: true,
-            output: PathBuf::from(""),
+            output: None,
         };
         assert!(genome_gtdb(args).is_ok());
     }
@@ -432,7 +432,7 @@ mod tests {
             accession: "".to_owned(),
             request_type: GenomeRequestType::Card,
             raw: true,
-            output: PathBuf::from(""),
+            output: None,
         };
 
         assert!(genome_gtdb(args).is_err())
