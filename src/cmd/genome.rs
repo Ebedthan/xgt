@@ -245,20 +245,20 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
     let request_url = genome_api.request(request_type);
 
     let response = reqwest::blocking::get(request_url)
-        .with_context(|| format!("Failed to get response from GTDB API"))?;
+        .with_context(|| "Failed to get response from GTDB API".to_string())?;
 
     if request_type == GenomeRequestType::Metadata {
         let genome: GenomeMetadata = response.json().with_context(|| {
-            format!("Failed to convert request response to genome metadata structure")
+            "Failed to convert request response to genome metadata structure".to_string()
         })?;
 
         match raw {
             true => {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
-                    format!("Failed to convert genome metadata structure to json string")
+                    "Failed to convert genome metadata structure to json string".to_string()
                 })?;
                 if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{}", genome_string)?;
+                    writeln!(io::stdout(), "{genome_string}")?;
                 } else {
                     let path = output.clone();
                     let mut file = fs::File::create(output)
@@ -269,10 +269,10 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
             }
             false => {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
-                    format!("Failed to convert genome metadata structure to json string")
+                    "Failed to convert genome metadata structure to json string".to_string()
                 })?;
                 if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{}", genome_string)?;
+                    writeln!(io::stdout(), "{genome_string}")?;
                 } else {
                     let path = output.clone();
                     let mut file = fs::File::create(output)
@@ -284,15 +284,15 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
         };
     } else if request_type == GenomeRequestType::TaxonHistory {
         let genome: TaxonHistory = response.json().with_context(|| {
-            format!("Failed to convert request response to genome metadata structure")
+            "Failed to convert request response to genome metadata structure".to_string()
         })?;
         match raw {
             true => {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
-                    format!("Failed to convert genome metadata structure to json string")
+                    "Failed to convert genome metadata structure to json string".to_string()
                 })?;
                 if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{}", genome_string)?;
+                    writeln!(io::stdout(), "{genome_string}")?;
                 } else {
                     let path = output.clone();
                     let mut file = fs::File::create(output)
@@ -303,10 +303,10 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
             }
             false => {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
-                    format!("Failed to convert genome metadata structure to json string")
+                    "Failed to convert genome metadata structure to json string".to_string()
                 })?;
                 if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{}", genome_string)?;
+                    writeln!(io::stdout(), "{genome_string}")?;
                 } else {
                     let path = output.clone();
                     let mut file = fs::File::create(output)
@@ -318,16 +318,16 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
         };
     } else {
         let genome: GenomeResult = response.json().with_context(|| {
-            format!("Failed to convert genome metadata structure to json string")
+            "Failed to convert genome metadata structure to json string".to_string()
         })?;
 
         match raw {
             true => {
                 let genome_string = serde_json::to_string(&genome).with_context(|| {
-                    format!("Failed to convert genome metadata structure to json string")
+                    "Failed to convert genome metadata structure to json string".to_string()
                 })?;
                 if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{}", genome_string)?;
+                    writeln!(io::stdout(), "{genome_string}")?;
                 } else {
                     let path = output.clone();
                     let mut file = fs::File::create(output)
@@ -338,10 +338,10 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
             }
             false => {
                 let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
-                    format!("Failed to convert genome metadata structure to json string")
+                    "Failed to convert genome metadata structure to json string".to_string()
                 })?;
                 if output == PathBuf::from("") {
-                    writeln!(io::stdout(), "{}", genome_string)?;
+                    writeln!(io::stdout(), "{genome_string}")?;
                 } else {
                     let path = output.clone();
                     let mut file = fs::File::create(output)
