@@ -145,6 +145,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                 .with_context(|| format!("Failed to create file {path_clone}"))?;
                             file.write_all(&genome_list.len().to_ne_bytes())
                                 .with_context(|| format!("Failed to write to {path_clone}"))?;
+                            file.write_all("\n".as_bytes())
+                                .with_context(|| format!("Failed to write to {path_clone}"))?;
                         } else {
                             writeln!(io::stdout(), "{}", genome_list.len())?;
                         }
@@ -170,6 +172,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         .with_context(|| {
                                             format!("Failed to write to {path_clone}")
                                         })?;
+                                    file.write_all("\n".as_bytes()).with_context(|| {
+                                        format!("Failed to write to {path_clone}")
+                                    })?;
                                 }
                             } else {
                                 for gid in list {
@@ -202,6 +207,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         file.write_all(genome_string.as_bytes()).with_context(
                                             || format!("Failed to write to {path_clone}"),
                                         )?;
+                                        file.write_all("\n".as_bytes()).with_context(|| {
+                                            format!("Failed to write to {path_clone}")
+                                        })?;
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
@@ -234,6 +242,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         file.write_all(genome_string.as_bytes()).with_context(
                                             || format!("Failed to write to {path_clone}"),
                                         )?;
+                                        file.write_all("\n".as_bytes()).with_context(|| {
+                                            format!("Failed to write to {path_clone}")
+                                        })?;
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
@@ -270,6 +281,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                 .with_context(|| format!("Failed to create file {path_clone}"))?;
                             file.write_all(&genome_list.len().to_ne_bytes())
                                 .with_context(|| format!("Failed to write to {path_clone}"))?;
+                            file.write_all("\n".as_bytes())
+                                .with_context(|| format!("Failed to write to {path_clone}"))?;
                         } else {
                             writeln!(io::stdout(), "{}", genome_list.len())?;
                         }
@@ -298,6 +311,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         .with_context(
                                             || format!("Failed to write to {path_clone}"),
                                         )?;
+                                        file.write_all("\n".as_bytes()).with_context(|| {
+                                            format!("Failed to write to {path_clone}")
+                                        })?;
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
@@ -329,6 +345,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                                     .with_context(|| {
                                                         format!("Failed to write to {path_clone}")
                                                     })?;
+                                                file.write_all("\n".as_bytes()).with_context(
+                                                    || format!("Failed to write to {path_clone}"),
+                                                )?;
                                             }
                                         } else {
                                             let mut stdout_lock = io::stdout();
@@ -360,6 +379,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                                     .with_context(|| {
                                                         format!("Failed to write to {path_clone}")
                                                     })?;
+                                                file.write_all("\n".as_bytes()).with_context(
+                                                    || format!("Failed to write to {path_clone}"),
+                                                )?;
                                             }
                                         } else {
                                             let mut stdout_lock = io::stdout();
