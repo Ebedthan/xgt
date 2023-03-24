@@ -185,8 +185,8 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
         if path.exists() {
             writeln!(
                 io::stderr(),
-                "{}",
-                format!("error: file {} should not already exist", path.display())
+                "error: file {} should not already exist",
+                path.display()
             )?;
             std::process::exit(1);
         }

@@ -95,8 +95,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
         if path.exists() {
             writeln!(
                 io::stderr(),
-                "{}",
-                format!("error: file {} should not already exist", path.display())
+                "error: file {} should not already exist",
+                path.display()
             )?;
             std::process::exit(1);
         }
