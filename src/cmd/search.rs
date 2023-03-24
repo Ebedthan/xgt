@@ -12,23 +12,33 @@ use crate::api;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct SearchResult {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    gid: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    accession: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_org_name: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_taxonomy: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    gtdb_taxonomy: String,
-    is_gtdb_species_rep: bool,
-    is_ncbi_type_material: bool,
+    gid: Option<String>,
+    accession: Option<String>,
+    ncbi_org_name: Option<String>,
+    ncbi_taxonomy: Option<String>,
+    gtdb_taxonomy: Option<String>,
+    is_gtdb_species_rep: Option<bool>,
+    is_ncbi_type_material: Option<bool>,
 }
 
 impl SearchResult {
     fn get_gtdb_level(&self, level: &str) -> String {
-        let fields: Vec<&str> = self.gtdb_taxonomy.split(';').collect();
+        let mut fields: Vec<String> = Vec::new();
+        let tax = self.gtdb_taxonomy.clone();
+        if let Some(taxonomy) = tax {
+            let tax: Vec<String> = taxonomy
+                .split(';')
+                .collect::<Vec<&str>>()
+                .iter()
+                .map(|x| x.to_string())
+                .collect();
+            for f in tax {
+                fields.push(f);
+            }
+        } else {
+            eprintln!("Failed to perform exact match as gtdb taxonomy is a null field");
+            std::process::exit(1);
+        }
         // Check for Undefined (Failed Quality Check) in gtdb_taxonomy field
         if fields.len() == 7 {
             match level {
@@ -139,7 +149,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                     // Return only genome id?
                     false => match gid {
                         true => {
-                            let list: Vec<String> =
+                            let list: Vec<Option<String>> =
                                 genome_list.iter().map(|x| x.gid.clone()).collect();
 
                             if let Some(path) = output.clone() {
@@ -152,13 +162,18 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         format!("Failed to create file {path_clone}")
                                     })?;
                                 for gid in list {
-                                    file.write_all(gid.as_bytes()).with_context(|| {
-                                        format!("Failed to write to {path_clone}")
-                                    })?;
+                                    file.write_all(gid.unwrap_or("null".to_string()).as_bytes())
+                                        .with_context(|| {
+                                            format!("Failed to write to {path_clone}")
+                                        })?;
                                 }
                             } else {
                                 for gid in list {
-                                    writeln!(io::stdout(), "{gid}")?;
+                                    writeln!(
+                                        io::stdout(),
+                                        "{}",
+                                        gid.unwrap_or("null".to_string())
+                                    )?;
                                 }
                             }
                         }
@@ -260,7 +275,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                     false => {
                         match gid {
                             true => {
-                                let list: Vec<String> =
+                                let list: Vec<Option<String>> =
                                     genome_list.iter().map(|x| x.gid.clone()).collect();
 
                                 if let Some(path) = output.clone() {
@@ -273,14 +288,21 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                             format!("Failed to create file {path_clone}")
                                         })?;
                                     for gid in list {
-                                        file.write_all(gid.as_bytes()).with_context(|| {
-                                            format!("Failed to write to {path_clone}")
-                                        })?;
+                                        file.write_all(
+                                            gid.unwrap_or("null".to_string()).as_bytes(),
+                                        )
+                                        .with_context(
+                                            || format!("Failed to write to {path_clone}"),
+                                        )?;
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
                                     for gid in list {
-                                        writeln!(stdout_lock, "{gid}")?;
+                                        writeln!(
+                                            stdout_lock,
+                                            "{}",
+                                            gid.unwrap_or("null".to_string())
+                                        )?;
                                     }
                                 }
                             }
@@ -369,23 +391,23 @@ mod tests {
     #[test]
     fn test_genome_get_gtdb_level() {
         let genome = SearchResult {
-            gid: "test".to_owned(),
-            accession: "test".to_owned(),
-            ncbi_org_name: "test".to_owned(),
-            ncbi_taxonomy: "test".to_owned(),
-            gtdb_taxonomy: "d__Bacteria; p__Actinobacteriota; c__Actinobacteria; o__Actinomycetales; f__Streptomycetaceae; g__Streptomyces; s__".to_owned(),
-            is_gtdb_species_rep: false,
-            is_ncbi_type_material: false,
+            gid: Some("test".to_owned()),
+            accession: Some("test".to_owned()),
+            ncbi_org_name: Some("test".to_owned()),
+            ncbi_taxonomy: Some("test".to_owned()),
+            gtdb_taxonomy: Some("d__Bacteria; p__Actinobacteriota; c__Actinobacteria; o__Actinomycetales; f__Streptomycetaceae; g__Streptomyces; s__".to_owned()),
+            is_gtdb_species_rep: Some(false),
+            is_ncbi_type_material: Some(false),
         };
 
         let genome1 = SearchResult {
-            gid: "test".to_owned(),
-            accession: "test".to_owned(),
-            ncbi_org_name: "test".to_owned(),
-            ncbi_taxonomy: "test".to_owned(),
-            gtdb_taxonomy: "".to_owned(),
-            is_gtdb_species_rep: false,
-            is_ncbi_type_material: false,
+            gid: Some("test".to_owned()),
+            accession: Some("test".to_owned()),
+            ncbi_org_name: Some("test".to_owned()),
+            ncbi_taxonomy: Some("test".to_owned()),
+            gtdb_taxonomy: Some("".to_owned()),
+            is_gtdb_species_rep: Some(false),
+            is_ncbi_type_material: Some(false),
         };
 
         assert_eq!(genome.get_gtdb_level("domain"), "Bacteria");
@@ -401,23 +423,23 @@ mod tests {
     #[test]
     fn test_search_result_search_by_level() {
         let genome1 = SearchResult {
-            gid: "test1".to_owned(),
-            accession: "test1".to_owned(),
-            ncbi_org_name: "test1".to_owned(),
-            ncbi_taxonomy: "test1".to_owned(),
-            gtdb_taxonomy: "d__Bacteria; p__Actinobacteriota; c__Actinobacteria; o__Actinomycetales; f__Streptomycetaceae; g__Streptomyces; s__".to_owned(),
-            is_gtdb_species_rep: false,
-            is_ncbi_type_material: false,
+            gid: Some("test1".to_owned()),
+            accession: Some("test1".to_owned()),
+            ncbi_org_name: Some("test1".to_owned()),
+            ncbi_taxonomy: Some("test1".to_owned()),
+            gtdb_taxonomy: Some("d__Bacteria; p__Actinobacteriota; c__Actinobacteria; o__Actinomycetales; f__Streptomycetaceae; g__Streptomyces; s__".to_owned()),
+            is_gtdb_species_rep: Some(false),
+            is_ncbi_type_material: Some(false),
         };
 
         let genome2 = SearchResult {
-            gid: "test2".to_owned(),
-            accession: "test2".to_owned(),
-            ncbi_org_name: "test2".to_owned(),
-            ncbi_taxonomy: "test2".to_owned(),
-            gtdb_taxonomy: "d__Bacteria; p__Firmicutes; c__Bacilli; o__Lactobacillales; f__Lactobacillaceae; g__Lactobacillus; s__".to_owned(),
-            is_gtdb_species_rep: false,
-            is_ncbi_type_material: false,
+            gid: Some("test2".to_owned()),
+            accession: Some("test2".to_owned()),
+            ncbi_org_name: Some("test2".to_owned()),
+            ncbi_taxonomy: Some("test2".to_owned()),
+            gtdb_taxonomy: Some("d__Bacteria; p__Firmicutes; c__Bacilli; o__Lactobacillales; f__Lactobacillaceae; g__Lactobacillus; s__".to_owned()),
+            is_gtdb_species_rep: Some(false),
+            is_ncbi_type_material: Some(false),
         };
 
         let search_result = SearchResults {
@@ -501,11 +523,11 @@ mod tests {
             raw: false,
             type_material: false,
             count: false,
-            out: Some(String::from("search")),
+            out: Some(String::from("search1")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("search")).unwrap();
+        std::fs::remove_file(Path::new("search1")).unwrap();
     }
 
     #[test]
@@ -519,11 +541,11 @@ mod tests {
             raw: false,
             type_material: false,
             count: false,
-            out: Some(String::from("search")),
+            out: Some(String::from("search2")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("search")).unwrap();
+        std::fs::remove_file(Path::new("search2")).unwrap();
     }
 
     #[test]

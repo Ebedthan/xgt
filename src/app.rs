@@ -1,5 +1,4 @@
-use clap::{value_parser, Arg, ArgAction, ColorChoice, Command};
-use std::path::PathBuf;
+use clap::{Arg, ArgAction, ColorChoice, Command};
 
 pub fn build_app() -> Command {
     let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
@@ -45,7 +44,6 @@ pub fn build_app() -> Command {
                         .short('f')
                         .long("file")
                         .value_name("FILE")
-                        .value_parser(value_parser!(PathBuf))
                         .help("Search from name in FILE"),
                 )
                 .arg(
@@ -64,8 +62,7 @@ pub fn build_app() -> Command {
                         .short('o')
                         .long("out")
                         .help("Redirect output to FILE")
-                        .value_name("FILE")
-                        .value_parser(clap::builder::NonEmptyStringValueParser::new()),
+                        .value_name("FILE"),
                 )
                 .arg(
                     Arg::new("partial")
@@ -107,7 +104,6 @@ pub fn build_app() -> Command {
                         .short('f')
                         .long("file")
                         .value_name("FILE")
-                        .value_parser(value_parser!(PathBuf))
                         .help("Search from name in FILE"),
                 )
                 .arg(
@@ -137,8 +133,7 @@ pub fn build_app() -> Command {
                         .short('o')
                         .long("out")
                         .help("Redirect output to FILE")
-                        .value_name("FILE")
-                        .value_parser(clap::builder::NonEmptyStringValueParser::new()),
+                        .value_name("FILE"),
                 ),
         )
 }

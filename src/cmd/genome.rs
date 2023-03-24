@@ -1,4 +1,4 @@
-use super::utils::{self, GenomeArgs};
+use super::utils::GenomeArgs;
 use crate::api::GenomeApi;
 use crate::api::GenomeRequestType;
 
@@ -15,25 +15,19 @@ pub struct GenomeResult {
     metadata_gene: MetadataGene,
     metadata_ncbi: MetadataNcbi,
     metadata_type_material: MetadataTypeMaterial,
-
     #[serde(alias = "metadataTaxonomy")]
     metadata_taxonomy: MetadataTaxonomy,
-    #[serde(alias = "gtdbTypeDesignation", deserialize_with = "utils::parse_gtdb")]
-    gtdb_type_designation: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    subunit_summary: String,
-    #[serde(alias = "speciesRepName", deserialize_with = "utils::parse_gtdb")]
-    species_rep_name: String,
+    #[serde(alias = "gtdbTypeDesignation")]
+    gtdb_type_designation: Option<String>,
+    subunit_summary: Option<String>,
+    #[serde(alias = "speciesRepName")]
+    species_rep_name: Option<String>,
     #[serde(alias = "speciesClusterCount")]
-    species_cluster_count: i32,
-    #[serde(alias = "lpsnUrl", deserialize_with = "utils::parse_gtdb")]
-    lpsn_url: String,
-
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    link_ncbi_taxonomy: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    link_ncbi_taxonomy_unfiltered: String,
-
+    species_cluster_count: Option<i32>,
+    #[serde(alias = "lpsnUrl")]
+    lpsn_url: Option<String>,
+    link_ncbi_taxonomy: Option<String>,
+    link_ncbi_taxonomy_unfiltered: Option<String>,
     #[serde(alias = "ncbiTaxonomyFiltered")]
     ncbi_taxonomy_filtered: Vec<Taxon>,
     #[serde(alias = "ncbiTaxonomyUnfiltered")]
@@ -42,190 +36,132 @@ pub struct GenomeResult {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Genome {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
     accession: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
     name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_nucleotide")]
 pub struct MetadataNucleotide {
-    trna_aa_count: i32,
-    contig_count: i32,
-    n50_contigs: i32,
-    longest_contig: i32,
-    scaffold_count: i32,
-    n50_scaffolds: i32,
-    longest_scaffold: i64,
-    genome_size: i64,
-    gc_percentage: f64,
-    ambiguous_bases: i32,
+    trna_aa_count: Option<i32>,
+    contig_count: Option<i32>,
+    n50_contigs: Option<i32>,
+    longest_contig: Option<i32>,
+    scaffold_count: Option<i32>,
+    n50_scaffolds: Option<i32>,
+    longest_scaffold: Option<i64>,
+    genome_size: Option<i64>,
+    gc_percentage: Option<f64>,
+    ambiguous_bases: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_gene")]
 pub struct MetadataGene {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    checkm_completeness: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    checkm_contamination: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    checkm_strain_heterogeneity: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    lsu_5s_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ssu_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    lsu_23s_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    protein_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    coding_density: String,
+    checkm_completeness: Option<String>,
+    checkm_contamination: Option<String>,
+    checkm_strain_heterogeneity: Option<String>,
+    lsu_5s_count: Option<String>,
+    ssu_count: Option<String>,
+    lsu_23s_count: Option<String>,
+    protein_count: Option<String>,
+    coding_density: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_ncbi")]
 pub struct MetadataNcbi {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_genbank_assembly_accession: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_strain_identifiers: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_assembly_level: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_assembly_name: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_assembly_type: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_bioproject: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_biosample: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_country: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_date: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_genome_category: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_isolate: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_isolation_source: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_lat_lon: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_molecule_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_cds_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_refseq_category: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_seq_rel_date: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_spanned_gaps: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_species_taxid: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_ssu_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_submitter: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_taxid: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_total_gap_length: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_translation_table: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_trna_count: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_unspanned_gaps: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_version_status: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_wgs_master: String,
+    ncbi_genbank_assembly_accession: Option<String>,
+    ncbi_strain_identifiers: Option<String>,
+    ncbi_assembly_level: Option<String>,
+    ncbi_assembly_name: Option<String>,
+    ncbi_assembly_type: Option<String>,
+    ncbi_bioproject: Option<String>,
+    ncbi_biosample: Option<String>,
+    ncbi_country: Option<String>,
+    ncbi_date: Option<String>,
+    ncbi_genome_category: Option<String>,
+    ncbi_isolate: Option<String>,
+    ncbi_isolation_source: Option<String>,
+    ncbi_lat_lon: Option<String>,
+    ncbi_molecule_count: Option<String>,
+    ncbi_cds_count: Option<String>,
+    ncbi_refseq_category: Option<String>,
+    ncbi_seq_rel_date: Option<String>,
+    ncbi_spanned_gaps: Option<String>,
+    ncbi_species_taxid: Option<String>,
+    ncbi_ssu_count: Option<String>,
+    ncbi_submitter: Option<String>,
+    ncbi_taxid: Option<String>,
+    ncbi_total_gap_length: Option<String>,
+    ncbi_translation_table: Option<String>,
+    ncbi_trna_count: Option<String>,
+    ncbi_unspanned_gaps: Option<String>,
+    ncbi_version_status: Option<String>,
+    ncbi_wgs_master: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", rename = "metadata_type_material")]
 pub struct MetadataTypeMaterial {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    gtdb_type_designation: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    gtdb_type_designation_sources: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    lpsn_type_designation: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    dsmz_type_designation: String,
-    lpsn_priority_year: i32,
-    gtdb_type_species_of_genus: bool,
+    gtdb_type_designation: Option<String>,
+    gtdb_type_designation_sources: Option<String>,
+    lpsn_type_designation: Option<String>,
+    dsmz_type_designation: Option<String>,
+    lpsn_priority_year: Option<i32>,
+    gtdb_type_species_of_genus: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadataTaxonomy")]
 pub struct MetadataTaxonomy {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_taxonomy: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_taxonomy_unfiltered: String,
+    ncbi_taxonomy: Option<String>,
+    ncbi_taxonomy_unfiltered: Option<String>,
     gtdb_representative: bool,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    gtdb_genome_representative: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    ncbi_type_material_designation: String,
-
-    #[serde(alias = "gtdbDomain", deserialize_with = "utils::parse_gtdb")]
-    gtdb_domain: String,
-    #[serde(alias = "gtdbPhylum", deserialize_with = "utils::parse_gtdb")]
-    gtdb_phylum: String,
-    #[serde(alias = "gtdbClass", deserialize_with = "utils::parse_gtdb")]
-    gtdb_class: String,
-    #[serde(alias = "gtdbOrder", deserialize_with = "utils::parse_gtdb")]
-    gtdb_order: String,
-    #[serde(alias = "gtdbFamily", deserialize_with = "utils::parse_gtdb")]
-    gtdb_family: String,
-    #[serde(alias = "gtdbGenus", deserialize_with = "utils::parse_gtdb")]
-    gtdb_genus: String,
-    #[serde(alias = "gtdbSpecies", deserialize_with = "utils::parse_gtdb")]
-    gtdb_species: String,
+    gtdb_genome_representative: Option<String>,
+    ncbi_type_material_designation: Option<String>,
+    #[serde(alias = "gtdbDomain")]
+    gtdb_domain: Option<String>,
+    #[serde(alias = "gtdbPhylum")]
+    gtdb_phylum: Option<String>,
+    #[serde(alias = "gtdbClass")]
+    gtdb_class: Option<String>,
+    #[serde(alias = "gtdbOrder")]
+    gtdb_order: Option<String>,
+    #[serde(alias = "gtdbFamily")]
+    gtdb_family: Option<String>,
+    #[serde(alias = "gtdbGenus")]
+    gtdb_genus: Option<String>,
+    #[serde(alias = "gtdbSpecies")]
+    gtdb_species: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Taxon {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    taxon: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    taxon_id: String,
+    taxon: Option<String>,
+    taxon_id: Option<String>,
 }
 
 // GTDB Genome metadata API Struct
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeMetadata {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    accession: String,
+    accession: Option<String>,
     #[serde(alias = "isNcbiSurveillance")]
-    is_ncbi_surveillance: bool,
+    is_ncbi_surveillance: Option<bool>,
 }
 
 // GTDB Genome history API structs
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct History {
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    release: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    d: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    p: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    c: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    o: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    f: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    g: String,
-    #[serde(deserialize_with = "utils::parse_gtdb")]
-    s: String,
+    release: Option<String>,
+    d: Option<String>,
+    p: Option<String>,
+    c: Option<String>,
+    o: Option<String>,
+    f: Option<String>,
+    g: Option<String>,
+    s: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -398,7 +334,7 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
+    use crate::utils;
 
     #[test]
     fn test_genome_gtdb_card_1() {
@@ -435,80 +371,74 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_metadata_out() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().as_os_str().to_str().unwrap();
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             request_type: GenomeRequestType::Metadata,
             raw: false,
-            output: Some(String::from(path)),
+            output: Some(String::from("genome")),
         };
         assert!(genome_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("genome")).unwrap();
     }
 
     #[test]
     fn test_genome_gtdb_metadata_out_1() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().as_os_str().to_str().unwrap();
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             request_type: GenomeRequestType::Metadata,
             raw: true,
-            output: Some(String::from(path)),
+            output: Some(String::from("genome1")),
         };
         assert!(genome_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("genome1")).unwrap();
     }
 
     #[test]
     fn test_genome_gtdb_card_out_1() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().as_os_str().to_str().unwrap();
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             request_type: GenomeRequestType::Card,
             raw: true,
-            output: Some(String::from(path)),
+            output: Some(String::from("genome2")),
         };
         assert!(genome_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("genome2")).unwrap();
     }
 
     #[test]
     fn test_genome_gtdb_card_out_2() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().as_os_str().to_str().unwrap();
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             request_type: GenomeRequestType::Card,
             raw: false,
-            output: Some(String::from(path)),
+            output: Some(String::from("genome3")),
         };
         assert!(genome_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("genome3")).unwrap();
     }
 
     #[test]
     fn test_genome_gtdb_tx_out_1() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().as_os_str().to_str().unwrap();
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             request_type: GenomeRequestType::TaxonHistory,
             raw: true,
-            output: Some(String::from(path)),
+            output: Some(String::from("genome4")),
         };
         assert!(genome_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("genome4")).unwrap();
     }
 
     #[test]
     fn test_genome_gtdb_tx_out_2() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().as_os_str().to_str().unwrap();
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             request_type: GenomeRequestType::TaxonHistory,
             raw: false,
-            output: Some(String::from(path)),
+            output: Some(String::from("genome5")),
         };
         assert!(genome_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("genome5")).unwrap();
     }
 
     #[test]
@@ -567,21 +497,6 @@ mod tests {
         assert!(
             genome_gtdb(args).is_err(),
             "Failed to get response from GTDB API"
-        );
-    }
-
-    #[test]
-    fn test_genome_metadata_json_err() {
-        let args = utils::GenomeArgs {
-            accession: vec!["".to_owned()],
-            request_type: GenomeRequestType::Metadata,
-            raw: true,
-            output: None,
-        };
-
-        assert!(
-            genome_gtdb(args).is_err(),
-            "Failed to convert genome metadata structure to json string"
         );
     }
 }

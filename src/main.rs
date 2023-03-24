@@ -57,7 +57,7 @@ mod tests {
             OsString::from("--rep"),
             OsString::from("--type"),
             OsString::from("--out"),
-            OsString::from("test/test.txt"),
+            OsString::from("out"),
         ]);
 
         let args =
@@ -71,7 +71,7 @@ mod tests {
         assert_eq!(args.get_raw(), raw);
         assert_eq!(args.get_rep(), rep);
         assert_eq!(args.get_type_material(), type_material);
-        assert_eq!(args.get_out(), Some(String::from("test/test.txt")));
+        assert_eq!(args.get_out(), Some(String::from("out")));
     }
 
     #[test]
@@ -82,13 +82,13 @@ mod tests {
             "NC_000912.1",
             "--metadata",
             "--out",
-            "metadata.json",
+            "met.json",
         ];
         let matches = app::build_app().get_matches_from(args);
         let sub_matches = matches.subcommand_matches("genome").unwrap();
         let args = utils::GenomeArgs::from_arg_matches(sub_matches);
         assert_eq!(args.accession, vec!["NC_000912.1".to_string()]);
         assert_eq!(args.request_type, api::GenomeRequestType::Metadata);
-        assert_eq!(args.output, Some(String::from("metadata.json")));
+        assert_eq!(args.output, Some(String::from("met.json")));
     }
 }
