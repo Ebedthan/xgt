@@ -544,7 +544,7 @@ mod tests {
             rep: false,
             raw: false,
             type_material: false,
-            count: false,
+            count: true,
             out: Some(String::from("search2")),
         };
 
@@ -580,9 +580,28 @@ mod tests {
             raw: true,
             type_material: false,
             count: false,
-            out: None,
+            out: Some(String::from("search2")),
         };
 
         assert!(search_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("search2")).unwrap();
+    }
+
+    #[test]
+    fn test_search_gtdb_file_gid_false_no_out_1() {
+        let args = utils::SearchArgs {
+            needle: vec!["Aminobacter".to_owned()],
+            level: "genus".to_owned(),
+            id: true,
+            partial: false,
+            rep: false,
+            raw: false,
+            type_material: false,
+            count: false,
+            out: Some(String::from("search2")),
+        };
+
+        assert!(search_gtdb(args).is_ok());
+        std::fs::remove_file(Path::new("search2")).unwrap();
     }
 }
