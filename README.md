@@ -43,9 +43,13 @@ xgt genome --history GCA_001512625.1
 xgt genome --metadata GCA_001512625.1
 ```
 
+Full help is available from `xgt --help`.
+
 ### Minimum supported Rust version
 `xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.64.0.
 
+### Semver
+`xgt` is following [Semantic Versioning 2.0](https://semver.org/).
 
 ### Licence
 `xgt` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
