@@ -16,9 +16,9 @@
 git clone https://github.com/Ebedthan/xgt.git
 cd xgt
 
-cargo build --release
-cargo test
-cargo install --path .
+# If default rust install directory is ~/.cargo
+cargo install --path . --root ~/.cargo
+xgt -h
 ```
 
 # Quick start guide
