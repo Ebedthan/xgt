@@ -76,7 +76,7 @@ pub fn build_app() -> Command {
                         .short('r')
                         .long("raw")
                         .action(ArgAction::SetTrue)
-                        .help("Print raw JSON response"),
+                        .help("Output raw JSON"),
                 )
                 .arg(
                     Arg::new("rep")
@@ -126,7 +126,30 @@ pub fn build_app() -> Command {
                         .short('r')
                         .long("raw")
                         .action(ArgAction::SetTrue)
-                        .help("Print raw response JSON "),
+                        .help("Print raw JSON"),
+                )
+                .arg(
+                    Arg::new("out")
+                        .short('o')
+                        .long("out")
+                        .help("Output raw JSON")
+                        .value_name("FILE"),
+                ),
+        )
+        .subcommand(
+            Command::new("taxon")
+                .about("Get GTDB taxon information")
+                .arg(
+                    Arg::new("name")
+                        .conflicts_with("file")
+                        .help("taxon name like <x>__<name>"),
+                )
+                .arg(
+                    Arg::new("file")
+                        .short('f')
+                        .long("file")
+                        .value_name("FILE")
+                        .help("Search from name in FILE"),
                 )
                 .arg(
                     Arg::new("out")
@@ -134,6 +157,13 @@ pub fn build_app() -> Command {
                         .long("out")
                         .help("Redirect output to FILE")
                         .value_name("FILE"),
+                )
+                .arg(
+                    Arg::new("raw")
+                        .short('r')
+                        .long("raw")
+                        .action(ArgAction::SetTrue)
+                        .help("Output raw JSON"),
                 ),
         )
 }

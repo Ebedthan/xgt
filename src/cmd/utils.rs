@@ -195,6 +195,53 @@ pub fn bool_as_string(b: bool) -> String {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TaxonArgs {
+    pub(crate) name: Vec<String>,
+    pub(crate) raw: bool,
+    pub(crate) output: Option<String>,
+}
+
+impl TaxonArgs {
+    pub fn get_name(&self) -> Vec<String> {
+        self.name.clone()
+    }
+
+    pub fn get_raw(&self) -> bool {
+        self.raw
+    }
+
+    pub fn get_output(&self) -> Option<String> {
+        self.output.clone()
+    }
+
+    pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
+        let mut names = Vec::new();
+
+        if arg_matches.contains_id("file") {
+            let file = File::open(arg_matches.get_one::<String>("file").unwrap())
+                .expect("file should be well-formatted");
+
+            names = BufReader::new(file)
+                .lines()
+                .map(|l| l.expect("Cannot parse line"))
+                .collect();
+        } else {
+            names.push(arg_matches.get_one::<String>("name").unwrap().to_string());
+        }
+
+        TaxonArgs {
+            name: names,
+            raw: arg_matches.get_flag("raw"),
+            output: if arg_matches.contains_id("out") {
+                arg_matches.get_one::<String>("out").cloned()
+            } else {
+                None
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

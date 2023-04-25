@@ -7,7 +7,7 @@ mod cmd;
 use std::env;
 
 use anyhow::Result;
-use cmd::{genome, search, utils};
+use cmd::{genome, search, taxon, utils};
 
 fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
@@ -20,6 +20,10 @@ fn main() -> Result<()> {
         Some(("genome", sub_matches)) => {
             let args = utils::GenomeArgs::from_arg_matches(sub_matches);
             genome::genome_gtdb(args)?;
+        }
+        Some(("taxon", sub_matches)) => {
+            let args = utils::TaxonArgs::from_arg_matches(sub_matches);
+            taxon::get_taxon_name(args)?;
         }
         _ => unreachable!("Implemented correctly"),
     };

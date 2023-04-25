@@ -116,6 +116,23 @@ impl GenomeApi {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TaxonApi {
+    name: String,
+}
+
+impl TaxonApi {
+    pub fn from(name: String) -> Self {
+        TaxonApi { name }
+    }
+    pub fn get_name_request(&self) -> String {
+        format!("https://api.gtdb.ecogenomic.org/taxon/{}", self.name)
+    }
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
