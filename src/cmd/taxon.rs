@@ -27,7 +27,7 @@ pub struct Taxon {
     #[serde(alias = "lpsnUrl")]
     lpsn_url: Option<String>,
     #[serde(alias = "ncbiTaxId")]
-    ncbi_tax_id: Option<f32>,
+    ncbi_tax_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
