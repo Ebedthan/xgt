@@ -254,6 +254,7 @@ pub fn check_status(response: &reqwest::blocking::Response) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::Server;
 
     #[test]
     fn test_get_accession() {
@@ -331,5 +332,23 @@ mod tests {
         assert!(!args.get_rep());
         assert!(!args.get_type_material());
         assert_eq!(args.get_out(), Some(String::from("test1")));
+    }
+
+    #[test]
+    fn test_check_status_server_error() {
+        let mut s = Server::new();
+        let url = s.url();
+        s.mock("GET", url.as_str()).with_status(500).create();
+        let response = reqwest::blocking::get(&url).unwrap();
+        assert!(check_status(&response).is_err());
+    }
+
+    #[test]
+    fn test_check_status_something_wrong() {
+        let mut s = Server::new();
+        let url = s.url();
+        s.mock("GET", url.as_str()).with_status(300).create();
+        let response = reqwest::blocking::get(&url).unwrap();
+        assert!(check_status(&response).is_err());
     }
 }
