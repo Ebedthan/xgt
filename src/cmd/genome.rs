@@ -2,6 +2,7 @@ use super::utils::GenomeArgs;
 use crate::api::GenomeApi;
 use crate::api::GenomeRequestType;
 
+use anyhow::bail;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
@@ -183,12 +184,7 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
     if let Some(filename) = args.get_output() {
         let path = Path::new(&filename);
         if path.exists() {
-            writeln!(
-                io::stderr(),
-                "error: file {} should not already exist",
-                path.display()
-            )?;
-            std::process::exit(1);
+            bail!("file {} should not already exist", path.display());
         }
     }
 

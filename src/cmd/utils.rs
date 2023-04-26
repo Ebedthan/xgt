@@ -1,5 +1,7 @@
 use crate::api::GenomeRequestType;
+use anyhow::{bail, Result};
 use clap::ArgMatches;
+
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -82,12 +84,7 @@ impl SearchArgs {
             }
         } else {
             SearchArgs {
-                needle: if args.get_one::<String>("name").is_some() {
-                    vec![args.get_one::<String>("name").unwrap().to_string()]
-                } else {
-                    eprintln!("error: search string should be supplied");
-                    std::process::exit(1);
-                },
+                needle: vec![args.get_one::<String>("name").unwrap().to_string()],
                 level: args.get_one::<String>("level").unwrap().to_string(),
                 id: args.get_flag("id"),
                 partial: args.get_flag("partial"),
@@ -240,6 +237,18 @@ impl TaxonArgs {
             },
         }
     }
+}
+
+pub fn check_status(response: &reqwest::blocking::Response) -> Result<()> {
+    if response.status().is_server_error() {
+        bail!("server error (code status {})", response.status().as_str());
+    } else if !response.status().is_success() {
+        bail!(
+            "something wrong happened (code status {})",
+            response.status().as_str()
+        );
+    }
+    Ok(())
 }
 
 #[cfg(test)]

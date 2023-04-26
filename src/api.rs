@@ -232,4 +232,19 @@ mod tests {
 
         assert_eq!(card_request, expected_card_request);
     }
+
+    #[test]
+    fn test_get_name_request() {
+        let taxon = TaxonApi::from("d__Bacteria".to_string());
+        assert_eq!(
+            taxon.get_name_request(),
+            "https://api.gtdb.ecogenomic.org/taxon/d__Bacteria"
+        );
+    }
+
+    #[test]
+    fn test_get_name() {
+        let taxon = TaxonApi::from("Firmicutes".to_string());
+        assert_eq!(taxon.get_name(), "Firmicutes");
+    }
 }

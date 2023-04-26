@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::{collections::HashMap, time::Duration};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use super::utils;
@@ -22,7 +22,7 @@ struct SearchResult {
 }
 
 impl SearchResult {
-    fn get_gtdb_level(&self, level: &str) -> String {
+    fn get_gtdb_level(&self, level: &str) -> Result<String> {
         let mut fields: Vec<String> = Vec::new();
         let tax = self.gtdb_taxonomy.clone();
         if let Some(taxonomy) = tax {
@@ -36,24 +36,38 @@ impl SearchResult {
                 fields.push(f);
             }
         } else {
-            eprintln!("Failed to perform exact match as gtdb taxonomy is a null field");
-            std::process::exit(1);
+            bail!("Failed to perform exact match as gtdb taxonomy is a null field");
         }
+        let mut res = String::new();
         // Check for Undefined (Failed Quality Check) in gtdb_taxonomy field
         if fields.len() == 7 {
             match level {
-                "domain" => fields[0].replace("d__", ""),
-                "phylum" => fields[1].replace(" p__", ""),
-                "class" => fields[2].replace(" c__", ""),
-                "order" => fields[3].replace(" o__", ""),
-                "family" => fields[4].replace(" f__", ""),
-                "genus" => fields[5].replace(" g__", ""),
-                "species" => fields[6].replace(" s__", ""),
+                "domain" => {
+                    res = fields[0].replace("d__", "");
+                }
+                "phylum" => {
+                    res = fields[1].replace(" p__", "");
+                }
+                "class" => {
+                    res = fields[2].replace(" c__", "");
+                }
+                "order" => {
+                    res = fields[3].replace(" o__", "");
+                }
+                "family" => {
+                    res = fields[4].replace(" f__", "");
+                }
+                "genus" => {
+                    res = fields[5].replace(" g__", "");
+                }
+                "species" => {
+                    res = fields[6].replace(" s__", "");
+                }
                 &_ => unreachable!("all fields have been taken into account"),
             }
-        } else {
-            String::from("")
         }
+
+        Ok(res)
     }
 }
 
@@ -67,7 +81,7 @@ impl SearchResults {
         self.rows
             .clone()
             .into_iter()
-            .filter(|x| x.get_gtdb_level(level) == needle)
+            .filter(|x| x.get_gtdb_level(level).unwrap() == needle)
             .collect()
     }
 }
@@ -93,12 +107,7 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
     if let Some(filename) = output.clone() {
         let path = Path::new(&filename);
         if path.exists() {
-            writeln!(
-                io::stderr(),
-                "error: file {} should not already exist",
-                path.display()
-            )?;
-            std::process::exit(1);
+            bail!("file {} should not already exist", path.display())
         }
     }
 
@@ -119,6 +128,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
             .get(&request_url)
             .send()
             .with_context(|| "Failed to send request to GTDB API".to_string())?;
+
+        utils::check_status(&response)?;
 
         let genomes: SearchResults = response.json().with_context(|| {
             "Failed to deserialize request response to search result structure".to_string()
@@ -436,14 +447,17 @@ mod tests {
             is_ncbi_type_material: Some(false),
         };
 
-        assert_eq!(genome.get_gtdb_level("domain"), "Bacteria");
-        assert_eq!(genome.get_gtdb_level("phylum"), "Actinobacteriota");
-        assert_eq!(genome.get_gtdb_level("class"), "Actinobacteria");
-        assert_eq!(genome.get_gtdb_level("order"), "Actinomycetales");
-        assert_eq!(genome.get_gtdb_level("family"), "Streptomycetaceae");
-        assert_eq!(genome.get_gtdb_level("genus"), "Streptomyces");
-        assert_eq!(genome.get_gtdb_level("species"), "".to_owned());
-        assert_eq!(genome1.get_gtdb_level("genus"), "".to_owned());
+        assert_eq!(genome.get_gtdb_level("domain").unwrap(), "Bacteria");
+        assert_eq!(genome.get_gtdb_level("phylum").unwrap(), "Actinobacteriota");
+        assert_eq!(genome.get_gtdb_level("class").unwrap(), "Actinobacteria");
+        assert_eq!(genome.get_gtdb_level("order").unwrap(), "Actinomycetales");
+        assert_eq!(
+            genome.get_gtdb_level("family").unwrap(),
+            "Streptomycetaceae"
+        );
+        assert_eq!(genome.get_gtdb_level("genus").unwrap(), "Streptomyces");
+        assert_eq!(genome.get_gtdb_level("species").unwrap(), "".to_owned());
+        assert_eq!(genome1.get_gtdb_level("genus").unwrap(), "".to_owned());
     }
 
     #[test]
@@ -567,11 +581,11 @@ mod tests {
             raw: false,
             type_material: false,
             count: true,
-            out: Some(String::from("search2")),
+            out: Some(String::from("search3")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("search2")).unwrap();
+        std::fs::remove_file(Path::new("search3")).unwrap();
     }
 
     #[test]
@@ -602,11 +616,11 @@ mod tests {
             raw: true,
             type_material: false,
             count: false,
-            out: Some(String::from("search2")),
+            out: Some(String::from("search4")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("search2")).unwrap();
+        std::fs::remove_file(Path::new("search4")).unwrap();
     }
 
     #[test]
@@ -620,10 +634,10 @@ mod tests {
             raw: false,
             type_material: false,
             count: false,
-            out: Some(String::from("search2")),
+            out: Some(String::from("search5")),
         };
 
         assert!(search_gtdb(args).is_ok());
-        std::fs::remove_file(Path::new("search2")).unwrap();
+        std::fs::remove_file(Path::new("search5")).unwrap();
     }
 }

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::api::TaxonApi;
 
-use super::utils::TaxonArgs;
+use super::utils::{self, TaxonArgs};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Taxon {
@@ -48,12 +48,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     if let Some(filename) = args.get_output() {
         let path = Path::new(&filename);
         if path.exists() {
-            writeln!(
-                io::stderr(),
-                "error: file {} should not already exist",
-                path.display()
-            )?;
-            std::process::exit(1);
+            bail!("file {} should not already exist", path.display());
         }
     }
 
@@ -64,13 +59,10 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
             .with_context(|| "Failed to get response from GTDB API".to_string())?;
 
         if response.status().is_client_error() {
-            writeln!(
-                io::stderr(),
-                "{}",
-                format!("Taxon {} not found", name.get_name())
-            )?;
-            std::process::exit(1);
+            bail!("Taxon {} not found", name.get_name());
         }
+
+        utils::check_status(&response)?;
 
         let taxon_data: TaxonResult = response.json().with_context(|| {
             "Failed to convert request response to genome metadata structure".to_string()
@@ -118,4 +110,67 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_get_taxon_name_with_output() -> Result<()> {
+        let args = TaxonArgs {
+            name: vec!["g__Escherichia".to_string()],
+            raw: false,
+            output: Some("output.json".to_string()),
+        };
+
+        get_taxon_name(args.clone())?;
+
+        let expected_output = fs::read_to_string("output.json")
+            .with_context(|| "Failed to read output file".to_string())?;
+        let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)
+            .with_context(|| "Failed to convert expected output to TaxonResult".to_string())?;
+
+        let actual_output = args.get_output().unwrap();
+        let actual_output = fs::read_to_string(actual_output)
+            .with_context(|| "Failed to read actual output file".to_string())?;
+        let actual_taxon_data: TaxonResult = serde_json::from_str(&actual_output)
+            .with_context(|| "Failed to convert actual output to TaxonResult".to_string())?;
+
+        assert_eq!(expected_taxon_data, actual_taxon_data);
+
+        // Clean up the output file
+        fs::remove_file("output.json")
+            .with_context(|| "Failed to delete output file".to_string())?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_taxon_name_without_output() -> Result<()> {
+        let args = TaxonArgs {
+            name: vec!["g__Escherichia".to_string()],
+            raw: false,
+            output: None,
+        };
+
+        get_taxon_name(args)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_taxon_name_not_found() -> Result<()> {
+        let taxon_args = TaxonArgs {
+            name: vec!["UnknownTaxonName".to_string()],
+            raw: false,
+            output: None,
+        };
+        let result = get_taxon_name(taxon_args);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Taxon UnknownTaxonName not found"));
+        Ok(())
+    }
 }
