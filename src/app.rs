@@ -142,7 +142,8 @@ pub fn build_app() -> Command {
                 .arg(
                     Arg::new("name")
                         .conflicts_with("file")
-                        .help("taxon name like <x>__<name>"),
+                        .help("taxon name")
+                        .value_parser(is_correct_taxon),
                 )
                 .arg(
                     Arg::new("file")
@@ -166,6 +167,21 @@ pub fn build_app() -> Command {
                         .help("Output raw JSON"),
                 ),
         )
+}
+
+fn is_correct_taxon(s: &str) -> Result<String, String> {
+    if s.contains("d__")
+        || s.contains("p__")
+        || s.contains("c__")
+        || s.contains("o__")
+        || s.contains("f__")
+        || s.contains("g__")
+        || s.contains("s__")
+    {
+        Ok(s.to_string())
+    } else {
+        Err("should be formated like <level_symbol>__<name>".to_string())
+    }
 }
 
 #[cfg(test)]
