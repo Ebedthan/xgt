@@ -197,6 +197,8 @@ pub struct TaxonArgs {
     pub(crate) name: Vec<String>,
     pub(crate) raw: bool,
     pub(crate) output: Option<String>,
+    pub(crate) partial: bool,
+    pub(crate) search: bool,
 }
 
 impl TaxonArgs {
@@ -210,6 +212,14 @@ impl TaxonArgs {
 
     pub fn get_output(&self) -> Option<String> {
         self.output.clone()
+    }
+
+    pub fn get_partial(&self) -> bool {
+        self.partial
+    }
+
+    pub fn is_search(&self) -> bool {
+        self.search
     }
 
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
@@ -235,6 +245,8 @@ impl TaxonArgs {
             } else {
                 None
             },
+            partial: arg_matches.get_flag("partial"),
+            search: arg_matches.get_flag("search"),
         }
     }
 }

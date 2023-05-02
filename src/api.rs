@@ -131,6 +131,12 @@ impl TaxonApi {
     pub fn get_name(&self) -> String {
         self.name.clone()
     }
+    pub fn get_search_request(&self) -> String {
+        format!(
+            "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit=1000000",
+            self.name
+        )
+    }
 }
 
 #[cfg(test)]

@@ -165,6 +165,20 @@ pub fn build_app() -> Command {
                         .long("raw")
                         .action(ArgAction::SetTrue)
                         .help("Output raw JSON"),
+                )
+                .arg(
+                    Arg::new("partial")
+                        .short('p')
+                        .long("partial")
+                        .action(ArgAction::SetTrue)
+                        .help("Matching partially the taxon name"),
+                )
+                .arg(
+                    Arg::new("search")
+                        .short('s')
+                        .long("search")
+                        .action(ArgAction::SetTrue)
+                        .help("Search for a taxon in current release"),
                 ),
         )
 }

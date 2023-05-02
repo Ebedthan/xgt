@@ -36,6 +36,17 @@ pub struct TaxonResult {
     data: Vec<Taxon>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TaxonSearchResult {
+    matches: Vec<String>,
+}
+
+impl TaxonSearchResult {
+    fn filter(&mut self, pattern: String) {
+        self.matches.retain(|x| x == &pattern);
+    }
+}
+
 pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     // format the request
     let taxon_api: Vec<TaxonApi> = args
@@ -112,6 +123,86 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     Ok(())
 }
 
+pub fn search_taxon(args: TaxonArgs) -> Result<()> {
+    let taxon_api: Vec<TaxonApi> = args
+        .get_name()
+        .iter()
+        .map(|x| TaxonApi::from(x.to_string()))
+        .collect();
+    let raw = args.get_raw();
+    let partial = args.get_partial();
+
+    if let Some(filename) = args.get_output() {
+        let path = Path::new(&filename);
+        if path.exists() {
+            bail!("file {} should not already exist", path.display());
+        }
+    }
+
+    for search in taxon_api {
+        let request_url = search.get_search_request();
+
+        let response = reqwest::blocking::get(request_url)
+            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+
+        if response.status().is_client_error() {
+            bail!("Taxon {} not found", search.get_name());
+        }
+
+        utils::check_status(&response)?;
+
+        let mut taxon_data: TaxonSearchResult = response.json().with_context(|| {
+            "Failed to convert request response to genome metadata structure".to_string()
+        })?;
+
+        if !partial {
+            taxon_data.filter(search.get_name());
+        }
+
+        match raw {
+            true => {
+                let taxon_string = serde_json::to_string(&taxon_data).with_context(|| {
+                    "Failed to convert taxon structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(taxon_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{taxon_string}")?;
+                }
+            }
+            false => {
+                let taxon_string =
+                    serde_json::to_string_pretty(&taxon_data).with_context(|| {
+                        "Failed to convert genome card structure to json string".to_string()
+                    })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(taxon_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{taxon_string}")?;
+                }
+            }
+        };
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,6 +214,8 @@ mod tests {
             name: vec!["g__Escherichia".to_string()],
             raw: false,
             output: Some("output.json".to_string()),
+            partial: false,
+            search: false,
         };
 
         get_taxon_name(args.clone())?;
@@ -153,6 +246,8 @@ mod tests {
             name: vec!["g__Escherichia".to_string()],
             raw: false,
             output: None,
+            partial: false,
+            search: false,
         };
 
         get_taxon_name(args)?;
@@ -166,6 +261,8 @@ mod tests {
             name: vec!["UnknownTaxonName".to_string()],
             raw: false,
             output: None,
+            partial: true,
+            search: false,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
