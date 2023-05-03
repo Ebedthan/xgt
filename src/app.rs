@@ -1,14 +1,7 @@
-use clap::{Arg, ArgAction, ColorChoice, Command};
+use clap::{Arg, ArgAction, Command};
 
 pub fn build_app() -> Command {
-    let clap_color_setting = if std::env::var_os("NO_COLOR").is_none() {
-        ColorChoice::Auto
-    } else {
-        ColorChoice::Never
-    };
-
     Command::new("xgt")
-        .color(clap_color_setting)
         .about("Search and parse GTDB data")
         .subcommand_required(true)
         .arg_required_else_help(true)
