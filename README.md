@@ -24,23 +24,35 @@ xgt -h
 # Quick start guide
 
 ```
-# Search all Aminobacter (genus) genomes
+# Search subcommand: search GTDB ----------------------------------------------
+## Search all Aminobacter (genus) genomes
 xgt search Aminobacter
 
-# Search all genomes with genus name containing aminobacter
+## Search all genomes with genus name containing aminobacter
 xgt search -p aminobacter
 
-# Search a list of taxon name
+## Search from a list
 xgt search -f list.txt
 
-# Get GTDB genome information
+# Genome subcommand: information about a genome -------------------------------
+## Get GTDB genome information
 xgt genome GCA_001512625.1
 
-# Get taxon history on GTDB
+## Get taxon history on GTDB
 xgt genome --history GCA_001512625.1
 
-# Get genome metadata
+## Get genome metadata
 xgt genome --metadata GCA_001512625.1
+
+# Taxon subcommand: information about a specific taxon ------------------------
+## Get direct descendant of a taxon
+xgt taxon g__Aminobacter
+
+## Search for a taxon in GTDB's current release
+xgt taxon --search g__Aminobacter
+
+## Search for a taxon in GTDB's current release with partial matching
+xgt taxon --search -p g__Aminobacter
 ```
 
 Full help is available from `xgt --help`.
