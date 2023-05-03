@@ -184,18 +184,13 @@ pub fn build_app() -> Command {
 }
 
 fn is_correct_taxon(s: &str) -> Result<String, String> {
-    if s.contains("d__")
-        || s.contains("p__")
-        || s.contains("c__")
-        || s.contains("o__")
-        || s.contains("f__")
-        || s.contains("g__")
-        || s.contains("s__")
-    {
-        Ok(s.to_string())
-    } else {
-        Err("should be formated like <level_symbol>__<name>".to_string())
+    let prefixes = ["d__", "p__", "c__", "o__", "f__", "g__", "s__"];
+    for prefix in &prefixes {
+        if s.starts_with(prefix) {
+            return Ok(s.to_string());
+        }
     }
+    Err("should be formatted like <level_symbol>__<name>".to_string())
 }
 
 #[cfg(test)]
@@ -271,5 +266,44 @@ mod tests {
     #[test]
     fn verify_cmd() {
         build_app().debug_assert();
+    }
+
+    #[test]
+    fn test_is_correct_taxon() {
+        // Positive test cases
+        assert_eq!(
+            is_correct_taxon("d__Bacteria"),
+            Ok("d__Bacteria".to_string())
+        );
+        assert_eq!(
+            is_correct_taxon("g__Actinobacteria"),
+            Ok("g__Actinobacteria".to_string())
+        );
+        assert_eq!(
+            is_correct_taxon("s__Staphylococcus aureus"),
+            Ok("s__Staphylococcus aureus".to_string())
+        );
+
+        // Negative test cases
+        assert_eq!(
+            is_correct_taxon("Bacteria"),
+            Err("should be formatted like <level_symbol>__<name>".to_string())
+        );
+        assert_eq!(
+            is_correct_taxon("d_"),
+            Err("should be formatted like <level_symbol>__<name>".to_string())
+        );
+        assert_eq!(
+            is_correct_taxon("Actinobacteria"),
+            Err("should be formatted like <level_symbol>__<name>".to_string())
+        );
+        assert_eq!(
+            is_correct_taxon("__Actinobacteria"),
+            Err("should be formatted like <level_symbol>__<name>".to_string())
+        );
+        assert_eq!(
+            is_correct_taxon("d_Actinobacteria"),
+            Err("should be formatted like <level_symbol>__<name>".to_string())
+        );
     }
 }
