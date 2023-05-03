@@ -184,14 +184,6 @@ impl GenomeArgs {
     }
 }
 
-pub fn bool_as_string(b: bool) -> String {
-    if b {
-        String::from("true")
-    } else {
-        String::from("false")
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct TaxonArgs {
     pub(crate) name: Vec<String>,
@@ -252,13 +244,10 @@ impl TaxonArgs {
 }
 
 pub fn check_status(response: &reqwest::blocking::Response) -> Result<()> {
-    if response.status().is_server_error() {
-        bail!("server error (code status {})", response.status().as_str());
-    } else if !response.status().is_success() {
-        bail!(
-            "something wrong happened (code status {})",
-            response.status().as_str()
-        );
+    let binding = response.status();
+    let status_str = binding.as_str();
+    if !response.status().is_success() {
+        bail!("something wrong happened (code status {})", status_str);
     }
     Ok(())
 }
@@ -317,12 +306,6 @@ mod tests {
     }
 
     #[test]
-    fn test_bool_as_string() {
-        assert_eq!(bool_as_string(true), "true");
-        assert_eq!(bool_as_string(false), "false");
-    }
-
-    #[test]
     fn test_get_needle() {
         let args = SearchArgs {
             needle: vec!["needle".to_string()],
@@ -362,5 +345,44 @@ mod tests {
         s.mock("GET", url.as_str()).with_status(300).create();
         let response = reqwest::blocking::get(&url).unwrap();
         assert!(check_status(&response).is_err());
+    }
+
+    #[test]
+    fn test_get_name() {
+        let args = TaxonArgs {
+            name: vec!["name1".to_string(), "name2".to_string()],
+            raw: false,
+            output: None,
+            partial: false,
+            search: false,
+        };
+
+        assert_eq!(args.get_name(), vec!["name1", "name2"]);
+    }
+
+    #[test]
+    fn test_get_partial() {
+        let args = TaxonArgs {
+            name: vec!["name1".to_string(), "name2".to_string()],
+            raw: false,
+            output: None,
+            partial: true,
+            search: false,
+        };
+
+        assert_eq!(args.get_partial(), true);
+    }
+
+    #[test]
+    fn test_is_search() {
+        let args = TaxonArgs {
+            name: vec!["name1".to_string(), "name2".to_string()],
+            raw: false,
+            output: None,
+            partial: false,
+            search: true,
+        };
+
+        assert_eq!(args.is_search(), true);
     }
 }

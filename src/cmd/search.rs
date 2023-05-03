@@ -91,11 +91,11 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
     let mut options = HashMap::new();
     options.insert(
         "gtdb_species_rep_only".to_owned(),
-        utils::bool_as_string(args.get_rep()),
+        args.get_rep().to_string(),
     );
     options.insert(
         "ncbi_type_material_only".to_owned(),
-        utils::bool_as_string(args.get_type_material()),
+        args.get_type_material().to_string(),
     );
 
     let gid = args.get_gid();

@@ -350,8 +350,6 @@ mod tests {
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
-        // Check that the output contains the taxon name and matches the expected format
-        //anyhow::ensure!(result.   .unwrap().contains(r#""matches":["g__Aminobacter"]"#));
     }
 
     #[test]
