@@ -270,4 +270,32 @@ mod tests {
         assert!(err.contains("Taxon UnknownTaxonName not found"));
         Ok(())
     }
+
+    #[test]
+    fn test_taxon_search_result_filter() {
+        let mut taxon_search_result = TaxonSearchResult {
+            matches: vec!["abc".to_string(), "abcd".to_string()],
+        };
+        taxon_search_result.filter("abc".to_string());
+        assert_eq!(taxon_search_result.matches, vec!["abc".to_string()]);
+    }
+
+    #[test]
+    fn test_filter() {
+        let mut result = TaxonSearchResult {
+            matches: vec!["dog".to_string(), "cat".to_string(), "rat".to_string()],
+        };
+        result.filter("cat".to_string());
+        assert_eq!(result.matches, vec!["cat".to_string()]);
+    }
+
+    #[test]
+    fn test_filter_no_match() {
+        let mut result = TaxonSearchResult {
+            matches: vec!["dog".to_string(), "cat".to_string(), "rat".to_string()],
+        };
+        result.filter("bird".to_string());
+        let v: Vec<String> = Vec::new();
+        assert_eq!(result.matches, v);
+    }
 }
