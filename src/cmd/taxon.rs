@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -58,9 +58,11 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
 
     if let Some(filename) = args.get_output() {
         let path = Path::new(&filename);
-        if path.exists() {
-            bail!("file {} should not already exist", path.display());
-        }
+        ensure!(
+            !path.exists(),
+            "file {} should not already exist",
+            path.display()
+        );
     }
 
     for name in taxon_api {
@@ -134,9 +136,11 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 
     if let Some(filename) = args.get_output() {
         let path = Path::new(&filename);
-        if path.exists() {
-            bail!("file {} should not already exist", path.display());
-        }
+        ensure!(
+            !path.exists(),
+            "file {} should not already exist",
+            path.display()
+        );
     }
 
     for search in taxon_api {
@@ -144,10 +148,6 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 
         let response = reqwest::blocking::get(request_url)
             .with_context(|| "Failed to get response from GTDB API".to_string())?;
-
-        if response.status().is_client_error() {
-            bail!("Taxon {} not found", search.get_name());
-        }
 
         utils::check_status(&response)?;
 
@@ -158,6 +158,12 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
         if !partial {
             taxon_data.filter(search.get_name());
         }
+
+        ensure!(
+            !taxon_data.matches.is_empty(),
+            "No match found for {}",
+            search.get_name()
+        );
 
         match raw {
             true => {
@@ -297,5 +303,71 @@ mod tests {
         result.filter("bird".to_string());
         let v: Vec<String> = Vec::new();
         assert_eq!(result.matches, v);
+    }
+
+    #[test]
+    fn search_taxon_should_return_error_for_nonexistent_file() {
+        let args = TaxonArgs {
+            name: vec!["g__Aminobacter".to_string()],
+            raw: true,
+            partial: false,
+            output: Some("test/acc.txt".to_string()),
+            search: true,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "file test/acc.txt should not already exist".to_string()
+        );
+    }
+
+    #[test]
+    fn search_taxon_should_return_error_for_nonexistent_taxon() {
+        let args = TaxonArgs {
+            name: vec!["nonexistent_taxon".to_string()],
+            raw: true,
+            partial: false,
+            output: None,
+            search: true,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "No match found for nonexistent_taxon".to_string()
+        );
+    }
+
+    #[test]
+    fn search_taxon_should_print_raw_output_to_stdout() {
+        let args = TaxonArgs {
+            name: vec!["g__Aminobacter".to_string()],
+            raw: true,
+            partial: false,
+            output: None,
+            search: true,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_ok());
+        // Check that the output contains the taxon name and matches the expected format
+        //anyhow::ensure!(result.   .unwrap().contains(r#""matches":["g__Aminobacter"]"#));
+    }
+
+    #[test]
+    fn search_taxon_should_write_pretty_output_to_file() {
+        let args = TaxonArgs {
+            name: vec!["g__Aminobacter".to_string()],
+            raw: false,
+            partial: false,
+            output: Some("test_search.json".to_string()),
+            search: true,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_ok());
+        // Check that the output file was created and contains the taxon name
+        let file_contents = std::fs::read_to_string("test_search.json").unwrap();
+        assert!(file_contents.contains("g__Aminobacter"));
+        std::fs::remove_file("test_search.json").unwrap();
     }
 }
