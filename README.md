@@ -58,7 +58,7 @@ xgt taxon --search -p g__Aminobacter
 Full help is available from `xgt --help`.
 
 ### Minimum supported Rust version
-`xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.64.0.
+`xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.65.0.
 
 ### Semver
 `xgt` is following [Semantic Versioning 2.0](https://semver.org/).
