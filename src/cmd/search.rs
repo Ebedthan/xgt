@@ -1,18 +1,16 @@
 use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::path::Path;
-use std::{collections::HashMap, time::Duration};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use super::utils;
-use crate::api;
+use crate::api::SearchAPI;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct SearchResult {
-    gid: Option<String>,
+    gid: String,
     accession: Option<String>,
     ncbi_org_name: Option<String>,
     ncbi_taxonomy: Option<String>,
@@ -23,57 +21,65 @@ struct SearchResult {
 
 impl SearchResult {
     fn get_gtdb_level(&self, level: &str) -> Result<String> {
-        let mut fields: Vec<String> = Vec::new();
-        let tax = self.gtdb_taxonomy.clone();
-        if let Some(taxonomy) = tax {
-            let tax: Vec<String> = taxonomy
-                .split(';')
-                .collect::<Vec<&str>>()
-                .iter()
-                .map(|x| x.to_string())
-                .collect();
-            for f in tax {
-                fields.push(f);
-            }
-        } else {
-            bail!("Failed to perform exact match as gtdb taxonomy is a null field");
-        }
-        let mut res = String::new();
-        // Check for Undefined (Failed Quality Check) in gtdb_taxonomy field
-        if fields.len() == 7 {
-            match level {
-                "domain" => {
-                    res = fields[0].replace("d__", "");
-                }
-                "phylum" => {
-                    res = fields[1].replace(" p__", "");
-                }
-                "class" => {
-                    res = fields[2].replace(" c__", "");
-                }
-                "order" => {
-                    res = fields[3].replace(" o__", "");
-                }
-                "family" => {
-                    res = fields[4].replace(" f__", "");
-                }
-                "genus" => {
-                    res = fields[5].replace(" g__", "");
-                }
-                "species" => {
-                    res = fields[6].replace(" s__", "");
-                }
-                &_ => unreachable!("all fields have been taken into account"),
-            }
-        }
+        let tax = self.gtdb_taxonomy.clone().ok_or_else(|| {
+            anyhow!("Failed to perform exact match as gtdb taxonomy is a null field")
+        })?;
+
+        let res = match level {
+            "domain" => tax
+                .replace("d__", "")
+                .split("; ")
+                .next()
+                .unwrap_or("")
+                .to_string(),
+            "phylum" => tax
+                .replace("p__", "")
+                .split("; ")
+                .nth(1)
+                .unwrap_or("")
+                .to_string(),
+            "class" => tax
+                .replace("c__", "")
+                .split("; ")
+                .nth(2)
+                .unwrap_or("")
+                .to_string(),
+            "order" => tax
+                .replace("o__", "")
+                .split("; ")
+                .nth(3)
+                .unwrap_or("")
+                .to_string(),
+            "family" => tax
+                .replace("f__", "")
+                .split("; ")
+                .nth(4)
+                .unwrap_or("")
+                .to_string(),
+            "genus" => tax
+                .replace("g__", "")
+                .split("; ")
+                .nth(5)
+                .unwrap_or("")
+                .to_string(),
+            "species" => tax
+                .replace("s__", "")
+                .split("; ")
+                .nth(6)
+                .unwrap_or("")
+                .to_string(),
+            &_ => unreachable!("all fields have been taken into account"),
+        };
 
         Ok(res)
     }
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 struct SearchResults {
     rows: Vec<SearchResult>,
+    total_rows: u32,
 }
 
 impl SearchResults {
@@ -84,65 +90,48 @@ impl SearchResults {
             .filter(|x| x.get_gtdb_level(level).unwrap() == needle)
             .collect()
     }
+    fn get_total_rows(&self) -> u32 {
+        self.total_rows
+    }
+    fn get_rows(&self) -> Vec<SearchResult> {
+        self.rows.clone()
+    }
 }
 
 pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
     // get args
-    let mut options = HashMap::new();
-    options.insert(
-        "gtdb_species_rep_only".to_owned(),
-        args.get_rep().to_string(),
-    );
-    options.insert(
-        "ncbi_type_material_only".to_owned(),
-        args.get_type_material().to_string(),
-    );
-
     let gid = args.get_gid();
     let partial = args.get_partial();
     let count = args.get_count();
     let raw = args.get_raw();
     let output = args.get_out();
 
-    if let Some(filename) = output.clone() {
-        let path = Path::new(&filename);
-        if path.exists() {
-            bail!("file {} should not already exist", path.display())
-        }
-    }
-
     let needles = args.get_needle();
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(120))
-        .build()
-        .with_context(|| "Failed to create client to GTDB API".to_string())?;
 
     for needle in needles {
         // format the request
         let oneedle = needle.clone();
-        let search_api = api::Search::new(needle, &options);
+        let search_api = SearchAPI::from(needle, &args);
 
         let request_url = search_api.request();
 
-        let response = client
-            .get(&request_url)
-            .send()
+        let response = reqwest::blocking::get(&request_url)
             .with_context(|| "Failed to send request to GTDB API".to_string())?;
 
         utils::check_status(&response)?;
 
-        let genomes: SearchResults = response.json().with_context(|| {
+        let search_result: SearchResults = response.json().with_context(|| {
             "Failed to deserialize request response to search result structure".to_string()
         })?;
 
         // Perfom partial match or not?
         match partial {
             true => {
-                let genome_list = genomes.rows;
-                if genome_list.is_empty() {
-                    writeln!(io::stdout(), "No matching data found in GTDB")?;
-                    std::process::exit(0);
-                }
+                let search_result_list = search_result.get_rows();
+                ensure!(
+                    search_result.get_total_rows() != 0,
+                    "No matching data found in GTDB"
+                );
 
                 // Return number of genomes?
                 match count {
@@ -154,20 +143,20 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                 .create(true)
                                 .open(path)
                                 .with_context(|| format!("Failed to create file {path_clone}"))?;
-                            file.write_all(&genome_list.len().to_ne_bytes())
-                                .with_context(|| format!("Failed to write to {path_clone}"))?;
-                            file.write_all("\n".as_bytes())
-                                .with_context(|| format!("Failed to write to {path_clone}"))?;
+                            file.write_all(
+                                format!("{}{}", &search_result.get_total_rows(), "\n").as_bytes(),
+                            )
+                            .with_context(|| format!("Failed to write to {path_clone}"))?;
                         } else {
-                            writeln!(io::stdout(), "{}", genome_list.len())?;
+                            writeln!(io::stdout(), "{}", search_result.get_total_rows())?;
                         }
                     }
 
                     // Return only genome id?
                     false => match gid {
                         true => {
-                            let list: Vec<Option<String>> =
-                                genome_list.iter().map(|x| x.gid.clone()).collect();
+                            let list: Vec<String> =
+                                search_result_list.iter().map(|x| x.gid.clone()).collect();
 
                             if let Some(path) = output.clone() {
                                 let path_clone = path.clone();
@@ -178,22 +167,16 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                     .with_context(|| {
                                         format!("Failed to create file {path_clone}")
                                     })?;
+
                                 for gid in list {
-                                    file.write_all(gid.unwrap_or("null".to_string()).as_bytes())
+                                    file.write_all(format!("{}{}", gid, "\n").as_bytes())
                                         .with_context(|| {
                                             format!("Failed to write to {path_clone}")
                                         })?;
-                                    file.write_all("\n".as_bytes()).with_context(|| {
-                                        format!("Failed to write to {path_clone}")
-                                    })?;
                                 }
                             } else {
                                 for gid in list {
-                                    writeln!(
-                                        io::stdout(),
-                                        "{}",
-                                        gid.unwrap_or("null".to_string())
-                                    )?;
+                                    writeln!(io::stdout(), "{}", gid)?;
                                 }
                             }
                         }
@@ -209,8 +192,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         .with_context(|| {
                                             format!("Failed to create file {path_clone}")
                                         })?;
-                                    for genome in genome_list {
-                                        let genome_string = serde_json::to_string(&genome)
+                                    for result in search_result_list {
+                                        let genome_string = serde_json::to_string(&result)
                                             .with_context(|| {
                                                 "Failed to convert search result to json string"
                                                     .to_string()
@@ -224,8 +207,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
-                                    for genome in genome_list {
-                                        let genome_string = serde_json::to_string(&genome)
+                                    for result in search_result_list {
+                                        let genome_string = serde_json::to_string(&result)
                                             .with_context(|| {
                                                 "Failed to convert search result to json string"
                                                     .to_string()
@@ -244,8 +227,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         .with_context(|| {
                                             format!("Failed to create file {path_clone}")
                                         })?;
-                                    for genome in genome_list {
-                                        let genome_string = serde_json::to_string_pretty(&genome)
+                                    for result in search_result_list {
+                                        let genome_string = serde_json::to_string_pretty(&result)
                                             .with_context(|| {
                                             "Failed to convert search result to json string"
                                                 .to_string()
@@ -259,8 +242,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
-                                    for genome in genome_list {
-                                        let genome_string = serde_json::to_string_pretty(&genome)
+                                    for result in search_result_list {
+                                        let genome_string = serde_json::to_string_pretty(&result)
                                             .with_context(|| {
                                             "Failed to convert search result to json string"
                                                 .to_string()
@@ -274,11 +257,11 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                 }
             }
             false => {
-                let genome_list = genomes.search_by_level(&args.get_level(), &oneedle);
-                if genome_list.is_empty() {
-                    writeln!(io::stdout(), "No matching data found in GTDB.")?;
-                    std::process::exit(0);
-                }
+                let search_result_list = search_result.search_by_level(&args.get_level(), &oneedle);
+                ensure!(
+                    search_result.get_total_rows() != 0,
+                    "No matching data found in GTDB"
+                );
 
                 // Return number of genomes?
                 match count {
@@ -290,12 +273,12 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                 .create(true)
                                 .open(path)
                                 .with_context(|| format!("Failed to create file {path_clone}"))?;
-                            file.write_all(&genome_list.len().to_ne_bytes())
-                                .with_context(|| format!("Failed to write to {path_clone}"))?;
-                            file.write_all("\n".as_bytes())
-                                .with_context(|| format!("Failed to write to {path_clone}"))?;
+                            file.write_all(
+                                format!("{}{}", search_result.get_total_rows(), "\n").as_bytes(),
+                            )
+                            .with_context(|| format!("Failed to write to {path_clone}"))?;
                         } else {
-                            writeln!(io::stdout(), "{}", genome_list.len())?;
+                            writeln!(io::stdout(), "{}", search_result.get_total_rows())?;
                         }
                     }
 
@@ -303,8 +286,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                     false => {
                         match gid {
                             true => {
-                                let list: Vec<Option<String>> =
-                                    genome_list.iter().map(|x| x.gid.clone()).collect();
+                                let list: Vec<String> =
+                                    search_result_list.iter().map(|x| x.gid.clone()).collect();
 
                                 if let Some(path) = output.clone() {
                                     let path_clone = path.clone();
@@ -316,24 +299,15 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                             format!("Failed to create file {path_clone}")
                                         })?;
                                     for gid in list {
-                                        file.write_all(
-                                            gid.unwrap_or("null".to_string()).as_bytes(),
-                                        )
-                                        .with_context(
-                                            || format!("Failed to write to {path_clone}"),
-                                        )?;
-                                        file.write_all("\n".as_bytes()).with_context(|| {
-                                            format!("Failed to write to {path_clone}")
-                                        })?;
+                                        file.write_all(format!("{}{}", gid, "\n").as_bytes())
+                                            .with_context(|| {
+                                                format!("Failed to write to {path_clone}")
+                                            })?;
                                     }
                                 } else {
                                     let mut stdout_lock = io::stdout().lock();
                                     for gid in list {
-                                        writeln!(
-                                            stdout_lock,
-                                            "{}",
-                                            gid.unwrap_or("null".to_string())
-                                        )?;
+                                        writeln!(stdout_lock, "{}", gid)?;
                                     }
                                 }
                             }
@@ -350,8 +324,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                                 .with_context(|| {
                                                     format!("Failed to create file {path_clone}")
                                                 })?;
-                                            for genome in genome_list {
-                                                let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
+                                            for result in search_result_list {
+                                                let genome_string = serde_json::to_string(&result).with_context(|| "Failed to convert search result to json string".to_string())?;
                                                 file.write_all(genome_string.as_bytes())
                                                     .with_context(|| {
                                                         format!("Failed to write to {path_clone}")
@@ -362,8 +336,8 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                             }
                                         } else {
                                             let mut stdout_lock = io::stdout();
-                                            for genome in genome_list {
-                                                let genome_string = serde_json::to_string(&genome).with_context(|| "Failed to convert search result to json string".to_string())?;
+                                            for result in search_result_list {
+                                                let genome_string = serde_json::to_string(&result).with_context(|| "Failed to convert search result to json string".to_string())?;
                                                 writeln!(stdout_lock, "{genome_string}")?;
                                             }
                                         }
@@ -378,9 +352,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                                 .with_context(|| {
                                                     format!("Failed to create file {path_clone}")
                                                 })?;
-                                            for genome in genome_list {
+                                            for result in search_result_list {
                                                 let genome_string = serde_json::to_string_pretty(
-                                                    &genome,
+                                                    &result,
                                                 )
                                                 .with_context(|| {
                                                     "Failed to convert search result to json string"
@@ -397,9 +371,9 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
                                         } else {
                                             let mut stdout_lock = io::stdout();
 
-                                            for genome in genome_list {
+                                            for result in search_result_list {
                                                 let genome_string = serde_json::to_string_pretty(
-                                                    &genome,
+                                                    &result,
                                                 )
                                                 .with_context(|| {
                                                     "Failed to convert search result to json string"
@@ -424,11 +398,12 @@ pub fn search_gtdb(args: utils::SearchArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn test_genome_get_gtdb_level() {
         let genome = SearchResult {
-            gid: Some("test".to_owned()),
+            gid: "test".to_owned(),
             accession: Some("test".to_owned()),
             ncbi_org_name: Some("test".to_owned()),
             ncbi_taxonomy: Some("test".to_owned()),
@@ -438,7 +413,7 @@ mod tests {
         };
 
         let genome1 = SearchResult {
-            gid: Some("test".to_owned()),
+            gid: "test".to_owned(),
             accession: Some("test".to_owned()),
             ncbi_org_name: Some("test".to_owned()),
             ncbi_taxonomy: Some("test".to_owned()),
@@ -463,7 +438,7 @@ mod tests {
     #[test]
     fn test_search_result_search_by_level() {
         let genome1 = SearchResult {
-            gid: Some("test1".to_owned()),
+            gid: "test1".to_owned(),
             accession: Some("test1".to_owned()),
             ncbi_org_name: Some("test1".to_owned()),
             ncbi_taxonomy: Some("test1".to_owned()),
@@ -473,7 +448,7 @@ mod tests {
         };
 
         let genome2 = SearchResult {
-            gid: Some("test2".to_owned()),
+            gid: "test2".to_owned(),
             accession: Some("test2".to_owned()),
             ncbi_org_name: Some("test2".to_owned()),
             ncbi_taxonomy: Some("test2".to_owned()),
@@ -484,6 +459,7 @@ mod tests {
 
         let search_result = SearchResults {
             rows: vec![genome1.clone(), genome2.clone()],
+            total_rows: 2,
         };
 
         assert_eq!(

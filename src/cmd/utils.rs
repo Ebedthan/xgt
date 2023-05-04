@@ -20,85 +20,151 @@ pub struct SearchArgs {
     pub(crate) out: Option<String>,
 }
 
+impl Default for SearchArgs {
+    fn default() -> Self {
+        SearchArgs {
+            needle: Vec::new(),
+            level: "genus".to_string(),
+            id: false,
+            partial: false,
+            count: false,
+            raw: false,
+            rep: false,
+            type_material: false,
+            out: None,
+        }
+    }
+}
+
 impl SearchArgs {
     pub fn get_needle(&self) -> Vec<String> {
         self.needle.clone()
+    }
+
+    pub fn set_needle(&mut self, v: Vec<String>) {
+        self.needle.extend(v.into_iter());
     }
 
     pub fn get_level(&self) -> String {
         self.level.clone()
     }
 
+    fn set_level(&mut self, s: String) {
+        self.level = s;
+    }
+
     pub fn get_gid(&self) -> bool {
         self.id
+    }
+
+    fn set_id(&mut self, b: bool) {
+        self.id = b;
     }
 
     pub fn get_partial(&self) -> bool {
         self.partial
     }
 
+    fn set_partial(&mut self, b: bool) {
+        self.partial = b;
+    }
+
     pub fn get_count(&self) -> bool {
         self.count
+    }
+
+    fn set_count(&mut self, b: bool) {
+        self.count = b;
     }
 
     pub fn get_raw(&self) -> bool {
         self.raw
     }
 
+    fn set_raw(&mut self, b: bool) {
+        self.raw = b;
+    }
+
     pub fn get_type_material(&self) -> bool {
         self.type_material
+    }
+
+    fn set_type_material(&mut self, b: bool) {
+        self.type_material = b;
     }
 
     pub fn get_rep(&self) -> bool {
         self.rep
     }
 
+    fn set_rep(&mut self, b: bool) {
+        self.rep = b;
+    }
+
     pub fn get_out(&self) -> Option<String> {
         self.out.clone()
     }
 
+    fn set_out(&mut self, s: Option<String>) {
+        self.out = s;
+    }
+
+    pub fn new() -> Self {
+        SearchArgs::default()
+    }
+
     pub fn from_arg_matches(args: &ArgMatches) -> Self {
+        let mut search_args = SearchArgs::new();
+        let mut needles: Vec<String> = Vec::new();
+
         if args.contains_id("file") {
             let file = File::open(args.get_one::<String>("file").unwrap())
                 .expect("file should be well-formatted");
 
-            let needle = BufReader::new(file)
-                .lines()
-                .map(|l| l.expect("Cannot parse line"))
-                .collect();
-
-            SearchArgs {
-                needle,
-                level: args.get_one::<String>("level").unwrap().to_string(),
-                id: args.get_flag("id"),
-                partial: args.get_flag("partial"),
-                count: args.get_flag("count"),
-                raw: args.get_flag("raw"),
-                rep: args.get_flag("rep"),
-                type_material: args.get_flag("type"),
-                out: if args.contains_id("out") {
-                    args.get_one::<String>("out").cloned()
-                } else {
-                    None
-                },
-            }
+            needles.extend(
+                BufReader::new(file)
+                    .lines()
+                    .map(|l| l.expect("Cannot parse line")),
+            );
         } else {
-            SearchArgs {
-                needle: vec![args.get_one::<String>("name").unwrap().to_string()],
-                level: args.get_one::<String>("level").unwrap().to_string(),
-                id: args.get_flag("id"),
-                partial: args.get_flag("partial"),
-                count: args.get_flag("count"),
-                raw: args.get_flag("raw"),
-                rep: args.get_flag("rep"),
-                type_material: args.get_flag("type"),
-                out: if args.contains_id("out") {
-                    args.get_one::<String>("out").cloned()
-                } else {
-                    None
-                },
-            }
+            needles.extend(vec![args.get_one::<String>("name").unwrap().to_string()].into_iter());
         }
+
+        search_args.set_needle(needles);
+
+        if args.contains_id("level") {
+            search_args.set_level(args.get_one::<String>("level").unwrap().to_string());
+        }
+
+        if args.get_flag("id") {
+            search_args.set_id(true);
+        }
+
+        if args.get_flag("partial") {
+            search_args.set_partial(true);
+        }
+
+        if args.get_flag("count") {
+            search_args.set_count(true);
+        }
+
+        if args.get_flag("raw") {
+            search_args.set_raw(true);
+        }
+
+        if args.get_flag("rep") {
+            search_args.set_rep(true);
+        }
+
+        if args.get_flag("type") {
+            search_args.set_type_material(true);
+        }
+
+        if args.contains_id("out") {
+            search_args.set_out(args.get_one::<String>("out").cloned());
+        }
+
+        search_args
     }
 }
 

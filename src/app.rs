@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use clap::{Arg, ArgAction, Command};
 
 pub fn build_app() -> Command {
@@ -55,7 +57,8 @@ pub fn build_app() -> Command {
                         .short('o')
                         .long("out")
                         .help("Redirect output to FILE")
-                        .value_name("FILE"),
+                        .value_name("FILE")
+                        .value_parser(is_existing),
                 )
                 .arg(
                     Arg::new("partial")
@@ -126,7 +129,8 @@ pub fn build_app() -> Command {
                         .short('o')
                         .long("out")
                         .help("Output raw JSON")
-                        .value_name("FILE"),
+                        .value_name("FILE")
+                        .value_parser(is_existing),
                 ),
         )
         .subcommand(
@@ -150,7 +154,8 @@ pub fn build_app() -> Command {
                         .short('o')
                         .long("out")
                         .help("Redirect output to FILE")
-                        .value_name("FILE"),
+                        .value_name("FILE")
+                        .value_parser(is_existing),
                 )
                 .arg(
                     Arg::new("raw")
@@ -186,9 +191,30 @@ fn is_correct_taxon(s: &str) -> Result<String, String> {
     Err("should be formatted like <level_symbol>__<name>".to_string())
 }
 
+fn is_existing(s: &str) -> Result<String, String> {
+    if !Path::new(s).exists() {
+        Ok(s.to_string())
+    } else {
+        Err("file should not already exists".to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_is_existing() {
+        // Test with a non-existing file
+        let result = is_existing("test/acc.txt");
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), "file should not already exists");
+
+        // Test with an existing file
+        let result = is_existing("non_existing_file.txt");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "non_existing_file.txt".to_string());
+    }
 
     #[test]
     fn test_app() {

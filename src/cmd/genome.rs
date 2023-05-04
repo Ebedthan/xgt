@@ -1,5 +1,5 @@
 use super::utils::GenomeArgs;
-use crate::api::GenomeApi;
+use crate::api::GenomeAPI;
 use crate::api::GenomeRequestType;
 
 use anyhow::bail;
@@ -173,10 +173,10 @@ pub struct TaxonHistory {
 
 pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
     // format the request
-    let genome_api: Vec<GenomeApi> = args
+    let genome_api: Vec<GenomeAPI> = args
         .get_accession()
         .iter()
-        .map(|x| GenomeApi::from(x.to_string()))
+        .map(|x| GenomeAPI::from(x.to_string()))
         .collect();
     let request_type = args.get_request_type();
     let raw = args.get_raw();

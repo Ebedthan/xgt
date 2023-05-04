@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::api::TaxonApi;
+use crate::api::TaxonAPI;
 
 use super::utils::{self, TaxonArgs};
 
@@ -49,10 +49,10 @@ impl TaxonSearchResult {
 
 pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     // format the request
-    let taxon_api: Vec<TaxonApi> = args
+    let taxon_api: Vec<TaxonAPI> = args
         .get_name()
         .iter()
-        .map(|x| TaxonApi::from(x.to_string()))
+        .map(|x| TaxonAPI::from(x.to_string()))
         .collect();
     let raw = args.get_raw();
 
@@ -126,10 +126,10 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
 }
 
 pub fn search_taxon(args: TaxonArgs) -> Result<()> {
-    let taxon_api: Vec<TaxonApi> = args
+    let taxon_api: Vec<TaxonAPI> = args
         .get_name()
         .iter()
-        .map(|x| TaxonApi::from(x.to_string()))
+        .map(|x| TaxonAPI::from(x.to_string()))
         .collect();
     let raw = args.get_raw();
     let partial = args.get_partial();

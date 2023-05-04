@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use crate::cmd::utils::SearchArgs;
 
 #[derive(Debug, Clone)]
-pub struct Search {
+pub struct SearchAPI {
     search: String,
     page: i32,
     items_per_page: i32,
@@ -13,70 +13,88 @@ pub struct Search {
     ncbi_type_material_only: bool,
 }
 
-impl Search {
-    pub fn new(search: String, options: &HashMap<String, String>) -> Self {
-        Search {
-            search,
-            page: options
-                .get("page")
-                .unwrap_or(&String::from("1"))
-                .parse::<i32>()
-                .unwrap(),
-            items_per_page: options
-                .get("items_per_page")
-                .unwrap_or(&String::from("100000000"))
-                .parse::<i32>()
-                .unwrap(),
-            sort_by: String::from(options.get("sort_by").unwrap_or(&String::from(""))),
-            sort_desc: String::from(options.get("sort_desc").unwrap_or(&String::from(""))),
-            search_field: String::from(options.get("search_field").unwrap_or(&String::from("all"))),
-            filter_text: String::from(options.get("filter_text").unwrap_or(&String::from(""))),
-            gtdb_species_rep_only: matches!(
-                options
-                    .get("gtdb_species_rep_only")
-                    .unwrap_or(&String::from("false"))
-                    .as_str(),
-                "true"
-            ),
-            ncbi_type_material_only: matches!(
-                options
-                    .get("ncbi_type_material_only")
-                    .unwrap_or(&String::from("false"))
-                    .as_str(),
-                "true"
-            ),
+impl Default for SearchAPI {
+    fn default() -> Self {
+        SearchAPI {
+            search: String::new(),
+            page: 1,
+            items_per_page: 1_000_000_000,
+            sort_by: String::new(),
+            sort_desc: String::new(),
+            search_field: "all".to_string(),
+            filter_text: String::new(),
+            gtdb_species_rep_only: false,
+            ncbi_type_material_only: false,
         }
+    }
+}
+
+impl SearchAPI {
+    pub fn new() -> Self {
+        SearchAPI::default()
+    }
+
+    fn set_search(&mut self, s: String) {
+        self.search = s;
+    }
+
+    fn set_gtdb_species_rep_only(&mut self, b: bool) {
+        self.gtdb_species_rep_only = b;
+    }
+
+    fn set_ncbi_type_material_only(&mut self, b: bool) {
+        self.ncbi_type_material_only = b;
+    }
+
+    pub fn from(search: String, args: &SearchArgs) -> Self {
+        let mut search_api = SearchAPI::new();
+        search_api.set_search(search);
+        search_api.set_gtdb_species_rep_only(args.get_rep());
+        search_api.set_ncbi_type_material_only(args.get_type_material());
+
+        search_api
     }
 
     pub fn request(self) -> String {
-        let sort_by = if self.sort_by == *"" {
-            String::from("")
-        } else {
-            format!("&sortBy={}", self.sort_by)
-        };
+        let mut url = String::from("https://api.gtdb.ecogenomic.org/search/gtdb?");
 
-        let sort_desc = if self.sort_desc == *"" {
-            String::from("")
-        } else {
-            format!("&sortDesc={}", self.sort_desc)
-        };
+        if !self.search.is_empty() {
+            url += &format!("search={}", self.search);
+        }
 
-        let filter_text = if self.filter_text == *"" {
-            String::from("")
-        } else {
-            format!("&filterText={}", self.filter_text)
-        };
+        if self.page != 0 {
+            url += &format!("&page={}", self.page);
+        }
 
-        format!("https://api.gtdb.ecogenomic.org/search/gtdb?search={}&page={}&itemsPerPage={}{}{}&searchField={}{}&gtdbSpeciesRepOnly={}&ncbiTypeMaterialOnly={}", 
-            self.search,
-            self.page,
-            self.items_per_page,
-            sort_by,
-            sort_desc,
-            self.search_field,
-            filter_text,
-            self.gtdb_species_rep_only,
-            self.ncbi_type_material_only)
+        if self.items_per_page != 0 {
+            url += &format!("&itemsPerPage={}", self.items_per_page);
+        }
+
+        if !self.sort_by.is_empty() {
+            url += &format!("&sortBy={}", self.sort_by);
+        }
+
+        if !self.sort_desc.is_empty() {
+            url += &format!("&sortDesc={}", self.sort_desc);
+        }
+
+        if !self.search_field.is_empty() {
+            url += &format!("&searchField={}", self.search_field);
+        }
+
+        if !self.filter_text.is_empty() {
+            url += &format!("&filterText={}", self.filter_text);
+        }
+
+        if self.gtdb_species_rep_only {
+            url += "&gtdbSpeciesRepOnly=true";
+        }
+
+        if self.ncbi_type_material_only {
+            url += "&ncbiTypeMaterialOnly=true";
+        }
+
+        url
     }
 }
 
@@ -98,13 +116,13 @@ impl GenomeRequestType {
 }
 
 #[derive(Debug, Clone)]
-pub struct GenomeApi {
+pub struct GenomeAPI {
     accession: String,
 }
 
-impl GenomeApi {
+impl GenomeAPI {
     pub fn from(accession: String) -> Self {
-        GenomeApi { accession }
+        GenomeAPI { accession }
     }
 
     pub fn request(&self, request_type: GenomeRequestType) -> String {
@@ -117,13 +135,13 @@ impl GenomeApi {
 }
 
 #[derive(Debug, Clone)]
-pub struct TaxonApi {
+pub struct TaxonAPI {
     name: String,
 }
 
-impl TaxonApi {
+impl TaxonAPI {
     pub fn from(name: String) -> Self {
-        TaxonApi { name }
+        TaxonAPI { name }
     }
     pub fn get_name_request(&self) -> String {
         format!("https://api.gtdb.ecogenomic.org/taxon/{}", self.name)
@@ -143,54 +161,13 @@ impl TaxonApi {
 mod tests {
     use super::*;
 
-    use std::collections::HashMap;
-
     #[test]
     fn test_new() {
-        let options: HashMap<String, String> = [
-            ("items_per_page".to_string(), "20".to_string()),
-            ("sort_by".to_string(), "name".to_string()),
-            ("sort_desc".to_string(), "false".to_string()),
-            ("search_field".to_string(), "all".to_string()),
-            ("filter_text".to_string(), "example".to_string()),
-            ("gtdb_species_rep_only".to_string(), "false".to_string()),
-            ("ncbi_type_material_only".to_string(), "false".to_string()),
-        ]
-        .iter()
-        .cloned()
-        .collect();
-
-        let search = Search::new("test".to_string(), &options);
+        let args = SearchArgs::new();
+        let search = SearchAPI::from("test".to_string(), &args);
         assert_eq!(search.search, "test");
         assert_eq!(search.page, 1);
-        assert_eq!(search.items_per_page, 20);
-        assert_eq!(search.sort_by, "name");
-        assert_eq!(search.sort_desc, "false");
-        assert_eq!(search.search_field, "all");
-        assert_eq!(search.filter_text, "example");
-        assert!(!search.gtdb_species_rep_only);
-        assert!(!search.ncbi_type_material_only);
-    }
-
-    #[test]
-    fn test_new_next() {
-        let options: HashMap<String, String> = [
-            ("items_per_page".to_string(), "20".to_string()),
-            ("sort_by".to_string(), "".to_string()),
-            ("sort_desc".to_string(), "".to_string()),
-            ("search_field".to_string(), "all".to_string()),
-            ("filter_text".to_string(), "".to_string()),
-            ("gtdb_species_rep_only".to_string(), "false".to_string()),
-            ("ncbi_type_material_only".to_string(), "false".to_string()),
-        ]
-        .iter()
-        .cloned()
-        .collect();
-
-        let search = Search::new("test".to_string(), &options);
-        assert_eq!(search.search, "test");
-        assert_eq!(search.page, 1);
-        assert_eq!(search.items_per_page, 20);
+        assert_eq!(search.items_per_page, 1_000_000_000);
         assert_eq!(search.sort_by, "");
         assert_eq!(search.sort_desc, "");
         assert_eq!(search.search_field, "all");
@@ -200,8 +177,52 @@ mod tests {
     }
 
     #[test]
+    fn test_search_api_default() {
+        let api = SearchAPI::default();
+        assert_eq!(api.search, "");
+        assert_eq!(api.page, 1);
+        assert_eq!(api.items_per_page, 1_000_000_000);
+        assert_eq!(api.sort_by, "");
+        assert_eq!(api.sort_desc, "");
+        assert_eq!(api.search_field, "all");
+        assert_eq!(api.filter_text, "");
+        assert_eq!(api.gtdb_species_rep_only, false);
+        assert_eq!(api.ncbi_type_material_only, false);
+    }
+
+    #[test]
+    fn test_set_search() {
+        let mut api = SearchAPI::new();
+        api.set_search(String::from("test"));
+        assert_eq!(api.search, String::from("test"));
+    }
+
+    #[test]
+    fn test_set_gtdb_species_rep_only() {
+        let mut api = SearchAPI::new();
+        api.set_gtdb_species_rep_only(true);
+        assert_eq!(api.gtdb_species_rep_only, true);
+    }
+
+    #[test]
+    fn test_set_ncbi_type_material_only() {
+        let mut api = SearchAPI::new();
+        api.set_ncbi_type_material_only(true);
+        assert_eq!(api.ncbi_type_material_only, true);
+    }
+
+    #[test]
+    fn test_from() {
+        let args = SearchArgs::new();
+        let api = SearchAPI::from(String::from("test"), &args);
+        assert_eq!(api.search, String::from("test"));
+        assert_eq!(api.gtdb_species_rep_only, false);
+        assert_eq!(api.ncbi_type_material_only, false);
+    }
+
+    #[test]
     fn test_request() {
-        let search = Search {
+        let search = SearchAPI {
             search: "test".to_string(),
             page: 2,
             items_per_page: 20,
@@ -212,13 +233,13 @@ mod tests {
             gtdb_species_rep_only: true,
             ncbi_type_material_only: false,
         };
-        let expected = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=false";
+        let expected = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true";
         assert_eq!(search.request(), expected);
     }
 
     #[test]
     fn test_genome_request() {
-        let genome_api = GenomeApi::from(String::from("accession"));
+        let genome_api = GenomeAPI::from(String::from("accession"));
 
         let metadata_request = genome_api.request(GenomeRequestType::Metadata);
         let expected_metadata_request =
@@ -241,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_get_name_request() {
-        let taxon = TaxonApi::from("d__Bacteria".to_string());
+        let taxon = TaxonAPI::from("d__Bacteria".to_string());
         assert_eq!(
             taxon.get_name_request(),
             "https://api.gtdb.ecogenomic.org/taxon/d__Bacteria"
@@ -250,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_get_name() {
-        let taxon = TaxonApi::from("Firmicutes".to_string());
+        let taxon = TaxonAPI::from("Firmicutes".to_string());
         assert_eq!(taxon.get_name(), "Firmicutes");
     }
 }
