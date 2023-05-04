@@ -46,9 +46,9 @@ impl SearchAPI {
         self.ncbi_type_material_only = b;
     }
 
-    pub fn from(search: String, args: &SearchArgs) -> Self {
+    pub fn from(search: &str, args: &SearchArgs) -> Self {
         let mut search_api = SearchAPI::new();
-        search_api.set_search(search);
+        search_api.set_search(search.to_string());
         search_api.set_gtdb_species_rep_only(args.get_rep());
         search_api.set_ncbi_type_material_only(args.get_type_material());
 
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn test_new() {
         let args = SearchArgs::new();
-        let search = SearchAPI::from("test".to_string(), &args);
+        let search = SearchAPI::from("test", &args);
         assert_eq!(search.search, "test");
         assert_eq!(search.page, 1);
         assert_eq!(search.items_per_page, 1_000_000_000);
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn test_from() {
         let args = SearchArgs::new();
-        let api = SearchAPI::from(String::from("test"), &args);
+        let api = SearchAPI::from("test", &args);
         assert_eq!(api.search, String::from("test"));
         assert_eq!(api.gtdb_species_rep_only, false);
         assert_eq!(api.ncbi_type_material_only, false);

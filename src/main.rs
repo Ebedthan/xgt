@@ -15,7 +15,11 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         Some(("search", sub_matches)) => {
             let args = utils::SearchArgs::from_arg_matches(sub_matches);
-            search::search_gtdb(args)?;
+            if sub_matches.contains_id("partial") {
+                search::partial_search(args)?;
+            } else {
+                search::exact_search(args)?;
+            }
         }
         Some(("genome", sub_matches)) => {
             let args = utils::GenomeArgs::from_arg_matches(sub_matches);
@@ -51,7 +55,6 @@ mod tests {
         let needle = vec!["Aminobacter".to_string(), "Rhizobium".to_string()];
         let level = "phylum".to_string();
         let id = true;
-        let partial = true;
         let count = true;
         let raw = true;
         let rep = true;
@@ -80,7 +83,6 @@ mod tests {
         assert_eq!(args.get_needle(), needle);
         assert_eq!(args.get_level(), level);
         assert_eq!(args.get_gid(), id);
-        assert_eq!(args.get_partial(), partial);
         assert_eq!(args.get_count(), count);
         assert_eq!(args.get_raw(), raw);
         assert_eq!(args.get_rep(), rep);

@@ -11,7 +11,6 @@ pub struct SearchArgs {
     pub(crate) needle: Vec<String>,
     pub(crate) level: String,
     pub(crate) id: bool,
-    pub(crate) partial: bool,
     pub(crate) count: bool,
     pub(crate) raw: bool,
     pub(crate) rep: bool,
@@ -25,7 +24,6 @@ impl Default for SearchArgs {
             needle: Vec::new(),
             level: "genus".to_string(),
             id: false,
-            partial: false,
             count: false,
             raw: false,
             rep: false,
@@ -58,14 +56,6 @@ impl SearchArgs {
 
     fn set_id(&mut self, b: bool) {
         self.id = b;
-    }
-
-    pub fn get_partial(&self) -> bool {
-        self.partial
-    }
-
-    fn set_partial(&mut self, b: bool) {
-        self.partial = b;
     }
 
     pub fn get_count(&self) -> bool {
@@ -137,10 +127,6 @@ impl SearchArgs {
 
         if args.get_flag("id") {
             search_args.set_id(true);
-        }
-
-        if args.get_flag("partial") {
-            search_args.set_partial(true);
         }
 
         if args.get_flag("count") {
@@ -331,7 +317,6 @@ mod tests {
             needle: vec!["needle".to_string()],
             level: "level".to_string(),
             id: false,
-            partial: false,
             count: false,
             raw: false,
             rep: false,
@@ -341,7 +326,6 @@ mod tests {
         assert_eq!(args.get_needle(), vec!["needle".to_string()]);
         assert_eq!(args.get_level(), "level".to_string());
         assert!(!args.get_gid());
-        assert!(!args.get_partial());
         assert!(!args.get_count());
         assert!(!args.get_raw());
         assert!(!args.get_rep());
