@@ -5,7 +5,7 @@ use super::utils;
 
 use crate::api::search_api::SearchAPI;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 struct SearchResult {
     gid: String,
@@ -81,12 +81,9 @@ struct SearchResults {
 }
 
 impl SearchResults {
-    fn search_by_level(&self, level: &str, needle: &str) -> Vec<SearchResult> {
-        self.rows
-            .clone()
-            .into_iter()
-            .filter(|x| x.get_gtdb_level(level).unwrap() == needle)
-            .collect()
+    fn retain(&mut self, l: &str, c: &str) {
+        self.rows.retain(|x| x.get_gtdb_level(l).unwrap() == c);
+        self.total_rows = self.rows.len() as u32;
     }
     fn get_total_rows(&self) -> u32 {
         self.total_rows
@@ -198,10 +195,10 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 
         utils::check_status(&response)?;
 
-        let search_result: SearchResults = response.json().with_context(|| {
+        let mut search_result: SearchResults = response.json().with_context(|| {
             "Failed to deserialize request response to search result structure".to_string()
         })?;
-        let search_result_list = search_result.search_by_level(&args.get_level(), &oneedle);
+        search_result.retain(&args.get_level(), &needle);
         ensure!(
             search_result.get_total_rows() != 0,
             "No matching data found in GTDB"
@@ -221,7 +218,7 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
                 match gid {
                     true => {
                         let list: Vec<String> =
-                            search_result_list.iter().map(|x| x.gid.clone()).collect();
+                            search_result.rows.iter().map(|x| x.gid.clone()).collect();
 
                         for gid in list {
                             utils::write_to_output(format!("{}{}", gid, "\n"), output.clone())?;
@@ -230,7 +227,7 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
                     // Return all data in pretty print json?
                     false => match raw {
                         true => {
-                            for result in search_result_list {
+                            for result in search_result.rows {
                                 let genome_string =
                                     serde_json::to_string(&result).with_context(|| {
                                         "Failed to convert search result to json string".to_string()
@@ -242,7 +239,7 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
                             }
                         }
                         false => {
-                            for result in search_result_list {
+                            for result in search_result.rows {
                                 let genome_string = serde_json::to_string_pretty(&result)
                                     .with_context(|| {
                                         "Failed to convert search result to json string".to_string()
@@ -265,214 +262,161 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[test]
-    fn test_genome_get_gtdb_level() {
-        let genome = SearchResult {
-            gid: "test".to_owned(),
-            accession: Some("test".to_owned()),
-            ncbi_org_name: Some("test".to_owned()),
-            ncbi_taxonomy: Some("test".to_owned()),
-            gtdb_taxonomy: Some("d__Bacteria; p__Actinobacteriota; c__Actinobacteria; o__Actinomycetales; f__Streptomycetaceae; g__Streptomyces; s__".to_owned()),
-            is_gtdb_species_rep: Some(false),
-            is_ncbi_type_material: Some(false),
+    fn test_retain() {
+        let mut results = SearchResults {
+            rows: vec![
+                SearchResult {
+                    gid: "1".into(),
+                    gtdb_taxonomy: Some("d__Bacteria; p__Proteobacteria; c__Gammaproteobacteria; o__Alteromonadales; f__Alteromonadaceae; g__Alteromonas; s__".into()),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "2".into(),
+                    gtdb_taxonomy: Some("d__Bacteria; p__Firmicutes; c__Bacilli; o__Bacillales; f__Bacillaceae; g__Bacillus; s__".into()),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "3".into(),
+                    gtdb_taxonomy: Some("d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__".into()),
+                    ..Default::default()
+                },
+            ],
+            total_rows: 3,
         };
+        results.retain("phylum", "Proteobacteria");
+        assert_eq!(results.get_rows().len(), 2);
+        assert_eq!(results.get_total_rows(), 2);
+    }
 
-        let genome1 = SearchResult {
-            gid: "test".to_owned(),
-            accession: Some("test".to_owned()),
-            ncbi_org_name: Some("test".to_owned()),
-            ncbi_taxonomy: Some("test".to_owned()),
-            gtdb_taxonomy: Some("".to_owned()),
-            is_gtdb_species_rep: Some(false),
-            is_ncbi_type_material: Some(false),
+    #[test]
+    fn test_get_total_rows() {
+        let results = SearchResults {
+            rows: vec![
+                SearchResult::default(),
+                SearchResult::default(),
+                SearchResult::default(),
+            ],
+            total_rows: 3,
         };
+        assert_eq!(results.get_total_rows(), 3);
+    }
 
-        assert_eq!(genome.get_gtdb_level("domain").unwrap(), "Bacteria");
-        assert_eq!(genome.get_gtdb_level("phylum").unwrap(), "Actinobacteriota");
-        assert_eq!(genome.get_gtdb_level("class").unwrap(), "Actinobacteria");
-        assert_eq!(genome.get_gtdb_level("order").unwrap(), "Actinomycetales");
+    #[test]
+    fn test_get_rows() {
+        let results = SearchResults {
+            rows: vec![
+                SearchResult {
+                    gid: "1".into(),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "2".into(),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "3".into(),
+                    ..Default::default()
+                },
+            ],
+            total_rows: 3,
+        };
+        assert_eq!(results.get_rows().len(), 3);
+    }
+
+    #[test]
+    fn test_get_gtdb_level() {
+        let search_result = SearchResult {
+            gid: "1".into(),
+            gtdb_taxonomy: Some("d__Bacteria; p__Firmicutes; c__Bacilli; o__Bacillales; f__Bacillaceae; g__Bacillus; s__".into()),
+            ..Default::default()
+        };
         assert_eq!(
-            genome.get_gtdb_level("family").unwrap(),
-            "Streptomycetaceae"
+            search_result.get_gtdb_level("phylum").unwrap(),
+            "Firmicutes"
         );
-        assert_eq!(genome.get_gtdb_level("genus").unwrap(), "Streptomyces");
-        assert_eq!(genome.get_gtdb_level("species").unwrap(), "".to_owned());
-        assert_eq!(genome1.get_gtdb_level("genus").unwrap(), "".to_owned());
+        assert_eq!(search_result.get_gtdb_level("class").unwrap(), "Bacilli");
+        assert_eq!(search_result.get_gtdb_level("species").unwrap(), "");
     }
 
     #[test]
-    fn test_search_result_search_by_level() {
-        let genome1 = SearchResult {
-            gid: "test1".to_owned(),
-            accession: Some("test1".to_owned()),
-            ncbi_org_name: Some("test1".to_owned()),
-            ncbi_taxonomy: Some("test1".to_owned()),
-            gtdb_taxonomy: Some("d__Bacteria; p__Actinobacteriota; c__Actinobacteria; o__Actinomycetales; f__Streptomycetaceae; g__Streptomyces; s__".to_owned()),
-            is_gtdb_species_rep: Some(false),
-            is_ncbi_type_material: Some(false),
-        };
-
-        let genome2 = SearchResult {
-            gid: "test2".to_owned(),
-            accession: Some("test2".to_owned()),
-            ncbi_org_name: Some("test2".to_owned()),
-            ncbi_taxonomy: Some("test2".to_owned()),
-            gtdb_taxonomy: Some("d__Bacteria; p__Firmicutes; c__Bacilli; o__Lactobacillales; f__Lactobacillaceae; g__Lactobacillus; s__".to_owned()),
-            is_gtdb_species_rep: Some(false),
-            is_ncbi_type_material: Some(false),
-        };
-
-        let search_result = SearchResults {
-            rows: vec![genome1.clone(), genome2.clone()],
-            total_rows: 2,
-        };
-
-        assert_eq!(
-            search_result.search_by_level("phylum", "Actinobacteriota"),
-            vec![genome1.clone()]
-        );
-        assert_eq!(
-            search_result.search_by_level("class", "Actinobacteria"),
-            vec![genome1.clone()]
-        );
-        assert_eq!(
-            search_result.search_by_level("genus", "Streptomyces"),
-            vec![genome1]
-        );
-        assert_eq!(
-            search_result.search_by_level("genus", "Lactobacillus"),
-            vec![genome2]
-        );
+    fn test_exact_search_count() {
+        let mut args = utils::SearchArgs::new();
+        args.set_needle(vec!["Azorhizobium".to_string()]);
+        args.set_count(true);
+        args.set_out(Some("test.txt".to_string()));
+        let res = exact_search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("6\n".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
     }
 
     #[test]
-    fn test_search_gtdb() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: false,
-            rep: false,
-            raw: false,
-            type_material: false,
-            count: false,
-            out: None,
-        };
-
-        let args1 = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: true,
-            rep: true,
-            raw: true,
-            type_material: true,
-            count: true,
-            out: None,
-        };
-
-        assert!(partial_search(args).is_ok());
-        assert!(exact_search(args1).is_ok());
+    fn test_partial_search_count() {
+        let mut args = utils::SearchArgs::new();
+        args.set_needle(vec!["Azorhizobium".to_string()]);
+        args.set_count(true);
+        args.set_out(Some("test.txt".to_string()));
+        let res = partial_search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("11\n".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
     }
 
     #[test]
-    fn test_search_gtdb_file_count_true() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: false,
-            rep: false,
-            raw: false,
-            type_material: false,
-            count: true,
-            out: Some(String::from("search")),
-        };
-
-        assert!(exact_search(args).is_ok());
-        std::fs::remove_file(Path::new("search")).unwrap();
+    fn test_exact_search_id() {
+        let mut args = utils::SearchArgs::new();
+        args.set_needle(vec!["Azorhizobium".to_string()]);
+        args.set_id(true);
+        args.set_out(Some("test.txt".to_string()));
+        let res = exact_search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("GCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1\n".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
     }
 
     #[test]
-    fn test_search_gtdb_file_count_false() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: false,
-            rep: false,
-            raw: false,
-            type_material: false,
-            count: false,
-            out: Some(String::from("search1")),
-        };
-
-        assert!(exact_search(args).is_ok());
-        std::fs::remove_file(Path::new("search1")).unwrap();
+    fn test_partial_search_id() {
+        let mut args = utils::SearchArgs::new();
+        args.set_needle(vec!["Azorhizobium".to_string()]);
+        args.set_id(true);
+        args.set_out(Some("test.txt".to_string()));
+        let res = partial_search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("GCA_002279595.1\nGCA_002280795.1\nGCA_002280945.1\nGCA_002281175.1\nGCA_002282175.1\nGCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1\n".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
     }
 
     #[test]
-    fn test_search_gtdb_file_gid_true() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: true,
-            rep: false,
-            raw: false,
-            type_material: false,
-            count: true,
-            out: Some(String::from("search3")),
-        };
-
-        assert!(exact_search(args).is_ok());
-        std::fs::remove_file(Path::new("search3")).unwrap();
+    fn test_exact_search_raw() {
+        let mut args = utils::SearchArgs::new();
+        args.set_needle(vec!["Azorhizobium".to_string()]);
+        args.set_raw(true);
+        args.set_id(true);
+        args.set_out(Some("test.txt".to_string()));
+        let res = exact_search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("GCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1\n".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
     }
 
     #[test]
-    fn test_search_gtdb_file_gid_false() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: false,
-            rep: false,
-            raw: true,
-            type_material: false,
-            count: false,
-            out: None,
-        };
-
-        assert!(exact_search(args).is_ok());
-    }
-
-    #[test]
-    fn test_search_gtdb_file_gid_false_no_out() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: true,
-            rep: false,
-            raw: true,
-            type_material: false,
-            count: false,
-            out: Some(String::from("search4")),
-        };
-
-        assert!(exact_search(args).is_ok());
-        std::fs::remove_file(Path::new("search4")).unwrap();
-    }
-
-    #[test]
-    fn test_search_gtdb_file_gid_false_no_out_1() {
-        let args = utils::SearchArgs {
-            needle: vec!["Aminobacter".to_owned()],
-            level: "genus".to_owned(),
-            id: true,
-            rep: false,
-            raw: false,
-            type_material: false,
-            count: false,
-            out: Some(String::from("search5")),
-        };
-
-        assert!(exact_search(args).is_ok());
-        std::fs::remove_file(Path::new("search5")).unwrap();
+    fn test_partial_search_raw() {
+        let mut args = utils::SearchArgs::new();
+        args.set_needle(vec!["Azorhizobium".to_string()]);
+        args.set_raw(true);
+        args.set_id(true);
+        args.set_out(Some("test.txt".to_string()));
+        let res = partial_search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("GCA_002279595.1\nGCA_002280795.1\nGCA_002280945.1\nGCA_002281175.1\nGCA_002282175.1\nGCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1\n".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
     }
 }

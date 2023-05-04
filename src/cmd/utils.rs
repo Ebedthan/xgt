@@ -56,7 +56,7 @@ impl SearchArgs {
         self.id
     }
 
-    fn set_id(&mut self, b: bool) {
+    pub(crate) fn set_id(&mut self, b: bool) {
         self.id = b;
     }
 
@@ -64,7 +64,7 @@ impl SearchArgs {
         self.count
     }
 
-    fn set_count(&mut self, b: bool) {
+    pub(crate) fn set_count(&mut self, b: bool) {
         self.count = b;
     }
 
@@ -72,7 +72,7 @@ impl SearchArgs {
         self.raw
     }
 
-    fn set_raw(&mut self, b: bool) {
+    pub(crate) fn set_raw(&mut self, b: bool) {
         self.raw = b;
     }
 
@@ -96,7 +96,7 @@ impl SearchArgs {
         self.out.clone()
     }
 
-    fn set_out(&mut self, s: Option<String>) {
+    pub(crate) fn set_out(&mut self, s: Option<String>) {
         self.out = s;
     }
 
@@ -282,14 +282,14 @@ pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
                 .append(true)
                 .create(true)
                 .open(path)
-                .with_context(|| format!("Failed to create file"))?,
+                .with_context(|| "Failed to create file".to_string())?,
         ),
         None => Box::new(io::stdout()),
     };
 
     writer
         .write_all(s.as_bytes())
-        .with_context(|| format!("Failed to write"))?;
+        .with_context(|| "Failed to write".to_string())?;
 
     Ok(())
 }

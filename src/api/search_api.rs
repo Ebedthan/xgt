@@ -18,7 +18,7 @@ impl Default for SearchAPI {
         SearchAPI {
             search: String::new(),
             page: 1,
-            items_per_page: 1_000_000_000,
+            items_per_page: 100,
             sort_by: String::new(),
             sort_desc: String::new(),
             search_field: "all".to_string(),
@@ -108,7 +108,7 @@ mod tests {
         let search = SearchAPI::from("test", &args);
         assert_eq!(search.search, "test");
         assert_eq!(search.page, 1);
-        assert_eq!(search.items_per_page, 1_000_000_000);
+        assert_eq!(search.items_per_page, 100);
         assert_eq!(search.sort_by, "");
         assert_eq!(search.sort_desc, "");
         assert_eq!(search.search_field, "all");
@@ -122,7 +122,7 @@ mod tests {
         let api = SearchAPI::default();
         assert_eq!(api.search, "");
         assert_eq!(api.page, 1);
-        assert_eq!(api.items_per_page, 1_000_000_000);
+        assert_eq!(api.items_per_page, 100);
         assert_eq!(api.sort_by, "");
         assert_eq!(api.sort_desc, "");
         assert_eq!(api.search_field, "all");

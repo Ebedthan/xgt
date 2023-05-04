@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         Some(("search", sub_matches)) => {
             let args = utils::SearchArgs::from_arg_matches(sub_matches);
-            if sub_matches.contains_id("partial") {
+            if sub_matches.get_flag("partial") {
                 search::partial_search(args)?;
             } else {
                 search::exact_search(args)?;
@@ -23,9 +23,9 @@ fn main() -> Result<()> {
         }
         Some(("genome", sub_matches)) => {
             let args = utils::GenomeArgs::from_arg_matches(sub_matches);
-            if sub_matches.contains_id("history") {
+            if sub_matches.get_flag("history") {
                 genome::get_genome_taxon_history(args)?;
-            } else if sub_matches.contains_id("metadata") {
+            } else if sub_matches.get_flag("metadata") {
                 genome::get_genome_metadata(args)?;
             } else {
                 genome::get_genome_card(args)?
