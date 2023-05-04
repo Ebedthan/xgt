@@ -1,4 +1,3 @@
-use crate::api::GenomeRequestType;
 use anyhow::{bail, Result};
 use clap::ArgMatches;
 
@@ -171,7 +170,6 @@ impl SearchArgs {
 #[derive(Debug, Clone)]
 pub struct GenomeArgs {
     pub(crate) accession: Vec<String>,
-    pub(crate) request_type: GenomeRequestType,
     pub(crate) raw: bool,
     pub(crate) output: Option<String>,
 }
@@ -179,10 +177,6 @@ pub struct GenomeArgs {
 impl GenomeArgs {
     pub fn get_accession(&self) -> Vec<String> {
         self.accession.clone()
-    }
-
-    pub fn get_request_type(&self) -> GenomeRequestType {
-        self.request_type
     }
 
     pub fn get_raw(&self) -> bool {
@@ -213,39 +207,14 @@ impl GenomeArgs {
             );
         }
 
-        if arg_matches.get_flag("history") {
-            GenomeArgs {
-                accession,
-                request_type: GenomeRequestType::TaxonHistory,
-                raw: arg_matches.get_flag("raw"),
-                output: if arg_matches.contains_id("out") {
-                    arg_matches.get_one::<String>("out").cloned()
-                } else {
-                    None
-                },
-            }
-        } else if arg_matches.get_flag("metadata") {
-            GenomeArgs {
-                accession,
-                request_type: GenomeRequestType::Metadata,
-                raw: arg_matches.get_flag("raw"),
-                output: if arg_matches.contains_id("out") {
-                    arg_matches.get_one::<String>("out").cloned()
-                } else {
-                    None
-                },
-            }
-        } else {
-            GenomeArgs {
-                accession,
-                request_type: GenomeRequestType::Card,
-                raw: arg_matches.get_flag("raw"),
-                output: if arg_matches.contains_id("out") {
-                    arg_matches.get_one::<String>("out").cloned()
-                } else {
-                    None
-                },
-            }
+        GenomeArgs {
+            accession,
+            raw: arg_matches.get_flag("raw"),
+            output: if arg_matches.contains_id("out") {
+                arg_matches.get_one::<String>("out").cloned()
+            } else {
+                None
+            },
         }
     }
 }
@@ -327,7 +296,6 @@ mod tests {
     fn test_get_accession() {
         let genome_args = GenomeArgs {
             accession: vec![String::from("NC_000001.11")],
-            request_type: GenomeRequestType::Card,
             raw: false,
             output: None,
         };
@@ -336,22 +304,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_request_type() {
-        let genome_args = GenomeArgs {
-            accession: vec![String::from("NC_000001.11")],
-            request_type: GenomeRequestType::Card,
-            raw: false,
-            output: None,
-        };
-
-        assert_eq!(genome_args.get_request_type(), GenomeRequestType::Card);
-    }
-
-    #[test]
     fn test_get_raw() {
         let genome_args = GenomeArgs {
             accession: vec![String::from("NC_000001.11")],
-            request_type: GenomeRequestType::Card,
             raw: true,
             output: None,
         };
@@ -363,7 +318,6 @@ mod tests {
     fn test_get_output() {
         let genome_args = GenomeArgs {
             accession: vec![String::from("NC_000001.11")],
-            request_type: GenomeRequestType::Card,
             raw: false,
             output: Some(String::from("output4.txt")),
         };

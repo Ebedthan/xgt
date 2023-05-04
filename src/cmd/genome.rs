@@ -2,19 +2,17 @@ use super::utils::GenomeArgs;
 use crate::api::GenomeAPI;
 use crate::api::GenomeRequestType;
 
-use anyhow::bail;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct GenomeResult {
+pub struct GenomeCard {
     genome: Genome,
     metadata_nucleotide: MetadataNucleotide,
     metadata_gene: MetadataGene,
-    metadata_ncbi: MetadataNcbi,
+    metadata_ncbi: MetadataNCBI,
     metadata_type_material: MetadataTypeMaterial,
     #[serde(alias = "metadataTaxonomy")]
     metadata_taxonomy: MetadataTaxonomy,
@@ -71,7 +69,7 @@ pub struct MetadataGene {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_ncbi")]
-pub struct MetadataNcbi {
+pub struct MetadataNCBI {
     ncbi_genbank_assembly_accession: Option<String>,
     ncbi_strain_identifiers: Option<String>,
     ncbi_assembly_level: Option<String>,
@@ -167,165 +165,188 @@ pub struct History {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct TaxonHistory {
+pub struct GenomeTaxonHistory {
     data: Vec<History>,
 }
 
-pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
-    // format the request
+pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
     let genome_api: Vec<GenomeAPI> = args
         .get_accession()
         .iter()
         .map(|x| GenomeAPI::from(x.to_string()))
         .collect();
-    let request_type = args.get_request_type();
     let raw = args.get_raw();
 
-    if let Some(filename) = args.get_output() {
-        let path = Path::new(&filename);
-        if path.exists() {
-            bail!("file {} should not already exist", path.display());
-        }
-    }
-
     for accession in genome_api {
-        let request_url = accession.request(request_type);
+        let request_url = accession.request(GenomeRequestType::Metadata);
 
         let response = reqwest::blocking::get(request_url)
             .with_context(|| "Failed to get response from GTDB API".to_string())?;
 
-        if request_type == GenomeRequestType::Metadata {
-            let genome: GenomeMetadata = response.json().with_context(|| {
-                "Failed to convert request response to genome metadata structure".to_string()
-            })?;
+        let genome: GenomeMetadata = response.json().with_context(|| {
+            "Failed to convert request response to genome metadata structure".to_string()
+        })?;
 
-            match raw {
-                true => {
-                    let genome_string = serde_json::to_string(&genome).with_context(|| {
-                        "Failed to convert genome metadata structure to json string".to_string()
-                    })?;
-                    let output = args.get_output();
-                    if let Some(path) = output {
-                        let path_clone = path.clone();
-                        let mut file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(path)
-                            .with_context(|| format!("Failed to create file {path_clone}"))?;
-                        file.write_all(genome_string.as_bytes())
-                            .with_context(|| format!("Failed to write to {path_clone}"))?;
-                    } else {
-                        writeln!(io::stdout(), "{genome_string}")?;
-                    }
+        match raw {
+            true => {
+                let genome_string = serde_json::to_string(&genome).with_context(|| {
+                    "Failed to convert genome metadata structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
-                false => {
-                    let genome_string =
-                        serde_json::to_string_pretty(&genome).with_context(|| {
-                            "Failed to convert genome metadata structure to json string".to_string()
-                        })?;
-                    let output = args.get_output();
-                    if let Some(path) = output {
-                        let path_clone = path.clone();
-                        let mut file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(path)
-                            .with_context(|| format!("Failed to create file {path_clone}"))?;
-                        file.write_all(genome_string.as_bytes())
-                            .with_context(|| format!("Failed to write to {path_clone}"))?;
-                    } else {
-                        writeln!(io::stdout(), "{genome_string}")?;
-                    }
+            }
+            false => {
+                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
+                    "Failed to convert genome metadata structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
-            };
-        } else if request_type == GenomeRequestType::TaxonHistory {
-            let genome: TaxonHistory = response.json().with_context(|| {
-                "Failed to convert request response to genome metadata structure".to_string()
-            })?;
-            match raw {
-                true => {
-                    let genome_string = serde_json::to_string(&genome).with_context(|| {
-                        "Failed to convert genome metadata structure to json string".to_string()
-                    })?;
-                    let output = args.get_output();
-                    if let Some(path) = output {
-                        let path_clone = path.clone();
-                        let mut file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(path)
-                            .with_context(|| format!("Failed to create file {path_clone}"))?;
-                        file.write_all(genome_string.as_bytes())
-                            .with_context(|| format!("Failed to write to {path_clone}"))?;
-                    } else {
-                        writeln!(io::stdout(), "{genome_string}")?;
-                    }
-                }
-                false => {
-                    let genome_string =
-                        serde_json::to_string_pretty(&genome).with_context(|| {
-                            "Failed to convert genome metadata structure to json string".to_string()
-                        })?;
-                    let output = args.get_output();
-                    if let Some(path) = output {
-                        let path_clone = path.clone();
-                        let mut file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(path)
-                            .with_context(|| format!("Failed to create file {path_clone}"))?;
-                        file.write_all(genome_string.as_bytes())
-                            .with_context(|| format!("Failed to write to {path_clone}"))?;
-                    } else {
-                        writeln!(io::stdout(), "{genome_string}")?;
-                    }
-                }
-            };
-        } else {
-            let genome: GenomeResult = response.json().with_context(|| {
-                "Failed to convert genome card structure to json string".to_string()
-            })?;
+            }
+        };
+    }
 
-            match raw {
-                true => {
-                    let genome_string = serde_json::to_string(&genome).with_context(|| {
-                        "Failed to convert genome card structure to json string".to_string()
-                    })?;
-                    let output = args.get_output();
-                    if let Some(path) = output {
-                        let path_clone = path.clone();
-                        let mut file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(path)
-                            .with_context(|| format!("Failed to create file {path_clone}"))?;
-                        file.write_all(genome_string.as_bytes())
-                            .with_context(|| format!("Failed to write to {path_clone}"))?;
-                    } else {
-                        writeln!(io::stdout(), "{genome_string}")?;
-                    }
+    Ok(())
+}
+
+pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
+    let genome_api: Vec<GenomeAPI> = args
+        .get_accession()
+        .iter()
+        .map(|x| GenomeAPI::from(x.to_string()))
+        .collect();
+    let raw = args.get_raw();
+
+    for accession in genome_api {
+        let request_url = accession.request(GenomeRequestType::Card);
+
+        let response = reqwest::blocking::get(request_url)
+            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+
+        let genome: GenomeCard = response.json().with_context(|| {
+            "Failed to convert request response to genome metadata structure".to_string()
+        })?;
+
+        match raw {
+            true => {
+                let genome_string = serde_json::to_string(&genome).with_context(|| {
+                    "Failed to convert genome metadata structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
-                false => {
-                    let genome_string =
-                        serde_json::to_string_pretty(&genome).with_context(|| {
-                            "Failed to convert genome card structure to json string".to_string()
-                        })?;
-                    let output = args.get_output();
-                    if let Some(path) = output {
-                        let path_clone = path.clone();
-                        let mut file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(path)
-                            .with_context(|| format!("Failed to create file {path_clone}"))?;
-                        file.write_all(genome_string.as_bytes())
-                            .with_context(|| format!("Failed to write to {path_clone}"))?;
-                    } else {
-                        writeln!(io::stdout(), "{genome_string}")?;
-                    }
+            }
+            false => {
+                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
+                    "Failed to convert genome metadata structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
                 }
-            };
-        }
+            }
+        };
+    }
+
+    Ok(())
+}
+
+pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
+    let genome_api: Vec<GenomeAPI> = args
+        .get_accession()
+        .iter()
+        .map(|x| GenomeAPI::from(x.to_string()))
+        .collect();
+    let raw = args.get_raw();
+
+    for accession in genome_api {
+        let request_url = accession.request(GenomeRequestType::TaxonHistory);
+
+        let response = reqwest::blocking::get(request_url)
+            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+
+        let genome: GenomeTaxonHistory = response.json().with_context(|| {
+            "Failed to convert request response to genome metadata structure".to_string()
+        })?;
+
+        match raw {
+            true => {
+                let genome_string = serde_json::to_string(&genome).with_context(|| {
+                    "Failed to convert genome metadata structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
+                }
+            }
+            false => {
+                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
+                    "Failed to convert genome metadata structure to json string".to_string()
+                })?;
+                let output = args.get_output();
+                if let Some(path) = output {
+                    let path_clone = path.clone();
+                    let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(path)
+                        .with_context(|| format!("Failed to create file {path_clone}"))?;
+                    file.write_all(genome_string.as_bytes())
+                        .with_context(|| format!("Failed to write to {path_clone}"))?;
+                } else {
+                    writeln!(io::stdout(), "{genome_string}")?;
+                }
+            }
+        };
     }
 
     Ok(())
@@ -335,49 +356,46 @@ pub fn genome_gtdb(args: GenomeArgs) -> Result<()> {
 mod tests {
     use super::*;
     use crate::utils;
+    use std::path::Path;
 
     #[test]
     fn test_genome_gtdb_card_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Card,
             raw: false,
             output: None,
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_card(args).is_ok());
     }
 
     #[test]
     fn test_genome_gtdb_card_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Card,
             raw: true,
             output: None,
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_card(args).is_ok());
     }
 
     #[test]
     fn test_genome_gtdb_metadata_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Metadata,
             raw: false,
             output: None,
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_metadata(args).is_ok());
     }
 
     #[test]
     fn test_genome_gtdb_metadata_out() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Metadata,
             raw: false,
             output: Some(String::from("genome")),
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_metadata(args).is_ok());
         std::fs::remove_file(Path::new("genome")).unwrap();
     }
 
@@ -385,11 +403,10 @@ mod tests {
     fn test_genome_gtdb_metadata_out_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Metadata,
             raw: true,
             output: Some(String::from("genome1")),
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_metadata(args).is_ok());
         std::fs::remove_file(Path::new("genome1")).unwrap();
     }
 
@@ -397,11 +414,10 @@ mod tests {
     fn test_genome_gtdb_card_out_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Card,
             raw: true,
             output: Some(String::from("genome2")),
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_card(args).is_ok());
         std::fs::remove_file(Path::new("genome2")).unwrap();
     }
 
@@ -409,11 +425,10 @@ mod tests {
     fn test_genome_gtdb_card_out_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Card,
             raw: false,
             output: Some(String::from("genome3")),
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_card(args).is_ok());
         std::fs::remove_file(Path::new("genome3")).unwrap();
     }
 
@@ -421,11 +436,10 @@ mod tests {
     fn test_genome_gtdb_tx_out_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::TaxonHistory,
             raw: true,
             output: Some(String::from("genome4")),
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_taxon_history(args).is_ok());
         std::fs::remove_file(Path::new("genome4")).unwrap();
     }
 
@@ -433,11 +447,10 @@ mod tests {
     fn test_genome_gtdb_tx_out_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::TaxonHistory,
             raw: false,
             output: Some(String::from("genome5")),
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_taxon_history(args).is_ok());
         std::fs::remove_file(Path::new("genome5")).unwrap();
     }
 
@@ -445,57 +458,52 @@ mod tests {
     fn test_genome_gtdb_metadata_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::Metadata,
             raw: true,
             output: None,
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_metadata(args).is_ok());
     }
 
     #[test]
     fn test_genome_gtdb_taxon_history_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::TaxonHistory,
             raw: false,
             output: None,
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_taxon_history(args).is_ok());
     }
 
     #[test]
     fn test_genome_gtdb_taxon_history_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            request_type: GenomeRequestType::TaxonHistory,
             raw: true,
             output: None,
         };
-        assert!(genome_gtdb(args).is_ok());
+        assert!(get_genome_taxon_history(args).is_ok());
     }
 
     #[test]
     fn test_genome_gtdb_4() {
         let args = utils::GenomeArgs {
             accession: vec!["".to_owned()],
-            request_type: GenomeRequestType::Card,
             raw: true,
             output: None,
         };
 
-        assert!(genome_gtdb(args).is_err())
+        assert!(get_genome_card(args).is_err())
     }
 
     #[test]
     fn test_response_failure() {
         let args = utils::GenomeArgs {
             accession: vec!["&&&&^^^^^||||".to_owned()],
-            request_type: GenomeRequestType::Card,
             raw: true,
             output: None,
         };
         assert!(
-            genome_gtdb(args).is_err(),
+            get_genome_card(args).is_err(),
             "Failed to get response from GTDB API"
         );
     }

@@ -19,7 +19,13 @@ fn main() -> Result<()> {
         }
         Some(("genome", sub_matches)) => {
             let args = utils::GenomeArgs::from_arg_matches(sub_matches);
-            genome::genome_gtdb(args)?;
+            if sub_matches.contains_id("history") {
+                genome::get_genome_taxon_history(args)?;
+            } else if sub_matches.contains_id("metadata") {
+                genome::get_genome_metadata(args)?;
+            } else {
+                genome::get_genome_card(args)?
+            }
         }
         Some(("taxon", sub_matches)) => {
             let args = utils::TaxonArgs::from_arg_matches(sub_matches);
@@ -96,7 +102,6 @@ mod tests {
         let sub_matches = matches.subcommand_matches("genome").unwrap();
         let args = utils::GenomeArgs::from_arg_matches(sub_matches);
         assert_eq!(args.accession, vec!["NC_000912.1".to_string()]);
-        assert_eq!(args.request_type, api::GenomeRequestType::Metadata);
         assert_eq!(args.output, Some(String::from("met.json")));
     }
 }
