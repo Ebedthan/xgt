@@ -98,65 +98,6 @@ impl SearchAPI {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
-pub enum GenomeRequestType {
-    Metadata,
-    TaxonHistory,
-    Card,
-}
-
-impl GenomeRequestType {
-    pub fn to_string(grt: GenomeRequestType) -> String {
-        match grt {
-            GenomeRequestType::Card => String::from("card"),
-            GenomeRequestType::Metadata => String::from("metadata"),
-            GenomeRequestType::TaxonHistory => String::from("taxon-history"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct GenomeAPI {
-    accession: String,
-}
-
-impl GenomeAPI {
-    pub fn from(accession: String) -> Self {
-        GenomeAPI { accession }
-    }
-
-    pub fn request(&self, request_type: GenomeRequestType) -> String {
-        format!(
-            "https://api.gtdb.ecogenomic.org/genome/{}/{}",
-            self.accession,
-            GenomeRequestType::to_string(request_type)
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TaxonAPI {
-    name: String,
-}
-
-impl TaxonAPI {
-    pub fn from(name: String) -> Self {
-        TaxonAPI { name }
-    }
-    pub fn get_name_request(&self) -> String {
-        format!("https://api.gtdb.ecogenomic.org/taxon/{}", self.name)
-    }
-    pub fn get_name(&self) -> String {
-        self.name.clone()
-    }
-    pub fn get_search_request(&self) -> String {
-        format!(
-            "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit=1000000",
-            self.name
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,43 +176,5 @@ mod tests {
         };
         let expected = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true";
         assert_eq!(search.request(), expected);
-    }
-
-    #[test]
-    fn test_genome_request() {
-        let genome_api = GenomeAPI::from(String::from("accession"));
-
-        let metadata_request = genome_api.request(GenomeRequestType::Metadata);
-        let expected_metadata_request =
-            String::from("https://api.gtdb.ecogenomic.org/genome/accession/metadata");
-
-        assert_eq!(metadata_request, expected_metadata_request);
-
-        let taxon_history_request = genome_api.request(GenomeRequestType::TaxonHistory);
-        let expected_taxon_history_request =
-            String::from("https://api.gtdb.ecogenomic.org/genome/accession/taxon-history");
-
-        assert_eq!(taxon_history_request, expected_taxon_history_request);
-
-        let card_request = genome_api.request(GenomeRequestType::Card);
-        let expected_card_request =
-            String::from("https://api.gtdb.ecogenomic.org/genome/accession/card");
-
-        assert_eq!(card_request, expected_card_request);
-    }
-
-    #[test]
-    fn test_get_name_request() {
-        let taxon = TaxonAPI::from("d__Bacteria".to_string());
-        assert_eq!(
-            taxon.get_name_request(),
-            "https://api.gtdb.ecogenomic.org/taxon/d__Bacteria"
-        );
-    }
-
-    #[test]
-    fn test_get_name() {
-        let taxon = TaxonAPI::from("Firmicutes".to_string());
-        assert_eq!(taxon.get_name(), "Firmicutes");
     }
 }

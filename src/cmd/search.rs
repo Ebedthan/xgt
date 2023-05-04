@@ -5,7 +5,8 @@ use anyhow::{anyhow, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use super::utils;
-use crate::api::SearchAPI;
+
+use crate::api::search_api::SearchAPI;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]

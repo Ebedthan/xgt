@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::api::TaxonAPI;
+use crate::api::taxon_api::TaxonAPI;
 
 use super::utils::{self, TaxonArgs};
 

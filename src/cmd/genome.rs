@@ -1,6 +1,6 @@
 use super::utils::GenomeArgs;
-use crate::api::GenomeAPI;
-use crate::api::GenomeRequestType;
+use crate::api::genome_api::GenomeAPI;
+use crate::api::genome_api::GenomeRequestType;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
