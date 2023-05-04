@@ -1,9 +1,11 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+
+use std::fs::OpenOptions;
 
 use std::{
     fs::File,
-    io::{BufRead, BufReader},
+    io::{self, BufRead, BufReader, Write},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -273,6 +275,25 @@ pub fn check_status(response: &reqwest::blocking::Response) -> Result<()> {
     Ok(())
 }
 
+pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
+    let mut writer: Box<dyn Write> = match output {
+        Some(path) => Box::new(
+            OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(path)
+                .with_context(|| format!("Failed to create file"))?,
+        ),
+        None => Box::new(io::stdout()),
+    };
+
+    writer
+        .write_all(s.as_bytes())
+        .with_context(|| format!("Failed to write"))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -388,5 +409,19 @@ mod tests {
         };
 
         assert_eq!(args.is_search(), true);
+    }
+
+    #[test]
+    fn test_write_to_output() {
+        let s = "Hello, world!".to_owned();
+
+        // Test writing to a file
+        let file_path = "test.txt";
+        let output = Some(file_path.to_owned());
+        write_to_output(s.clone(), output).unwrap();
+        let contents = std::fs::read_to_string(file_path).unwrap();
+        assert_eq!(contents, s);
+
+        std::fs::remove_file(file_path).unwrap();
     }
 }
