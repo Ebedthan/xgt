@@ -1,8 +1,5 @@
 use anyhow::{bail, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
-use std::io::{self, Write};
-use std::path::Path;
 
 use crate::api::taxon_api::TaxonAPI;
 
@@ -56,15 +53,6 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    if let Some(filename) = args.get_output() {
-        let path = Path::new(&filename);
-        ensure!(
-            !path.exists(),
-            "file {} should not already exist",
-            path.display()
-        );
-    }
-
     for name in taxon_api {
         let request_url = name.get_name_request();
 
@@ -86,38 +74,14 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
                 let taxon_string = serde_json::to_string(&taxon_data).with_context(|| {
                     "Failed to convert taxon structure to json string".to_string()
                 })?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(taxon_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{taxon_string}")?;
-                }
+                utils::write_to_output(taxon_string, args.get_output())?;
             }
             false => {
                 let taxon_string =
                     serde_json::to_string_pretty(&taxon_data).with_context(|| {
                         "Failed to convert genome card structure to json string".to_string()
                     })?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(taxon_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{taxon_string}")?;
-                }
+                utils::write_to_output(taxon_string, args.get_output())?;
             }
         };
     }
@@ -133,15 +97,6 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
     let partial = args.get_partial();
-
-    if let Some(filename) = args.get_output() {
-        let path = Path::new(&filename);
-        ensure!(
-            !path.exists(),
-            "file {} should not already exist",
-            path.display()
-        );
-    }
 
     for search in taxon_api {
         let request_url = search.get_search_request();
@@ -170,38 +125,14 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
                 let taxon_string = serde_json::to_string(&taxon_data).with_context(|| {
                     "Failed to convert taxon structure to json string".to_string()
                 })?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(taxon_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{taxon_string}")?;
-                }
+                utils::write_to_output(taxon_string, args.get_output())?;
             }
             false => {
                 let taxon_string =
                     serde_json::to_string_pretty(&taxon_data).with_context(|| {
                         "Failed to convert genome card structure to json string".to_string()
                     })?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(taxon_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{taxon_string}")?;
-                }
+                utils::write_to_output(taxon_string, args.get_output())?;
             }
         };
     }
@@ -303,23 +234,6 @@ mod tests {
         result.filter("bird".to_string());
         let v: Vec<String> = Vec::new();
         assert_eq!(result.matches, v);
-    }
-
-    #[test]
-    fn search_taxon_should_return_error_for_nonexistent_file() {
-        let args = TaxonArgs {
-            name: vec!["g__Aminobacter".to_string()],
-            raw: true,
-            partial: false,
-            output: Some("test/acc.txt".to_string()),
-            search: true,
-        };
-        let result = search_taxon(args);
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "file test/acc.txt should not already exist".to_string()
-        );
     }
 
     #[test]
