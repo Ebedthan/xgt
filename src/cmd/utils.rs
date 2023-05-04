@@ -48,7 +48,7 @@ impl SearchArgs {
         self.level.clone()
     }
 
-    fn set_level(&mut self, s: String) {
+    pub(crate) fn set_level(&mut self, s: String) {
         self.level = s;
     }
 
