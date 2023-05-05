@@ -177,15 +177,14 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Metadata);
 
-        let response = reqwest::blocking::get(request_url)
-            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+        let response = client.get(request_url).send()?;
 
-        let genome: GenomeMetadata = response.json().with_context(|| {
-            "Failed to convert request response to genome metadata structure".to_string()
-        })?;
+        let genome: GenomeMetadata = response.json()?;
 
         match raw {
             true => {
@@ -238,15 +237,14 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Card);
 
-        let response = reqwest::blocking::get(request_url)
-            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+        let response = client.get(request_url).send()?;
 
-        let genome: GenomeCard = response.json().with_context(|| {
-            "Failed to convert request response to genome metadata structure".to_string()
-        })?;
+        let genome: GenomeCard = response.json()?;
 
         match raw {
             true => {
@@ -299,15 +297,14 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::TaxonHistory);
 
-        let response = reqwest::blocking::get(request_url)
-            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+        let response = client.get(request_url).send()?;
 
-        let genome: GenomeTaxonHistory = response.json().with_context(|| {
-            "Failed to convert request response to genome metadata structure".to_string()
-        })?;
+        let genome: GenomeTaxonHistory = response.json()?;
 
         match raw {
             true => {

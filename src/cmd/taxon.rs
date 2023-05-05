@@ -53,11 +53,12 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for name in taxon_api {
         let request_url = name.get_name_request();
 
-        let response = reqwest::blocking::get(request_url)
-            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+        let response = client.get(request_url).send()?;
 
         if response.status().is_client_error() {
             bail!("Taxon {} not found", name.get_name());
@@ -65,9 +66,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
 
         utils::check_status(&response)?;
 
-        let taxon_data: TaxonResult = response.json().with_context(|| {
-            "Failed to convert request response to genome metadata structure".to_string()
-        })?;
+        let taxon_data: TaxonResult = response.json()?;
 
         match raw {
             true => {
@@ -98,11 +97,12 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     let raw = args.get_raw();
     let partial = args.get_partial();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for search in taxon_api {
         let request_url = search.get_search_request();
 
-        let response = reqwest::blocking::get(request_url)
-            .with_context(|| "Failed to get response from GTDB API".to_string())?;
+        let response = client.get(request_url).send()?;
 
         utils::check_status(&response)?;
 

@@ -102,19 +102,18 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
 
     let needles = args.get_needle();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for needle in needles {
         let search_api = SearchAPI::from(&needle, &args);
 
         let request_url = search_api.request();
 
-        let response = reqwest::blocking::get(&request_url)
-            .with_context(|| "Failed to send request to GTDB API".to_string())?;
+        let response = client.get(&request_url).send()?;
 
         utils::check_status(&response)?;
 
-        let search_result: SearchResults = response.json().with_context(|| {
-            "Failed to deserialize request response to search result structure".to_string()
-        })?;
+        let search_result: SearchResults = response.json()?;
 
         let search_result_list = search_result.get_rows();
         ensure!(
@@ -178,20 +177,19 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 
     let needles = args.get_needle();
 
+    let client = reqwest::blocking::Client::builder().build()?;
+
     for needle in needles {
         let oneedle = needle.clone();
         let search_api = SearchAPI::from(&oneedle, &args);
 
         let request_url = search_api.request();
 
-        let response = reqwest::blocking::get(&request_url)
-            .with_context(|| "Failed to send request to GTDB API".to_string())?;
+        let response = client.get(&request_url).send()?;
 
         utils::check_status(&response)?;
 
-        let mut search_result: SearchResults = response.json().with_context(|| {
-            "Failed to deserialize request response to search result structure".to_string()
-        })?;
+        let mut search_result: SearchResults = response.json()?;
         search_result.retain(&args.get_level(), &needle);
         ensure!(
             search_result.get_total_rows() != 0,
