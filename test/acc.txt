@@ -1,2 +1,2 @@
 GCF_018555685.1
-GCF_900445235.1{"matches":["g__Aminobacter"]}
+GCF_900445235.1

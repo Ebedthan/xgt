@@ -207,7 +207,7 @@ impl GenomeArgs {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TaxonArgs {
     pub(crate) name: Vec<String>,
     pub(crate) raw: bool,
@@ -296,8 +296,11 @@ pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
+    use crate::app;
     use mockito::Server;
+    use std::ffi::OsString;
 
     #[test]
     fn test_get_accession() {
@@ -423,5 +426,87 @@ mod tests {
         assert_eq!(contents, s);
 
         std::fs::remove_file(file_path).unwrap();
+    }
+
+    #[test]
+    fn test_taxon_from_args() {
+        let name = vec!["g__Aminobacter".to_string()];
+
+        let matches = app::build_app().get_matches_from(vec![
+            OsString::new(),
+            OsString::from("taxon"),
+            OsString::from("g__Aminobacter"),
+            OsString::from("--partial"),
+            OsString::from("--raw"),
+        ]);
+
+        let args = TaxonArgs::from_arg_matches(matches.subcommand_matches("taxon").unwrap());
+
+        assert_eq!(args.get_name(), name);
+        assert!(args.get_raw());
+        assert!(args.get_partial());
+        assert!(!args.is_search());
+        assert_eq!(args.get_output(), None);
+    }
+
+    #[test]
+    fn test_taxon_from_args_2() {
+        let name = vec!["g__Aminobacter".to_string(), "g__Rhizobium".to_string()];
+
+        let matches = app::build_app().get_matches_from(vec![
+            OsString::new(),
+            OsString::from("taxon"),
+            OsString::from("--file"),
+            OsString::from("test/test2.txt"),
+            OsString::from("-o"),
+            OsString::from("out"),
+            OsString::from("-s"),
+        ]);
+
+        let args = TaxonArgs::from_arg_matches(matches.subcommand_matches("taxon").unwrap());
+
+        assert_eq!(args.get_name(), name);
+        assert!(!args.get_raw());
+        assert!(!args.get_partial());
+        assert!(args.is_search());
+        assert_eq!(args.get_output(), Some("out".to_string()));
+    }
+
+    #[test]
+    fn test_genome_from_args() {
+        let name = vec!["GCF_018555685.1".to_string()];
+
+        let matches = app::build_app().get_matches_from(vec![
+            OsString::new(),
+            OsString::from("genome"),
+            OsString::from("GCF_018555685.1"),
+            OsString::from("--raw"),
+        ]);
+
+        let args = GenomeArgs::from_arg_matches(matches.subcommand_matches("genome").unwrap());
+
+        assert_eq!(args.get_accession(), name);
+        assert!(args.get_raw());
+        assert_eq!(args.get_output(), None);
+    }
+
+    #[test]
+    fn test_genome_from_args_2() {
+        let name = vec!["GCF_018555685.1".to_string(), "GCF_900445235.1".to_string()];
+
+        let matches = app::build_app().get_matches_from(vec![
+            OsString::new(),
+            OsString::from("genome"),
+            OsString::from("--file"),
+            OsString::from("test/acc.txt"),
+            OsString::from("-o"),
+            OsString::from("out"),
+        ]);
+
+        let args = GenomeArgs::from_arg_matches(matches.subcommand_matches("genome").unwrap());
+
+        assert_eq!(args.get_accession(), name);
+        assert!(!args.get_raw());
+        assert_eq!(args.get_output(), Some("out".to_string()));
     }
 }
