@@ -267,6 +267,19 @@ mod tests {
     }
 
     #[test]
+    fn taxon_should_print_raw_output_to_stdout() {
+        let args = TaxonArgs {
+            name: vec!["g__Aminobacter".to_string()],
+            raw: true,
+            partial: false,
+            output: None,
+            search: false,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn search_taxon_should_write_pretty_output_to_file() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
