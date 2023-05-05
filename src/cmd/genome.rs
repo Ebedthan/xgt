@@ -188,9 +188,7 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
 
         match raw {
             true => {
-                let genome_string = serde_json::to_string(&genome).with_context(|| {
-                    "Failed to convert genome metadata structure to json string".to_string()
-                })?;
+                let genome_string = serde_json::to_string(&genome)?;
                 let output = args.get_output();
                 if let Some(path) = output {
                     let path_clone = path.clone();
@@ -206,9 +204,7 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
                 }
             }
             false => {
-                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
-                    "Failed to convert genome metadata structure to json string".to_string()
-                })?;
+                let genome_string = serde_json::to_string_pretty(&genome)?;
                 let output = args.get_output();
                 if let Some(path) = output {
                     let path_clone = path.clone();
@@ -248,9 +244,7 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
 
         match raw {
             true => {
-                let genome_string = serde_json::to_string(&genome).with_context(|| {
-                    "Failed to convert genome metadata structure to json string".to_string()
-                })?;
+                let genome_string = serde_json::to_string(&genome)?;
                 let output = args.get_output();
                 if let Some(path) = output {
                     let path_clone = path.clone();
@@ -266,9 +260,7 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
                 }
             }
             false => {
-                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
-                    "Failed to convert genome metadata structure to json string".to_string()
-                })?;
+                let genome_string = serde_json::to_string_pretty(&genome)?;
                 let output = args.get_output();
                 if let Some(path) = output {
                     let path_clone = path.clone();
@@ -308,9 +300,7 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
 
         match raw {
             true => {
-                let genome_string = serde_json::to_string(&genome).with_context(|| {
-                    "Failed to convert genome metadata structure to json string".to_string()
-                })?;
+                let genome_string = serde_json::to_string(&genome)?;
                 let output = args.get_output();
                 if let Some(path) = output {
                     let path_clone = path.clone();
@@ -326,9 +316,7 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
                 }
             }
             false => {
-                let genome_string = serde_json::to_string_pretty(&genome).with_context(|| {
-                    "Failed to convert genome metadata structure to json string".to_string()
-                })?;
+                let genome_string = serde_json::to_string_pretty(&genome)?;
                 let output = args.get_output();
                 if let Some(path) = output {
                     let path_clone = path.clone();

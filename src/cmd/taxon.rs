@@ -1,4 +1,4 @@
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::api::taxon_api::TaxonAPI;
@@ -70,16 +70,11 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
 
         match raw {
             true => {
-                let taxon_string = serde_json::to_string(&taxon_data).with_context(|| {
-                    "Failed to convert taxon structure to json string".to_string()
-                })?;
+                let taxon_string = serde_json::to_string(&taxon_data)?;
                 utils::write_to_output(taxon_string, args.get_output())?;
             }
             false => {
-                let taxon_string =
-                    serde_json::to_string_pretty(&taxon_data).with_context(|| {
-                        "Failed to convert genome card structure to json string".to_string()
-                    })?;
+                let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
                 utils::write_to_output(taxon_string, args.get_output())?;
             }
         };
@@ -106,9 +101,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 
         utils::check_status(&response)?;
 
-        let mut taxon_data: TaxonSearchResult = response.json().with_context(|| {
-            "Failed to convert request response to genome metadata structure".to_string()
-        })?;
+        let mut taxon_data: TaxonSearchResult = response.json()?;
 
         if !partial {
             taxon_data.filter(search.get_name());
@@ -122,16 +115,11 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 
         match raw {
             true => {
-                let taxon_string = serde_json::to_string(&taxon_data).with_context(|| {
-                    "Failed to convert taxon structure to json string".to_string()
-                })?;
+                let taxon_string = serde_json::to_string(&taxon_data)?;
                 utils::write_to_output(taxon_string, args.get_output())?;
             }
             false => {
-                let taxon_string =
-                    serde_json::to_string_pretty(&taxon_data).with_context(|| {
-                        "Failed to convert taxon structure to json string".to_string()
-                    })?;
+                let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
                 utils::write_to_output(taxon_string, args.get_output())?;
             }
         };

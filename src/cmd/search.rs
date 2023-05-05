@@ -1,4 +1,4 @@
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{anyhow, ensure, Result};
 use serde::{Deserialize, Serialize};
 
 use super::utils;
@@ -144,19 +144,13 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
                 false => match raw {
                     true => {
                         for result in search_result_list {
-                            let genome_string =
-                                serde_json::to_string(&result).with_context(|| {
-                                    "Failed to convert search result to json string".to_string()
-                                })?;
+                            let genome_string = serde_json::to_string(&result)?;
                             utils::write_to_output(genome_string, output.clone())?;
                         }
                     }
                     false => {
                         for result in search_result_list {
-                            let genome_string = serde_json::to_string_pretty(&result)
-                                .with_context(|| {
-                                    "Failed to convert search result to json string".to_string()
-                                })?;
+                            let genome_string = serde_json::to_string_pretty(&result)?;
                             utils::write_to_output(genome_string, output.clone())?;
                         }
                     }
@@ -220,19 +214,13 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
                     false => match raw {
                         true => {
                             for result in search_result.rows {
-                                let genome_string =
-                                    serde_json::to_string(&result).with_context(|| {
-                                        "Failed to convert search result to json string".to_string()
-                                    })?;
+                                let genome_string = serde_json::to_string(&result)?;
                                 utils::write_to_output(genome_string, output.clone())?;
                             }
                         }
                         false => {
                             for result in search_result.rows {
-                                let genome_string = serde_json::to_string_pretty(&result)
-                                    .with_context(|| {
-                                        "Failed to convert search result to json string".to_string()
-                                    })?;
+                                let genome_string = serde_json::to_string_pretty(&result)?;
                                 utils::write_to_output(genome_string, output.clone())?;
                             }
                         }

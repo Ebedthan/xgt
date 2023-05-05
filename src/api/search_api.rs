@@ -172,9 +172,9 @@ mod tests {
             search_field: "all".to_string(),
             filter_text: "example".to_string(),
             gtdb_species_rep_only: true,
-            ncbi_type_material_only: false,
+            ncbi_type_material_only: true,
         };
-        let expected = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true";
+        let expected = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
         assert_eq!(search.request(), expected);
     }
 }
