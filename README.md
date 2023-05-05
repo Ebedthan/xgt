@@ -24,17 +24,17 @@ xgt -h
 # Quick start guide
 
 ```
-# Search subcommand: search GTDB ----------------------------------------------
-## Search all Aminobacter (genus) genomes
-xgt search Aminobacter
+# Search subcommand: search GTDB
+## Search all Escherichia (genus) genomes
+xgt search Escherichia
 
-## Search all genomes with genus name containing aminobacter
-xgt search -p aminobacter
+## Search all genomes with genus name containing escherichia
+xgt search --partial escherichia
 
 ## Search from a list
 xgt search -f list.txt
 
-# Genome subcommand: information about a genome -------------------------------
+# Genome subcommand: information about a genome
 ## Get GTDB genome information
 xgt genome GCA_001512625.1
 
@@ -44,15 +44,15 @@ xgt genome --history GCA_001512625.1
 ## Get genome metadata
 xgt genome --metadata GCA_001512625.1
 
-# Taxon subcommand: information about a specific taxon ------------------------
+# Taxon subcommand: information about a specific taxon
 ## Get direct descendant of a taxon
-xgt taxon g__Aminobacter
+xgt taxon g__Escherichia
 
 ## Search for a taxon in GTDB's current release
-xgt taxon --search g__Aminobacter
+xgt taxon --search g__Escherichia
 
 ## Search for a taxon in GTDB's current release with partial matching
-xgt taxon --search -p g__Aminobacter
+xgt taxon --search --partial g__Escherichia
 ```
 
 Full help is available from `xgt --help`.

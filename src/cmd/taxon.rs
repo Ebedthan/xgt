@@ -130,7 +130,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
             false => {
                 let taxon_string =
                     serde_json::to_string_pretty(&taxon_data).with_context(|| {
-                        "Failed to convert genome card structure to json string".to_string()
+                        "Failed to convert taxon structure to json string".to_string()
                     })?;
                 utils::write_to_output(taxon_string, args.get_output())?;
             }
@@ -149,7 +149,7 @@ mod tests {
     fn test_get_taxon_name_with_output() -> Result<()> {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
-            raw: false,
+            raw: true,
             output: Some("output.json".to_string()),
             partial: false,
             search: false,
@@ -157,22 +157,17 @@ mod tests {
 
         get_taxon_name(args.clone())?;
 
-        let expected_output = fs::read_to_string("output.json")
-            .with_context(|| "Failed to read output file".to_string())?;
-        let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)
-            .with_context(|| "Failed to convert expected output to TaxonResult".to_string())?;
+        let expected_output = fs::read_to_string("output.json")?;
+        let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)?;
 
         let actual_output = args.get_output().unwrap();
-        let actual_output = fs::read_to_string(actual_output)
-            .with_context(|| "Failed to read actual output file".to_string())?;
-        let actual_taxon_data: TaxonResult = serde_json::from_str(&actual_output)
-            .with_context(|| "Failed to convert actual output to TaxonResult".to_string())?;
+        let actual_output = fs::read_to_string(actual_output)?;
+        let actual_taxon_data: TaxonResult = serde_json::from_str(&actual_output)?;
 
         assert_eq!(expected_taxon_data, actual_taxon_data);
 
         // Clean up the output file
-        fs::remove_file("output.json")
-            .with_context(|| "Failed to delete output file".to_string())?;
+        fs::remove_file("output.json")?;
 
         Ok(())
     }
@@ -182,6 +177,21 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
             raw: false,
+            output: None,
+            partial: false,
+            search: false,
+        };
+
+        get_taxon_name(args)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_taxon_name_without_output_raw() -> Result<()> {
+        let args = TaxonArgs {
+            name: vec!["g__Escherichia".to_string()],
+            raw: true,
             output: None,
             partial: false,
             search: false,

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use clap::ArgMatches;
 
 use std::fs::OpenOptions;
@@ -277,19 +277,11 @@ pub fn check_status(response: &reqwest::blocking::Response) -> Result<()> {
 
 pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
     let mut writer: Box<dyn Write> = match output {
-        Some(path) => Box::new(
-            OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(path)
-                .with_context(|| "Failed to create file".to_string())?,
-        ),
+        Some(path) => Box::new(OpenOptions::new().append(true).create(true).open(path)?),
         None => Box::new(io::stdout()),
     };
 
-    writer
-        .write_all(s.as_bytes())
-        .with_context(|| "Failed to write".to_string())?;
+    writer.write_all(s.as_bytes())?;
 
     Ok(())
 }
