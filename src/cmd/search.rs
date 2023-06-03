@@ -1,5 +1,6 @@
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use serde::{Deserialize, Serialize};
+use ureq::Agent;
 
 use super::utils;
 
@@ -102,18 +103,24 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
 
     let needles = args.get_needle();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for needle in needles {
         let search_api = SearchAPI::from(&needle, &args);
 
         let request_url = search_api.request();
 
-        let response = client.get(&request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        utils::check_status(&response)?;
-
-        let search_result: SearchResults = response.json()?;
+        let search_result: SearchResults = response.into_json()?;
 
         let search_result_list = search_result.get_rows();
         ensure!(
@@ -171,7 +178,7 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 
     let needles = args.get_needle();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for needle in needles {
         let oneedle = needle.clone();
@@ -179,11 +186,17 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 
         let request_url = search_api.request();
 
-        let response = client.get(&request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        utils::check_status(&response)?;
-
-        let mut search_result: SearchResults = response.json()?;
+        let mut search_result: SearchResults = response.into_json()?;
         search_result.retain(&args.get_level(), &needle);
         ensure!(
             search_result.get_total_rows() != 0,

@@ -2,10 +2,12 @@ use super::utils::GenomeArgs;
 use crate::api::genome_api::GenomeAPI;
 use crate::api::genome_api::GenomeRequestType;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{self, Write};
+
+use ureq::Agent;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeCard {
@@ -177,14 +179,22 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Metadata);
 
-        let response = client.get(request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        let genome: GenomeMetadata = response.json()?;
+        let genome: GenomeMetadata = response.into_json()?;
 
         match raw {
             true => {
@@ -233,14 +243,22 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Card);
 
-        let response = client.get(request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        let genome: GenomeCard = response.json()?;
+        let genome: GenomeCard = response.into_json()?;
 
         match raw {
             true => {
@@ -289,14 +307,22 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::TaxonHistory);
 
-        let response = client.get(request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        let genome: GenomeTaxonHistory = response.json()?;
+        let genome: GenomeTaxonHistory = response.into_json()?;
 
         match raw {
             true => {

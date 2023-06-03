@@ -1,5 +1,6 @@
 use anyhow::{bail, ensure, Result};
 use serde::{Deserialize, Serialize};
+use ureq::Agent;
 
 use crate::api::taxon_api::TaxonAPI;
 
@@ -53,20 +54,25 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for name in taxon_api {
         let request_url = name.get_name_request();
 
-        let response = client.get(request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(400, _)) => {
+                bail!("Taxon {} not found", name.get_name());
+            }
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        if response.status().is_client_error() {
-            bail!("Taxon {} not found", name.get_name());
-        }
-
-        utils::check_status(&response)?;
-
-        let taxon_data: TaxonResult = response.json()?;
+        let taxon_data: TaxonResult = response.into_json()?;
 
         match raw {
             true => {
@@ -92,17 +98,25 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     let raw = args.get_raw();
     let partial = args.get_partial();
 
-    let client = reqwest::blocking::Client::builder().build()?;
+    let agent: Agent = ureq::AgentBuilder::new().build();
 
     for search in taxon_api {
         let request_url = search.get_search_request();
 
-        let response = client.get(request_url).send()?;
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(400, _)) => {
+                bail!("No match found for {}", search.get_name());
+            }
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("IO/Transport error");
+            }
+        };
 
-        utils::check_status(&response)?;
-
-        let mut taxon_data: TaxonSearchResult = response.json()?;
-
+        let mut taxon_data: TaxonSearchResult = response.into_json()?;
         if !partial {
             taxon_data.filter(search.get_name());
         }
@@ -131,6 +145,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::Server;
     use std::fs;
 
     #[test]
@@ -204,6 +219,22 @@ mod tests {
         let err = result.unwrap_err().to_string();
         assert!(err.contains("Taxon UnknownTaxonName not found"));
         Ok(())
+    }
+
+    #[test]
+    fn test_get_taxon_name_server_error() {
+        let mut s = Server::new();
+        let url = s.url();
+        s.mock("GET", url.as_str()).with_status(450).create();
+        let taxon_args = TaxonArgs {
+            name: vec!["UnknownTaxonName".to_string()],
+            raw: false,
+            output: None,
+            partial: true,
+            search: false,
+        };
+        let result = get_taxon_name(taxon_args);
+        assert!(result.is_err());
     }
 
     #[test]

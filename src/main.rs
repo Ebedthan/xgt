@@ -36,6 +36,7 @@ fn main() -> Result<()> {
             if args.is_search() {
                 taxon::search_taxon(args)?;
             } else {
+                println!("Here");
                 taxon::get_taxon_name(args)?;
             }
         }
