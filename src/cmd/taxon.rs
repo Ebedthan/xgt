@@ -68,7 +68,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 
@@ -112,7 +112,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 

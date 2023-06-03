@@ -116,7 +116,7 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 
@@ -192,7 +192,7 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 

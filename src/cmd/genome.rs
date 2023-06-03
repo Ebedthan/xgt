@@ -190,7 +190,7 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 
@@ -254,7 +254,7 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 
@@ -318,7 +318,7 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("IO/Transport error");
+                bail!("There was an error making the request or receiving the response.");
             }
         };
 
