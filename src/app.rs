@@ -89,7 +89,7 @@ pub fn build_app() -> Command {
         )
         .subcommand(
             Command::new("genome")
-                .about("Get GTDB genome informations")
+                .about("Information about a genome")
                 .arg(
                     Arg::new("accession")
                         .conflicts_with("file")
@@ -135,7 +135,7 @@ pub fn build_app() -> Command {
         )
         .subcommand(
             Command::new("taxon")
-                .about("Get GTDB taxon information")
+                .about("Information about a specific taxon")
                 .arg(
                     Arg::new("name")
                         .conflicts_with("file")
@@ -177,6 +177,13 @@ pub fn build_app() -> Command {
                         .long("search")
                         .action(ArgAction::SetTrue)
                         .help("Search for a taxon in current release"),
+                )
+                .arg(
+                    Arg::new("all")
+                        .short('a')
+                        .long("all")
+                        .action(ArgAction::SetTrue)
+                        .help("Search for a taxon across all releases"),
                 ),
         )
 }

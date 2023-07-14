@@ -57,6 +57,13 @@ xgt taxon --search --partial g__Escherichia
 
 Full help is available from `xgt --help`.
 
+### GTDB API supported versions
+
+| **xgt version** |     **GTDB API supported versions**       |
+|-----------------|-------------------------------------------|
+|   v0.1.0        |    v2.16.0 (fully) to v2.17.0 (partially) |
+|   v0.2.0        |    v2.16.0 (fully) to v2.17.0 (fully)     |
+
 ### Minimum supported Rust version
 `xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.65.0.
 

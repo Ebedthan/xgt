@@ -33,7 +33,7 @@ fn main() -> Result<()> {
         }
         Some(("taxon", sub_matches)) => {
             let args = utils::TaxonArgs::from_arg_matches(sub_matches);
-            if args.is_search() {
+            if args.is_search() || args.is_search_all() {
                 taxon::search_taxon(args)?;
             } else {
                 taxon::get_taxon_name(args)?;

@@ -101,7 +101,11 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     let agent: Agent = ureq::AgentBuilder::new().build();
 
     for search in taxon_api {
-        let request_url = search.get_search_request();
+        let request_url: String = if args.is_search_all() {
+            search.get_search_all_request()
+        } else {
+            search.get_search_request()
+        };
 
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
@@ -127,16 +131,12 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
             search.get_name()
         );
 
-        match raw {
-            true => {
-                let taxon_string = serde_json::to_string(&taxon_data)?;
-                utils::write_to_output(taxon_string, args.get_output())?;
-            }
-            false => {
-                let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
-                utils::write_to_output(taxon_string, args.get_output())?;
-            }
+        let taxon_string: String = match raw {
+            true => serde_json::to_string(&taxon_data)?,
+            false => serde_json::to_string_pretty(&taxon_data)?,
         };
+
+        utils::write_to_output(format!("{}{}", taxon_string, "\n"), args.get_output())?;
     }
 
     Ok(())
@@ -156,6 +156,7 @@ mod tests {
             output: Some("output.json".to_string()),
             partial: false,
             search: false,
+            search_all: false,
         };
 
         get_taxon_name(args.clone())?;
@@ -183,6 +184,7 @@ mod tests {
             output: None,
             partial: false,
             search: false,
+            search_all: false,
         };
 
         get_taxon_name(args)?;
@@ -198,6 +200,7 @@ mod tests {
             output: None,
             partial: false,
             search: false,
+            search_all: false,
         };
 
         get_taxon_name(args)?;
@@ -213,6 +216,7 @@ mod tests {
             output: None,
             partial: true,
             search: false,
+            search_all: false,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
@@ -232,6 +236,7 @@ mod tests {
             output: None,
             partial: true,
             search: false,
+            search_all: false,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
@@ -273,6 +278,7 @@ mod tests {
             partial: false,
             output: None,
             search: true,
+            search_all: false,
         };
         let result = search_taxon(args);
         assert!(result.is_err());
@@ -290,6 +296,7 @@ mod tests {
             partial: false,
             output: None,
             search: true,
+            search_all: false,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -303,6 +310,7 @@ mod tests {
             partial: false,
             output: None,
             search: false,
+            search_all: false,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -316,9 +324,11 @@ mod tests {
             partial: false,
             output: Some("test_search.json".to_string()),
             search: true,
+            search_all: false,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
+
         // Check that the output file was created and contains the taxon name
         let file_contents = std::fs::read_to_string("test_search.json").unwrap();
         assert!(file_contents.contains("g__Aminobacter"));

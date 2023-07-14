@@ -19,42 +19,50 @@ impl TaxonAPI {
             self.name
         )
     }
+    pub fn get_search_all_request(&self) -> String {
+        format!(
+            "https://api.gtdb.ecogenomic.org/taxon/search/{}/all-releases?limit=10000000",
+            self.name
+        )
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
+    #[test]
+    fn test_from() {
+        let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
+        assert_eq!(taxon_api.name, "s__Escherichia coli");
+    }
 
-        #[test]
-        fn test_from() {
-            let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
-            assert_eq!(taxon_api.name, "s__Escherichia coli");
-        }
+    #[test]
+    fn test_get_name_request() {
+        let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
+        let expected = "https://api.gtdb.ecogenomic.org/taxon/s__Escherichia coli".to_string();
+        assert_eq!(taxon_api.get_name_request(), expected);
+    }
 
-        #[test]
-        fn test_get_name_request() {
-            let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
-            let expected = "https://api.gtdb.ecogenomic.org/taxon/s__Escherichia coli".to_string();
-            assert_eq!(taxon_api.get_name_request(), expected);
-        }
+    #[test]
+    fn test_get_name() {
+        let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
+        assert_eq!(taxon_api.get_name(), "s__Escherichia coli");
+    }
 
-        #[test]
-        fn test_get_name() {
-            let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
-            assert_eq!(taxon_api.get_name(), "s__Escherichia coli");
-        }
+    #[test]
+    fn test_get_search_request() {
+        let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
+        let expected =
+            "https://api.gtdb.ecogenomic.org/taxon/search/s__Escherichia coli?limit=1000000"
+                .to_string();
+        assert_eq!(taxon_api.get_search_request(), expected);
+    }
 
-        #[test]
-        fn test_get_search_request() {
-            let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
-            let expected =
-                "https://api.gtdb.ecogenomic.org/taxon/search/s__Escherichia coli?limit=1000000"
-                    .to_string();
-            assert_eq!(taxon_api.get_search_request(), expected);
-        }
+    #[test]
+    fn test_get_search_all_request() {
+        let taxon_api = TaxonAPI::from("s__Escherichia coli".to_string());
+        let expected = "https://api.gtdb.ecogenomic.org/taxon/search/s__Escherichia coli/all-releases?limit=10000000".to_string();
+        assert_eq!(taxon_api.get_search_all_request(), expected);
     }
 }
