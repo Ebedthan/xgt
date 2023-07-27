@@ -35,6 +35,8 @@ fn main() -> Result<()> {
             let args = utils::TaxonArgs::from_arg_matches(sub_matches);
             if args.is_search() || args.is_search_all() {
                 taxon::search_taxon(args)?;
+            } else if args.is_genome() {
+                taxon::get_taxon_genomes(args)?;
             } else {
                 taxon::get_taxon_name(args)?;
             }

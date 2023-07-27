@@ -215,6 +215,8 @@ pub struct TaxonArgs {
     pub(crate) partial: bool,
     pub(crate) search: bool,
     pub(crate) search_all: bool,
+    pub(crate) genomes: bool,
+    pub(crate) reps_only: bool,
 }
 
 impl TaxonArgs {
@@ -240,6 +242,14 @@ impl TaxonArgs {
 
     pub fn is_search_all(&self) -> bool {
         self.search_all
+    }
+
+    pub fn is_genome(&self) -> bool {
+        self.genomes
+    }
+
+    pub fn is_reps_only(&self) -> bool {
+        self.reps_only
     }
 
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
@@ -268,6 +278,8 @@ impl TaxonArgs {
             partial: arg_matches.get_flag("partial"),
             search: arg_matches.get_flag("search"),
             search_all: arg_matches.get_flag("all"),
+            genomes: arg_matches.get_flag("genomes"),
+            reps_only: arg_matches.get_flag("reps"),
         }
     }
 }
@@ -354,6 +366,8 @@ mod tests {
             partial: false,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
 
         assert_eq!(args.get_name(), vec!["name1", "name2"]);
@@ -368,6 +382,8 @@ mod tests {
             partial: true,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
 
         assert_eq!(args.get_partial(), true);
@@ -382,6 +398,8 @@ mod tests {
             partial: false,
             search: true,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
 
         assert_eq!(args.is_search(), true);

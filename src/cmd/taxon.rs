@@ -39,6 +39,19 @@ pub struct TaxonSearchResult {
     matches: Vec<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct TaxonGenomes {
+    data: Vec<String>,
+}
+
+// Struct for error 400 occuring from wrongly formatted
+// taxon name
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TaxonGenomesError {
+    detail: String,
+}
+
 impl TaxonSearchResult {
     fn filter(&mut self, pattern: String) {
         self.matches.retain(|x| x == &pattern);
@@ -142,6 +155,52 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     Ok(())
 }
 
+pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
+    let taxon_api: Vec<TaxonAPI> = args
+        .get_name()
+        .iter()
+        .map(|x| TaxonAPI::from(x.to_string()))
+        .collect();
+    let raw = args.get_raw();
+    let sp_reps_only = args.is_reps_only();
+
+    let agent: Agent = ureq::AgentBuilder::new().build();
+
+    for search in taxon_api {
+        let request_url = search.get_genomes_request(sp_reps_only);
+
+        let response = match agent.get(&request_url).call() {
+            Ok(r) => r,
+            Err(ureq::Error::Status(400, _)) => {
+                bail!("No match found for {}", search.get_name());
+            }
+            Err(ureq::Error::Status(code, _)) => {
+                bail!("The server returned an unexpected status code ({})", code);
+            }
+            Err(_) => {
+                bail!("There was an error making the request or receiving the response.");
+            }
+        };
+
+        let taxon_data: TaxonGenomes = response.into_json()?;
+
+        ensure!(
+            !taxon_data.data.is_empty(),
+            "No data found for {}",
+            search.get_name()
+        );
+
+        let taxon_string: String = match raw {
+            true => serde_json::to_string(&taxon_data)?,
+            false => serde_json::to_string_pretty(&taxon_data)?,
+        };
+
+        utils::write_to_output(format!("{}{}", taxon_string, "\n"), args.get_output())?;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,6 +216,8 @@ mod tests {
             partial: false,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
 
         get_taxon_name(args.clone())?;
@@ -185,6 +246,8 @@ mod tests {
             partial: false,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
 
         get_taxon_name(args)?;
@@ -201,6 +264,8 @@ mod tests {
             partial: false,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
 
         get_taxon_name(args)?;
@@ -217,6 +282,8 @@ mod tests {
             partial: true,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
@@ -237,6 +304,8 @@ mod tests {
             partial: true,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
@@ -279,6 +348,8 @@ mod tests {
             output: None,
             search: true,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
         let result = search_taxon(args);
         assert!(result.is_err());
@@ -297,6 +368,8 @@ mod tests {
             output: None,
             search: true,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -311,6 +384,8 @@ mod tests {
             output: None,
             search: false,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -325,6 +400,8 @@ mod tests {
             output: Some("test_search.json".to_string()),
             search: true,
             search_all: false,
+            genomes: false,
+            reps_only: false,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());

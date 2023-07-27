@@ -184,6 +184,20 @@ pub fn build_app() -> Command {
                         .long("all")
                         .action(ArgAction::SetTrue)
                         .help("Search for a taxon across all releases"),
+                )
+                .arg(
+                    Arg::new("genomes")
+                        .short('g')
+                        .long("genomes")
+                        .action(ArgAction::SetTrue)
+                        .help("Get V taxon genomes"),
+                )
+                .arg(
+                    Arg::new("reps")
+                        .short('e')
+                        .long("reps")
+                        .action(ArgAction::SetTrue)
+                        .help("Set taxon V genomes search to lookup reps seqs only"),
                 ),
         )
 }
@@ -195,7 +209,7 @@ fn is_correct_taxon(s: &str) -> Result<String, String> {
             return Ok(s.to_string());
         }
     }
-    Err("should be formatted like <level_symbol>__<name>".to_string())
+    Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
 }
 
 fn is_existing(s: &str) -> Result<String, String> {
@@ -313,23 +327,23 @@ mod tests {
         // Negative test cases
         assert_eq!(
             is_correct_taxon("Bacteria"),
-            Err("should be formatted like <level_symbol>__<name>".to_string())
+            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
             is_correct_taxon("d_"),
-            Err("should be formatted like <level_symbol>__<name>".to_string())
+            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
             is_correct_taxon("Actinobacteria"),
-            Err("should be formatted like <level_symbol>__<name>".to_string())
+            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
             is_correct_taxon("__Actinobacteria"),
-            Err("should be formatted like <level_symbol>__<name>".to_string())
+            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
             is_correct_taxon("d_Actinobacteria"),
-            Err("should be formatted like <level_symbol>__<name>".to_string())
+            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
         );
     }
 }

@@ -25,6 +25,12 @@ impl TaxonAPI {
             self.name
         )
     }
+    pub fn get_genomes_request(&self, is_reps_only: bool) -> String {
+        format!(
+            "https://api.gtdb.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
+            self.name, is_reps_only
+        )
+    }
 }
 
 #[cfg(test)]
