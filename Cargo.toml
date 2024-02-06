@@ -7,7 +7,7 @@ description = "xgt enables efficient querying and parsing of GTDB data"
 homepage = "https://github.com/Ebedthan/xgt"
 categories = ["command-line-utilities"]
 keywords = ["bioinformatics"]
-rust-version = "1.65.0"
+rust-version = "1.70.0"
 
 [dependencies]
 anyhow = "1.0.69"
