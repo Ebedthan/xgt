@@ -39,7 +39,7 @@ pub struct TaxonSearchResult {
     matches: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(transparent)]
 pub struct TaxonGenomes {
     data: Vec<String>,
@@ -410,5 +410,36 @@ mod tests {
         let file_contents = std::fs::read_to_string("test_search.json").unwrap();
         assert!(file_contents.contains("g__Aminobacter"));
         std::fs::remove_file("test_search.json").unwrap();
+    }
+
+    #[test]
+    fn test_get_genomes_with_output() -> Result<()> {
+        let args = TaxonArgs {
+            name: vec!["g__Escherichia".to_string()],
+            raw: true,
+            output: Some("output.json".to_string()),
+            partial: false,
+            search: false,
+            search_all: false,
+            genomes: true,
+            reps_only: false,
+        };
+
+        let actual_output = args.get_output().unwrap();
+
+        get_taxon_genomes(args)?;
+
+        let expected_output = fs::read_to_string("output.json")?;
+        let expected_taxon_data: TaxonGenomes = serde_json::from_str(&expected_output)?;
+
+        let actual_output = fs::read_to_string(actual_output)?;
+        let actual_taxon_data: TaxonGenomes = serde_json::from_str(&actual_output)?;
+
+        assert_eq!(expected_taxon_data, actual_taxon_data);
+
+        // Clean up the output file
+        fs::remove_file("output.json")?;
+
+        Ok(())
     }
 }
