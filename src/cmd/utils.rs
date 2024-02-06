@@ -41,7 +41,7 @@ impl SearchArgs {
     }
 
     pub fn set_needle(&mut self, v: Vec<String>) {
-        self.needle.extend(v.into_iter());
+        self.needle.extend(v);
     }
 
     pub fn get_level(&self) -> String {
@@ -118,7 +118,7 @@ impl SearchArgs {
                     .map(|l| l.expect("Cannot parse line")),
             );
         } else {
-            needles.extend(vec![args.get_one::<String>("name").unwrap().to_string()].into_iter());
+            needles.extend(vec![args.get_one::<String>("name").unwrap().to_string()]);
         }
 
         search_args.set_needle(needles);
