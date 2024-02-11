@@ -7,7 +7,7 @@ mod cmd;
 use std::env;
 
 use anyhow::Result;
-use cmd::{genome, search, taxon, utils};
+use cmd::{fastani, genome, search, taxon, utils};
 
 fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
@@ -39,6 +39,14 @@ fn main() -> Result<()> {
                 taxon::get_taxon_genomes(args)?;
             } else {
                 taxon::get_taxon_name(args)?;
+            }
+        }
+        Some(("fastani", sub_matches)) => {
+            let args = utils::FastAniArgs::from_arg_matches(sub_matches);
+            if args.is_job_info() {
+                fastani::get_job_info(args.get_job_id().unwrap())?;
+            } else {
+                fastani::create_fastani_job(&args)?;
             }
         }
         _ => unreachable!("Implemented correctly"),

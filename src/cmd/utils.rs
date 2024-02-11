@@ -8,6 +8,8 @@ use std::{
     io::{self, BufRead, BufReader, Write},
 };
 
+use check_if_email_exists::{check_email, CheckEmailInput, Reachable};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchArgs {
     pub(crate) needle: Vec<String>,
@@ -284,6 +286,98 @@ impl TaxonArgs {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct FastAniArgs {
+    pub(crate) query: Option<String>,
+    pub(crate) reference: Option<String>,
+    pub(crate) kmer: u8,
+    pub(crate) frag_len: u16,
+    pub(crate) min_frag: u8,
+    pub(crate) min_frac: f32,
+    pub(crate) email: String,
+    pub(crate) raw: bool,
+    pub(crate) output: Option<String>,
+    pub(crate) job_id: Option<String>,
+    pub(crate) info: bool,
+}
+
+impl FastAniArgs {
+    pub fn get_raw(&self) -> bool {
+        self.raw
+    }
+
+    pub fn get_output(&self) -> Option<String> {
+        self.output.clone()
+    }
+
+    pub fn get_job_id(&self) -> Option<String> {
+        self.job_id.clone()
+    }
+
+    pub fn is_job_info(&self) -> bool {
+        self.info
+    }
+
+    pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
+        FastAniArgs {
+            query: if arg_matches.contains_id("query") {
+                arg_matches.get_one::<String>("query").cloned()
+            } else {
+                None
+            },
+            reference: if arg_matches.contains_id("reference") {
+                arg_matches.get_one::<String>("reference").cloned()
+            } else {
+                None
+            },
+            kmer: arg_matches
+                .get_one::<String>("kmer")
+                .unwrap()
+                .parse::<u8>()
+                .unwrap(),
+            frag_len: arg_matches
+                .get_one::<String>("frag_len")
+                .unwrap()
+                .parse::<u16>()
+                .unwrap(),
+            min_frag: arg_matches
+                .get_one::<String>("min_frag")
+                .unwrap()
+                .parse::<u8>()
+                .unwrap(),
+            min_frac: arg_matches
+                .get_one::<String>("min_frac")
+                .unwrap()
+                .parse::<f32>()
+                .unwrap(),
+            email: arg_matches.get_one::<String>("email").unwrap().to_string(),
+            raw: arg_matches.get_flag("raw"),
+            output: if arg_matches.contains_id("out") {
+                arg_matches.get_one::<String>("out").cloned()
+            } else {
+                None
+            },
+            job_id: if arg_matches.contains_id("jobid") {
+                arg_matches.get_one::<String>("jobid").cloned()
+            } else {
+                None
+            },
+            info: arg_matches.get_flag("info"),
+        }
+    }
+}
+
+pub async fn email_check(email: &str) -> Result<String, String> {
+    let input = CheckEmailInput::new(email.to_string());
+    let result = check_email(&input).await;
+
+    if result.is_reachable == Reachable::Safe || result.is_reachable == Reachable::Risky {
+        Ok(email.to_string())
+    } else {
+        Err("email is not valid".to_string())
+    }
+}
+
 pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
     let mut writer: Box<dyn Write> = match output {
         Some(path) => Box::new(OpenOptions::new().append(true).create(true).open(path)?),
@@ -301,6 +395,21 @@ mod tests {
     use super::*;
     use crate::app;
     use std::ffi::OsString;
+
+    #[tokio::test]
+    async fn valid_email() {
+        let email = "edimannagato@gmail.com";
+        let result = email_check(email).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn invalid_email() {
+        let email = "invalidemail";
+        let result = email_check(email).await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "email is not valid");
+    }
 
     #[test]
     fn test_get_accession() {

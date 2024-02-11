@@ -200,6 +200,76 @@ pub fn build_app() -> Command {
                         .help("Set taxon V genomes search to lookup reps seqs only"),
                 ),
         )
+        .subcommand(
+            Command::new("fastani")
+                .about("Perform ANI comparisons")
+                .arg(Arg::new("query").help("Query genome ID"))
+                .arg(Arg::new("reference").help("Reference genome ID"))
+                .arg(
+                    Arg::new("jobid")
+                        .short('j')
+                        .long("jobid")
+                        .help("Fastani job ID")
+                        .value_name("STR"),
+                )
+                .arg(
+                    Arg::new("info")
+                        .short('i')
+                        .long("info")
+                        .help("Retrieve information about a fastani job")
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(
+                    Arg::new("kmer")
+                        .short('k')
+                        .long("kmer")
+                        .value_name("INT")
+                        .default_value("16"),
+                )
+                .arg(
+                    Arg::new("frag_len")
+                        .short('l')
+                        .long("fraglen")
+                        .value_name("INT")
+                        .default_value("3000"),
+                )
+                .arg(
+                    Arg::new("min_frag")
+                        .short('m')
+                        .long("minfrag")
+                        .value_name("INT")
+                        .default_value("50"),
+                )
+                .arg(
+                    Arg::new("min_frac")
+                        .short('M')
+                        .long("minfrac")
+                        .value_name("FLOAT")
+                        .default_value("0.2"),
+                )
+                .arg(
+                    Arg::new("email")
+                        .short('e')
+                        .long("email")
+                        .value_name("STR")
+                        .default_value("foo@bar.com"),
+                )
+                .arg(
+                    Arg::new("out")
+                        .short('o')
+                        .long("out")
+                        .help("Redirect output to FILE")
+                        .value_name("FILE")
+                        .value_parser(is_existing),
+                )
+                .arg(
+                    Arg::new("raw")
+                        .short('r')
+                        .long("raw")
+                        .action(ArgAction::SetTrue)
+                        .help("Output raw JSON"),
+                ),
+        )
 }
 
 fn is_correct_taxon(s: &str) -> Result<String, String> {
