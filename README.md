@@ -59,7 +59,7 @@ Full help is available from `xgt --help`.
 
 
 ### Minimum supported Rust version
-`xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.65.0.
+`xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.70.0.
 
 ### Semver
 `xgt` is following [Semantic Versioning 2.0](https://semver.org/).
@@ -68,3 +68,6 @@ Full help is available from `xgt --help`.
 `xgt` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
 
 See [LICENSE-APACHE](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE) and [LICENSE-MIT](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT) for details.
+
+### Note
+Unstable work is on dev branch.
