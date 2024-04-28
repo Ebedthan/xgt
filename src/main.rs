@@ -1,5 +1,3 @@
-extern crate anyhow;
-
 mod api;
 mod app;
 mod cmd;
@@ -11,8 +9,9 @@ use cmd::{genome, search, taxon, utils};
 
 fn main() -> Result<()> {
     let matches = app::build_app().get_matches_from(env::args_os());
+    let subcommand = matches.subcommand();
 
-    match matches.subcommand() {
+    match subcommand {
         Some(("search", sub_matches)) => {
             let args = utils::SearchArgs::from_arg_matches(sub_matches);
             if sub_matches.get_flag("partial") {
@@ -21,29 +20,35 @@ fn main() -> Result<()> {
                 search::exact_search(args)?;
             }
         }
-        Some(("genome", sub_matches)) => {
-            let args = utils::GenomeArgs::from_arg_matches(sub_matches);
-            if sub_matches.get_flag("history") {
-                genome::get_genome_taxon_history(args)?;
-            } else if sub_matches.get_flag("metadata") {
-                genome::get_genome_metadata(args)?;
-            } else {
-                genome::get_genome_card(args)?
-            }
-        }
-        Some(("taxon", sub_matches)) => {
-            let args = utils::TaxonArgs::from_arg_matches(sub_matches);
-            if args.is_search() || args.is_search_all() {
-                taxon::search_taxon(args)?;
-            } else if args.is_genome() {
-                taxon::get_taxon_genomes(args)?;
-            } else {
-                taxon::get_taxon_name(args)?;
-            }
-        }
+        Some(("genome", sub_matches)) => handle_genome_command(sub_matches)?,
+        Some(("taxon", sub_matches)) => handle_taxon_command(sub_matches)?,
         _ => unreachable!("Implemented correctly"),
     };
 
+    Ok(())
+}
+
+fn handle_genome_command(sub_matches: &clap::ArgMatches) -> Result<()> {
+    let args = utils::GenomeArgs::from_arg_matches(sub_matches);
+    if sub_matches.get_flag("history") {
+        genome::get_genome_taxon_history(args)?;
+    } else if sub_matches.get_flag("metadata") {
+        genome::get_genome_metadata(args)?;
+    } else {
+        genome::get_genome_card(args)?
+    }
+    Ok(())
+}
+
+fn handle_taxon_command(sub_matches: &clap::ArgMatches) -> Result<()> {
+    let args = utils::TaxonArgs::from_arg_matches(sub_matches);
+    if args.is_search() || args.is_search_all() {
+        taxon::search_taxon(args)?;
+    } else if args.is_genome() {
+        taxon::get_taxon_genomes(args)?;
+    } else {
+        taxon::get_taxon_name(args)?;
+    }
     Ok(())
 }
 

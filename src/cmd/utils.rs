@@ -3,6 +3,7 @@ use clap::ArgMatches;
 
 use std::fs::OpenOptions;
 
+use std::sync::Arc;
 use std::{
     fs::File,
     io::{self, BufRead, BufReader, Write},
@@ -18,6 +19,7 @@ pub struct SearchArgs {
     pub(crate) rep: bool,
     pub(crate) type_material: bool,
     pub(crate) out: Option<String>,
+    pub(crate) disable_certificate_verification: bool,
 }
 
 impl Default for SearchArgs {
@@ -31,6 +33,7 @@ impl Default for SearchArgs {
             rep: false,
             type_material: false,
             out: None,
+            disable_certificate_verification: false,
         }
     }
 }
@@ -80,6 +83,10 @@ impl SearchArgs {
         self.type_material
     }
 
+    pub fn get_disable_certificate_verification(&self) -> bool {
+        self.disable_certificate_verification
+    }
+
     fn set_type_material(&mut self, b: bool) {
         self.type_material = b;
     }
@@ -100,56 +107,48 @@ impl SearchArgs {
         self.out = s;
     }
 
+    pub fn set_disable_certificate_verification(&mut self, b: bool) {
+        self.disable_certificate_verification = b;
+    }
+
     pub fn new() -> Self {
         SearchArgs::default()
     }
 
     pub fn from_arg_matches(args: &ArgMatches) -> Self {
         let mut search_args = SearchArgs::new();
-        let mut needles: Vec<String> = Vec::new();
 
-        if args.contains_id("file") {
-            let file = File::open(args.get_one::<String>("file").unwrap())
-                .expect("file should be well-formatted");
-
-            needles.extend(
-                BufReader::new(file)
-                    .lines()
-                    .map(|l| l.expect("Cannot parse line")),
-            );
-        } else {
-            needles.extend(vec![args.get_one::<String>("name").unwrap().to_string()]);
+        if let Some(file_path) = args.get_one::<String>("file") {
+            let file = File::open(file_path)
+                .unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
+            let needles: Vec<_> = BufReader::new(file)
+                .lines()
+                .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
+                .collect();
+            search_args.set_needle(needles);
+        } else if let Some(name) = args.get_one::<String>("name") {
+            search_args.set_needle(vec![name.to_string()]);
         }
-
-        search_args.set_needle(needles);
 
         if args.contains_id("level") {
             search_args.set_level(args.get_one::<String>("level").unwrap().to_string());
         }
 
-        if args.get_flag("id") {
-            search_args.set_id(true);
-        }
+        search_args.set_id(args.get_flag("id"));
 
-        if args.get_flag("count") {
-            search_args.set_count(true);
-        }
+        search_args.set_count(args.get_flag("count"));
 
-        if args.get_flag("raw") {
-            search_args.set_raw(true);
-        }
+        search_args.set_raw(args.get_flag("raw"));
 
-        if args.get_flag("rep") {
-            search_args.set_rep(true);
-        }
+        search_args.set_rep(args.get_flag("rep"));
 
-        if args.get_flag("type") {
-            search_args.set_type_material(true);
-        }
+        search_args.set_type_material(args.get_flag("type"));
 
         if args.contains_id("out") {
             search_args.set_out(args.get_one::<String>("out").cloned());
         }
+
+        search_args.set_disable_certificate_verification(args.get_flag("insecure"));
 
         search_args
     }
@@ -160,6 +159,7 @@ pub struct GenomeArgs {
     pub(crate) accession: Vec<String>,
     pub(crate) raw: bool,
     pub(crate) output: Option<String>,
+    pub(crate) disable_certificate_verification: bool,
 }
 
 impl GenomeArgs {
@@ -173,6 +173,10 @@ impl GenomeArgs {
 
     pub fn get_output(&self) -> Option<String> {
         self.output.clone()
+    }
+
+    pub fn get_disable_certificate_verification(&self) -> bool {
+        self.disable_certificate_verification
     }
 
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
@@ -203,6 +207,7 @@ impl GenomeArgs {
             } else {
                 None
             },
+            disable_certificate_verification: arg_matches.get_flag("insecure"),
         }
     }
 }
@@ -217,6 +222,7 @@ pub struct TaxonArgs {
     pub(crate) search_all: bool,
     pub(crate) genomes: bool,
     pub(crate) reps_only: bool,
+    pub(crate) disable_certificate_verification: bool,
 }
 
 impl TaxonArgs {
@@ -234,6 +240,10 @@ impl TaxonArgs {
 
     pub fn get_partial(&self) -> bool {
         self.partial
+    }
+
+    pub fn get_disable_certificate_verification(&self) -> bool {
+        self.disable_certificate_verification
     }
 
     pub fn is_search(&self) -> bool {
@@ -280,6 +290,7 @@ impl TaxonArgs {
             search_all: arg_matches.get_flag("all"),
             genomes: arg_matches.get_flag("genomes"),
             reps_only: arg_matches.get_flag("reps"),
+            disable_certificate_verification: arg_matches.get_flag("insecure"),
         }
     }
 }
@@ -295,6 +306,22 @@ pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
     Ok(())
 }
 
+pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq::Agent> {
+    match disable_certificate_verification {
+        true => {
+            let tls_connector = Arc::new(
+                native_tls::TlsConnector::builder()
+                    .danger_accept_invalid_certs(true)
+                    .build()?,
+            );
+            Ok(ureq::AgentBuilder::new()
+                .tls_connector(tls_connector)
+                .build())
+        }
+        false => Ok(ureq::AgentBuilder::new().build()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -308,6 +335,7 @@ mod tests {
             accession: vec![String::from("NC_000001.11")],
             raw: false,
             output: None,
+            disable_certificate_verification: true,
         };
 
         assert_eq!(genome_args.get_accession(), vec!["NC_000001.11"]);
@@ -319,6 +347,7 @@ mod tests {
             accession: vec![String::from("NC_000001.11")],
             raw: true,
             output: None,
+            disable_certificate_verification: true,
         };
 
         assert!(genome_args.get_raw());
@@ -330,6 +359,7 @@ mod tests {
             accession: vec![String::from("NC_000001.11")],
             raw: false,
             output: Some(String::from("output4.txt")),
+            disable_certificate_verification: true,
         };
 
         assert_eq!(genome_args.get_output(), Some(String::from("output4.txt")));
@@ -346,6 +376,7 @@ mod tests {
             rep: false,
             type_material: false,
             out: Some(String::from("test1")),
+            disable_certificate_verification: true,
         };
         assert_eq!(args.get_needle(), vec!["needle".to_string()]);
         assert_eq!(args.get_level(), "level".to_string());
@@ -368,6 +399,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         assert_eq!(args.get_name(), vec!["name1", "name2"]);
@@ -384,6 +416,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         assert_eq!(args.get_partial(), true);
@@ -400,6 +433,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         assert_eq!(args.is_search(), true);

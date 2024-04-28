@@ -1,3 +1,4 @@
+use super::utils;
 use super::utils::GenomeArgs;
 use crate::api::genome_api::GenomeAPI;
 use crate::api::genome_api::GenomeRequestType;
@@ -179,7 +180,7 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Metadata);
@@ -243,7 +244,7 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Card);
@@ -254,7 +255,7 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
                 bail!("The server returned an unexpected status code ({})", code);
             }
             Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
+                bail!("There was an error making the request or receiving the response");
             }
         };
 
@@ -307,7 +308,7 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::TaxonHistory);
@@ -375,8 +376,10 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: false,
             output: None,
+            disable_certificate_verification: true,
         };
-        assert!(get_genome_card(args).is_ok());
+        println!("{:?}", get_genome_card(args.clone()));
+        assert!(get_genome_card(args.clone()).is_ok());
     }
 
     #[test]
@@ -385,6 +388,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: true,
             output: None,
+            disable_certificate_verification: true,
         };
         assert!(get_genome_card(args).is_ok());
     }
@@ -395,6 +399,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: false,
             output: None,
+            disable_certificate_verification: true,
         };
         assert!(get_genome_metadata(args).is_ok());
     }
@@ -405,6 +410,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: false,
             output: Some(String::from("genome")),
+            disable_certificate_verification: true,
         };
         assert!(get_genome_metadata(args).is_ok());
         std::fs::remove_file(Path::new("genome")).unwrap();
@@ -416,6 +422,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: true,
             output: Some(String::from("genome1")),
+            disable_certificate_verification: true,
         };
         assert!(get_genome_metadata(args).is_ok());
         std::fs::remove_file(Path::new("genome1")).unwrap();
@@ -427,6 +434,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: true,
             output: Some(String::from("genome2")),
+            disable_certificate_verification: true,
         };
         assert!(get_genome_card(args).is_ok());
         std::fs::remove_file(Path::new("genome2")).unwrap();
@@ -438,6 +446,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: false,
             output: Some(String::from("genome3")),
+            disable_certificate_verification: true,
         };
         assert!(get_genome_card(args).is_ok());
         std::fs::remove_file(Path::new("genome3")).unwrap();
@@ -449,6 +458,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: true,
             output: Some(String::from("genome4")),
+            disable_certificate_verification: true,
         };
         assert!(get_genome_taxon_history(args).is_ok());
         std::fs::remove_file(Path::new("genome4")).unwrap();
@@ -460,6 +470,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: false,
             output: Some(String::from("genome5")),
+            disable_certificate_verification: true,
         };
         assert!(get_genome_taxon_history(args).is_ok());
         std::fs::remove_file(Path::new("genome5")).unwrap();
@@ -471,6 +482,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: true,
             output: None,
+            disable_certificate_verification: true,
         };
         assert!(get_genome_metadata(args).is_ok());
     }
@@ -481,6 +493,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: false,
             output: None,
+            disable_certificate_verification: true,
         };
         assert!(get_genome_taxon_history(args).is_ok());
     }
@@ -491,6 +504,7 @@ mod tests {
             accession: vec!["GCA_001512625.1".to_owned()],
             raw: true,
             output: None,
+            disable_certificate_verification: true,
         };
         assert!(get_genome_taxon_history(args).is_ok());
     }
@@ -501,6 +515,7 @@ mod tests {
             accession: vec!["".to_owned()],
             raw: true,
             output: None,
+            disable_certificate_verification: true,
         };
 
         assert!(get_genome_card(args).is_err())
@@ -512,6 +527,7 @@ mod tests {
             accession: vec!["&&&&^^^^^||||".to_owned()],
             raw: true,
             output: None,
+            disable_certificate_verification: true,
         };
         assert!(
             get_genome_card(args).is_err(),

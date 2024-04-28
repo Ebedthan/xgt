@@ -85,6 +85,13 @@ pub fn build_app() -> Command {
                         .long("type")
                         .action(ArgAction::SetTrue)
                         .help("Search NCBI type material only"),
+                )
+                .arg(
+                    Arg::new("insecure")
+                        .short('k')
+                        .long("insecure")
+                        .help("Disable SSL certificate verification")
+                        .action(ArgAction::SetTrue),
                 ),
         )
         .subcommand(
@@ -131,6 +138,13 @@ pub fn build_app() -> Command {
                         .help("Output raw JSON")
                         .value_name("FILE")
                         .value_parser(is_existing),
+                )
+                .arg(
+                    Arg::new("insecure")
+                        .short('k')
+                        .long("insecure")
+                        .help("Disable SSL certificate verification")
+                        .action(ArgAction::SetTrue),
                 ),
         )
         .subcommand(
@@ -198,6 +212,13 @@ pub fn build_app() -> Command {
                         .long("reps")
                         .action(ArgAction::SetTrue)
                         .help("Set taxon V genomes search to lookup reps seqs only"),
+                )
+                .arg(
+                    Arg::new("insecure")
+                        .short('k')
+                        .long("insecure")
+                        .help("Disable SSL certificate verification")
+                        .action(ArgAction::SetTrue),
                 ),
         )
 }

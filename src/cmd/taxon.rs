@@ -67,7 +67,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
         .collect();
     let raw = args.get_raw();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for name in taxon_api {
         let request_url = name.get_name_request();
@@ -111,7 +111,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     let raw = args.get_raw();
     let partial = args.get_partial();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for search in taxon_api {
         let request_url: String = if args.is_search_all() {
@@ -164,7 +164,7 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
     let raw = args.get_raw();
     let sp_reps_only = args.is_reps_only();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for search in taxon_api {
         let request_url = search.get_genomes_request(sp_reps_only);
@@ -218,6 +218,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         get_taxon_name(args.clone())?;
@@ -248,6 +249,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         get_taxon_name(args)?;
@@ -266,6 +268,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         get_taxon_name(args)?;
@@ -284,6 +287,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
@@ -306,6 +310,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
         let result = get_taxon_name(taxon_args);
         assert!(result.is_err());
@@ -350,6 +355,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
         let result = search_taxon(args);
         assert!(result.is_err());
@@ -370,6 +376,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -386,6 +393,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -402,6 +410,7 @@ mod tests {
             search_all: false,
             genomes: false,
             reps_only: false,
+            disable_certificate_verification: true,
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -423,6 +432,7 @@ mod tests {
             search_all: false,
             genomes: true,
             reps_only: false,
+            disable_certificate_verification: true,
         };
 
         let actual_output = args.get_output().unwrap();

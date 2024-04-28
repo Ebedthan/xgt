@@ -57,6 +57,12 @@ xgt taxon --search --partial g__Escherichia
 
 Full help is available from `xgt --help`.
 
+## Certificate verification
+
+`xgt` through `ureq` performs peer SSL certificate verification by default. 
+To tell `xgt` to _not_ verify the peer, use `-k/--insecure` option.
+Currently (as of Apr 28, 2024), you should add this options to your command to get the desired result as the GTDB API have a certificate issue.
+
 
 ### Minimum supported Rust version
 `xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.70.0.

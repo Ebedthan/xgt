@@ -24,51 +24,26 @@ impl SearchResult {
             anyhow!("Failed to perform exact match as gtdb taxonomy is a null field")
         })?;
 
-        let res = match level {
-            "domain" => tax
-                .replace("d__", "")
-                .split("; ")
-                .next()
-                .unwrap_or("")
-                .to_string(),
-            "phylum" => tax
-                .replace("p__", "")
-                .split("; ")
-                .nth(1)
-                .unwrap_or("")
-                .to_string(),
-            "class" => tax
-                .replace("c__", "")
-                .split("; ")
-                .nth(2)
-                .unwrap_or("")
-                .to_string(),
-            "order" => tax
-                .replace("o__", "")
-                .split("; ")
-                .nth(3)
-                .unwrap_or("")
-                .to_string(),
-            "family" => tax
-                .replace("f__", "")
-                .split("; ")
-                .nth(4)
-                .unwrap_or("")
-                .to_string(),
-            "genus" => tax
-                .replace("g__", "")
-                .split("; ")
-                .nth(5)
-                .unwrap_or("")
-                .to_string(),
-            "species" => tax
-                .replace("s__", "")
-                .split("; ")
-                .nth(6)
-                .unwrap_or("")
-                .to_string(),
-            &_ => unreachable!("all fields have been taken into account"),
+        let index = match level {
+            "domain" => 0,
+            "phylum" => 1,
+            "class" => 2,
+            "order" => 3,
+            "family" => 4,
+            "genus" => 5,
+            "species" => 6,
+            _ => return Err(anyhow!("Invalid level specified")),
         };
+
+        let res = tax
+            .split("; ")
+            .nth(index)
+            .unwrap_or("")
+            .split("__")
+            .nth(1)
+            .unwrap_or("")
+            .trim_start_matches(char::is_whitespace)
+            .to_string();
 
         Ok(res)
     }
@@ -103,7 +78,7 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
 
     let needles = args.get_needle();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for needle in needles {
         let search_api = SearchAPI::from(&needle, &args);
@@ -178,7 +153,7 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 
     let needles = args.get_needle();
 
-    let agent: Agent = ureq::AgentBuilder::new().build();
+    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for needle in needles {
         let oneedle = needle.clone();
@@ -332,6 +307,7 @@ mod tests {
         let mut args = utils::SearchArgs::new();
         args.set_needle(vec!["Azorhizobium".to_string()]);
         args.set_count(true);
+        args.set_disable_certificate_verification(true);
         args.set_out(Some("test.txt".to_string()));
         let res = exact_search(args.clone());
         assert!(res.is_ok());
@@ -345,6 +321,7 @@ mod tests {
         let mut args = utils::SearchArgs::new();
         args.set_needle(vec!["Azorhizobium".to_string()]);
         args.set_count(true);
+        args.set_disable_certificate_verification(true);
         args.set_out(Some("test1.txt".to_string()));
         let res = partial_search(args.clone());
         assert!(res.is_ok());
@@ -358,6 +335,7 @@ mod tests {
         let mut args = utils::SearchArgs::new();
         args.set_needle(vec!["Azorhizobium".to_string()]);
         args.set_id(true);
+        args.set_disable_certificate_verification(true);
         args.set_out(Some("test2.txt".to_string()));
         let res = exact_search(args.clone());
         assert!(res.is_ok());
@@ -372,6 +350,7 @@ mod tests {
         args.set_needle(vec!["Azorhizobium".to_string()]);
         args.set_id(true);
         args.set_out(Some("test3.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = partial_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test3.txt").unwrap();
@@ -386,6 +365,7 @@ mod tests {
         args.set_raw(true);
         args.set_id(true);
         args.set_out(Some("test4.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = exact_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test4.txt").unwrap();
@@ -400,6 +380,7 @@ mod tests {
         args.set_raw(true);
         args.set_id(true);
         args.set_out(Some("test5.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = partial_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test5.txt").unwrap();
@@ -413,10 +394,11 @@ mod tests {
         args.set_needle(vec!["Azorhizobium".to_string()]);
         args.set_raw(true);
         args.set_out(Some("test6.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = exact_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test6.txt").unwrap();
-        let actual = r#"{"gid":"GCA_023405075.1","accession":"GCA_023405075.1","ncbiOrgName":"Proteobacteria bacterium","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_023448105.1","accession":"GCA_023448105.1","ncbiOrgName":"Proteobacteria bacterium","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCF_000010525.1","accession":"GCF_000010525.1","ncbiOrgName":"Azorhizobium caulinodans ORS 571","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_000473085.1","accession":"GCF_000473085.1","ncbiOrgName":"Azorhizobium doebereinerae UFLA1-100","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_004364705.1","accession":"GCF_004364705.1","ncbiOrgName":"Azorhizobium sp. AG788","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCF_014635325.1","accession":"GCF_014635325.1","ncbiOrgName":"Azorhizobium oxalatiphilum","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}"#;
+        let actual = r#"{"gid":"GCA_023405075.1","accession":"GCA_023405075.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_023448105.1","accession":"GCA_023448105.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCF_000010525.1","accession":"GCF_000010525.1","ncbiOrgName":"Azorhizobium caulinodans ORS 571","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_000473085.1","accession":"GCF_000473085.1","ncbiOrgName":"Azorhizobium doebereinerae UFLA1-100","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_004364705.1","accession":"GCF_004364705.1","ncbiOrgName":"Azorhizobium sp. AG788","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCF_014635325.1","accession":"GCF_014635325.1","ncbiOrgName":"Azorhizobium oxalatiphilum","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}"#;
         assert_eq!(actual, expected);
         std::fs::remove_file("test6.txt").unwrap();
     }
@@ -427,10 +409,11 @@ mod tests {
         args.set_needle(vec!["Azorhizobium".to_string()]);
         args.set_raw(true);
         args.set_out(Some("test7.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = partial_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test7.txt").unwrap();
-        let actual = r#"{"gid":"GCA_002279595.1","accession":"GCA_002279595.1","ncbiOrgName":"Azorhizobium sp. 12-66-6","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_002280795.1","accession":"GCA_002280795.1","ncbiOrgName":"Azorhizobium sp. 32-67-21","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Aquabacter; s__Aquabacter sp002279855","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_002280945.1","accession":"GCA_002280945.1","ncbiOrgName":"Azorhizobium sp. 35-67-5","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_002281175.1","accession":"GCA_002281175.1","ncbiOrgName":"Azorhizobium sp. 35-67-15","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_002282175.1","accession":"GCA_002282175.1","ncbiOrgName":"Azorhizobium sp. 39-67-5","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_023405075.1","accession":"GCA_023405075.1","ncbiOrgName":"Proteobacteria bacterium","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCA_023448105.1","accession":"GCA_023448105.1","ncbiOrgName":"Proteobacteria bacterium","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCF_000010525.1","accession":"GCF_000010525.1","ncbiOrgName":"Azorhizobium caulinodans ORS 571","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_000473085.1","accession":"GCF_000473085.1","ncbiOrgName":"Azorhizobium doebereinerae UFLA1-100","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_004364705.1","accession":"GCF_004364705.1","ncbiOrgName":"Azorhizobium sp. AG788","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":false}{"gid":"GCF_014635325.1","accession":"GCF_014635325.1","ncbiOrgName":"Azorhizobium oxalatiphilum","ncbiTaxonomy":"d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}"#;
+        let actual = r#"{"gid":"GCA_002279595.1","accession":"GCA_002279595.1","ncbiOrgName":"Azorhizobium sp. 12-66-6","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_002280795.1","accession":"GCA_002280795.1","ncbiOrgName":"Azorhizobium sp. 32-67-21","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Aquabacter; s__Aquabacter sp002279855","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_002280945.1","accession":"GCA_002280945.1","ncbiOrgName":"Azorhizobium sp. 35-67-5","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_002281175.1","accession":"GCA_002281175.1","ncbiOrgName":"Azorhizobium sp. 35-67-15","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_002282175.1","accession":"GCA_002282175.1","ncbiOrgName":"Azorhizobium sp. 39-67-5","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"Undefined (Failed Quality Check)","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_023405075.1","accession":"GCA_023405075.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCA_023448105.1","accession":"GCA_023448105.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCF_000010525.1","accession":"GCF_000010525.1","ncbiOrgName":"Azorhizobium caulinodans ORS 571","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_000473085.1","accession":"GCF_000473085.1","ncbiOrgName":"Azorhizobium doebereinerae UFLA1-100","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}{"gid":"GCF_004364705.1","accession":"GCF_004364705.1","ncbiOrgName":"Azorhizobium sp. AG788","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}{"gid":"GCF_014635325.1","accession":"GCF_014635325.1","ncbiOrgName":"Azorhizobium oxalatiphilum","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}"#;
         assert_eq!(actual, expected);
         std::fs::remove_file("test7.txt").unwrap();
     }
@@ -441,6 +424,7 @@ mod tests {
         args.set_needle(vec!["Azorhizobium doebereinerae".to_string()]);
         args.set_level("species".to_string());
         args.set_out(Some("test8.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = exact_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test8.txt").unwrap();
@@ -448,7 +432,7 @@ mod tests {
   "gid": "GCF_000473085.1",
   "accession": "GCF_000473085.1",
   "ncbiOrgName": "Azorhizobium doebereinerae UFLA1-100",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae",
   "isGtdbSpeciesRep": true,
   "isNcbiTypeMaterial": true
@@ -463,6 +447,7 @@ mod tests {
         args.set_needle(vec!["Azorhizobium doebereinerae".to_string()]);
         args.set_level("species".to_string());
         args.set_out(Some("test9.txt".to_string()));
+        args.set_disable_certificate_verification(true);
         let res = partial_search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test9.txt").unwrap();
@@ -470,63 +455,63 @@ mod tests {
   "gid": "GCA_002279595.1",
   "accession": "GCA_002279595.1",
   "ncbiOrgName": "Azorhizobium sp. 12-66-6",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
   "gtdbTaxonomy": "Undefined (Failed Quality Check)",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCA_002280795.1",
   "accession": "GCA_002280795.1",
   "ncbiOrgName": "Azorhizobium sp. 32-67-21",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Aquabacter; s__Aquabacter sp002279855",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCA_002280945.1",
   "accession": "GCA_002280945.1",
   "ncbiOrgName": "Azorhizobium sp. 35-67-5",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
   "gtdbTaxonomy": "Undefined (Failed Quality Check)",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCA_002281175.1",
   "accession": "GCA_002281175.1",
   "ncbiOrgName": "Azorhizobium sp. 35-67-15",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
   "gtdbTaxonomy": "Undefined (Failed Quality Check)",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCA_002282175.1",
   "accession": "GCA_002282175.1",
   "ncbiOrgName": "Azorhizobium sp. 39-67-5",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
   "gtdbTaxonomy": "Undefined (Failed Quality Check)",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCA_023405075.1",
   "accession": "GCA_023405075.1",
-  "ncbiOrgName": "Proteobacteria bacterium",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__; o__; f__; g__; s__",
+  "ncbiOrgName": "Pseudomonadota bacterium",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCA_023448105.1",
   "accession": "GCA_023448105.1",
-  "ncbiOrgName": "Proteobacteria bacterium",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__; o__; f__; g__; s__",
+  "ncbiOrgName": "Pseudomonadota bacterium",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCF_000010525.1",
   "accession": "GCF_000010525.1",
   "ncbiOrgName": "Azorhizobium caulinodans ORS 571",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans",
   "isGtdbSpeciesRep": true,
   "isNcbiTypeMaterial": true
@@ -534,7 +519,7 @@ mod tests {
   "gid": "GCF_000473085.1",
   "accession": "GCF_000473085.1",
   "ncbiOrgName": "Azorhizobium doebereinerae UFLA1-100",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae",
   "isGtdbSpeciesRep": true,
   "isNcbiTypeMaterial": true
@@ -542,7 +527,7 @@ mod tests {
   "gid": "GCF_003989665.1",
   "accession": "GCF_003989665.1",
   "ncbiOrgName": "Azospirillum doebereinerae",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Rhodospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhodospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Azospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae",
   "isGtdbSpeciesRep": true,
   "isNcbiTypeMaterial": true
@@ -550,15 +535,15 @@ mod tests {
   "gid": "GCF_004364705.1",
   "accession": "GCF_004364705.1",
   "ncbiOrgName": "Azorhizobium sp. AG788",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }{
   "gid": "GCF_014635325.1",
   "accession": "GCF_014635325.1",
   "ncbiOrgName": "Azorhizobium oxalatiphilum",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum",
   "isGtdbSpeciesRep": true,
   "isNcbiTypeMaterial": true
@@ -566,10 +551,10 @@ mod tests {
   "gid": "GCF_022214805.1",
   "accession": "GCF_022214805.1",
   "ncbiOrgName": "Azospirillum doebereinerae",
-  "ncbiTaxonomy": "d__Bacteria; p__Proteobacteria; c__Alphaproteobacteria; o__Rhodospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae",
+  "ncbiTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhodospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae",
   "gtdbTaxonomy": "d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Azospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae",
   "isGtdbSpeciesRep": false,
-  "isNcbiTypeMaterial": false
+  "isNcbiTypeMaterial": true
 }"#;
         assert_eq!(actual, expected);
         std::fs::remove_file("test9.txt").unwrap();

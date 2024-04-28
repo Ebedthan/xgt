@@ -1,6 +1,6 @@
 [package]
 name = "xgt"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 description = "xgt enables efficient querying and parsing of GTDB data"
@@ -14,7 +14,8 @@ anyhow = "1.0.69"
 clap = "4.1.8"
 serde = { version ="1.0.153", features = ["derive"] }
 serde_json = "1.0.94"
-ureq = { version = "2.6.2", features = ["json"] }
+ureq = { version = "2.6.2", features = ["json", "native-tls"] }
+native-tls = "0.2"
 
 [dev-dependencies]
 mockito = "1.0.2"
