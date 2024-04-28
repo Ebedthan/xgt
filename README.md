@@ -61,19 +61,19 @@ Full help is available from `xgt --help`.
 
 `xgt` through `ureq` performs peer SSL certificate verification by default. 
 To tell `xgt` to _not_ verify the peer, use `-k/--insecure` option.
-Currently (as of Apr 28, 2024), you should add this options to your command to get the desired result as the GTDB API have a certificate issue.
+Currently (as of Apr 28, 2024), you should add this options to your command to get the desired result as GTDB API's server have currently a certificate issue.
 
 
-### Minimum supported Rust version
+## Minimum supported Rust version
 `xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.70.0.
 
-### Semver
+## Semver
 `xgt` is following [Semantic Versioning 2.0](https://semver.org/).
 
-### Licence
+## Licence
 `xgt` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
 
 See [LICENSE-APACHE](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE) and [LICENSE-MIT](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT) for details.
 
-### Note
+## Note
 Unstable work is on dev branch.

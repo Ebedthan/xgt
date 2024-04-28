@@ -182,10 +182,9 @@ impl GenomeArgs {
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
         let mut accession = Vec::new();
 
-        if arg_matches.contains_id("file") {
-            let file = File::open(arg_matches.get_one::<String>("file").unwrap())
-                .expect("file should be well-formatted");
-
+        if let Some(file_path) = arg_matches.get_one::<String>("file") {
+            let file = File::open(file_path)
+                .unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
             accession = BufReader::new(file)
                 .lines()
                 .map(|l| l.expect("Cannot parse line"))
@@ -194,7 +193,7 @@ impl GenomeArgs {
             accession.push(
                 arg_matches
                     .get_one::<String>("accession")
-                    .unwrap()
+                    .unwrap_or_else(|| panic!("Missing accession value"))
                     .to_string(),
             );
         }
@@ -202,11 +201,7 @@ impl GenomeArgs {
         GenomeArgs {
             accession,
             raw: arg_matches.get_flag("raw"),
-            output: if arg_matches.contains_id("out") {
-                arg_matches.get_one::<String>("out").cloned()
-            } else {
-                None
-            },
+            output: arg_matches.get_one::<String>("out").map(String::from),
             disable_certificate_verification: arg_matches.get_flag("insecure"),
         }
     }
@@ -265,26 +260,26 @@ impl TaxonArgs {
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
         let mut names = Vec::new();
 
-        if arg_matches.contains_id("file") {
-            let file = File::open(arg_matches.get_one::<String>("file").unwrap())
-                .expect("file should be well-formatted");
-
+        if let Some(file_path) = arg_matches.get_one::<String>("file") {
+            let file = File::open(file_path)
+                .unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
             names = BufReader::new(file)
                 .lines()
                 .map(|l| l.expect("Cannot parse line"))
                 .collect();
         } else {
-            names.push(arg_matches.get_one::<String>("name").unwrap().to_string());
+            names.push(
+                arg_matches
+                    .get_one::<String>("name")
+                    .unwrap_or_else(|| panic!("Missing name value"))
+                    .to_string(),
+            );
         }
 
         TaxonArgs {
             name: names,
             raw: arg_matches.get_flag("raw"),
-            output: if arg_matches.contains_id("out") {
-                arg_matches.get_one::<String>("out").cloned()
-            } else {
-                None
-            },
+            output: arg_matches.get_one::<String>("out").map(String::from),
             partial: arg_matches.get_flag("partial"),
             search: arg_matches.get_flag("search"),
             search_all: arg_matches.get_flag("all"),

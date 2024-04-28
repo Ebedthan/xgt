@@ -59,94 +59,65 @@ impl TaxonSearchResult {
 }
 
 pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
-    // format the request
-    let taxon_api: Vec<TaxonAPI> = args
-        .get_name()
-        .iter()
-        .map(|x| TaxonAPI::from(x.to_string()))
-        .collect();
     let raw = args.get_raw();
-
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
-    for name in taxon_api {
-        let request_url = name.get_name_request();
-
+    for name in args.get_name() {
+        let request_url = TaxonAPI::from(name.to_string()).get_name_request();
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
-            Err(ureq::Error::Status(400, _)) => {
-                bail!("Taxon {} not found", name.get_name());
-            }
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
-            }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
-            }
+            Err(ureq::Error::Status(400, _)) => bail!("Taxon {} not found", name),
+            Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
+            Err(_) => bail!("Error making the request or receiving the response."),
         };
 
         let taxon_data: TaxonResult = response.into_json()?;
-
-        match raw {
-            true => {
-                let taxon_string = serde_json::to_string(&taxon_data)?;
-                utils::write_to_output(taxon_string, args.get_output())?;
-            }
-            false => {
-                let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
-                utils::write_to_output(taxon_string, args.get_output())?;
-            }
+        let taxon_string = if raw {
+            serde_json::to_string(&taxon_data)?
+        } else {
+            serde_json::to_string_pretty(&taxon_data)?
         };
+        utils::write_to_output(taxon_string, args.get_output())?;
     }
 
     Ok(())
 }
 
 pub fn search_taxon(args: TaxonArgs) -> Result<()> {
-    let taxon_api: Vec<TaxonAPI> = args
-        .get_name()
-        .iter()
-        .map(|x| TaxonAPI::from(x.to_string()))
-        .collect();
     let raw = args.get_raw();
     let partial = args.get_partial();
-
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
-    for search in taxon_api {
-        let request_url: String = if args.is_search_all() {
-            search.get_search_all_request()
+    for name in args.get_name() {
+        let search_api = TaxonAPI::from(name.to_string());
+        let request_url = if args.is_search_all() {
+            search_api.get_search_all_request()
         } else {
-            search.get_search_request()
+            search_api.get_search_request()
         };
 
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
-            Err(ureq::Error::Status(400, _)) => {
-                bail!("No match found for {}", search.get_name());
-            }
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
-            }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
-            }
+            Err(ureq::Error::Status(400, _)) => bail!("No match found for {}", name),
+            Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
+            Err(_) => bail!("Error making the request or receiving the response."),
         };
 
         let mut taxon_data: TaxonSearchResult = response.into_json()?;
         if !partial {
-            taxon_data.filter(search.get_name());
+            taxon_data.filter(name.to_string());
         }
 
         ensure!(
             !taxon_data.matches.is_empty(),
             "No match found for {}",
-            search.get_name()
+            name
         );
 
-        let taxon_string: String = match raw {
-            true => serde_json::to_string(&taxon_data)?,
-            false => serde_json::to_string_pretty(&taxon_data)?,
+        let taxon_string = if raw {
+            serde_json::to_string(&taxon_data)?
+        } else {
+            serde_json::to_string_pretty(&taxon_data)?
         };
 
         utils::write_to_output(format!("{}{}", taxon_string, "\n"), args.get_output())?;
@@ -156,46 +127,32 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 }
 
 pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
-    let taxon_api: Vec<TaxonAPI> = args
-        .get_name()
-        .iter()
-        .map(|x| TaxonAPI::from(x.to_string()))
-        .collect();
     let raw = args.get_raw();
     let sp_reps_only = args.is_reps_only();
-
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
-    for search in taxon_api {
-        let request_url = search.get_genomes_request(sp_reps_only);
+    for name in args.get_name() {
+        let search_api = TaxonAPI::from(name.to_string());
+        let request_url = search_api.get_genomes_request(sp_reps_only);
 
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
-            Err(ureq::Error::Status(400, _)) => {
-                bail!("No match found for {}", search.get_name());
-            }
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
-            }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
-            }
+            Err(ureq::Error::Status(400, _)) => bail!("No match found for {}", name),
+            Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
+            Err(_) => bail!("Error making the request or receiving the response."),
         };
 
         let taxon_data: TaxonGenomes = response.into_json()?;
 
-        ensure!(
-            !taxon_data.data.is_empty(),
-            "No data found for {}",
-            search.get_name()
-        );
+        ensure!(!taxon_data.data.is_empty(), "No data found for {}", name);
 
-        let taxon_string: String = match raw {
-            true => serde_json::to_string(&taxon_data)?,
-            false => serde_json::to_string_pretty(&taxon_data)?,
+        let taxon_string = if raw {
+            serde_json::to_string(&taxon_data)?
+        } else {
+            serde_json::to_string_pretty(&taxon_data)?
         };
 
-        utils::write_to_output(format!("{}{}", taxon_string, "\n"), args.get_output())?;
+        utils::write_to_output(format!("{}{}\n", taxon_string, "\n"), args.get_output())?;
     }
 
     Ok(())

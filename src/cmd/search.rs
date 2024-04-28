@@ -64,31 +64,22 @@ impl SearchResults {
     fn get_total_rows(&self) -> u32 {
         self.total_rows
     }
-    fn get_rows(&self) -> Vec<SearchResult> {
-        self.rows.clone()
+    fn get_rows(&self) -> &[SearchResult] {
+        &self.rows
     }
 }
 
 pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
-    // get args
-    let gid = args.get_gid();
-    let count = args.get_count();
-    let raw = args.get_raw();
-    let output = args.get_out();
-
-    let needles = args.get_needle();
-
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
-    for needle in needles {
+    for needle in args.get_needle() {
         let search_api = SearchAPI::from(&needle, &args);
-
         let request_url = search_api.request();
 
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
             Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
+                bail!("The server returned an unexpected status code ({})", code)
             }
             Err(_) => {
                 bail!("There was an error making the request or receiving the response.");
@@ -96,48 +87,32 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
         };
 
         let search_result: SearchResults = response.into_json()?;
-
         let search_result_list = search_result.get_rows();
         ensure!(
             search_result.get_total_rows() != 0,
             "No matching data found in GTDB"
         );
 
-        // Return number of genomes?
-        match count {
-            true => {
-                utils::write_to_output(
-                    format!("{}{}", &search_result.get_total_rows(), "\n"),
-                    output.clone(),
-                )?;
+        if args.get_count() {
+            utils::write_to_output(
+                format!("{}\n", search_result.get_total_rows()),
+                args.get_out().clone(),
+            )?;
+        } else if args.get_gid() {
+            let list: Vec<String> = search_result_list.iter().map(|x| x.gid.clone()).collect();
+            for gid in list {
+                utils::write_to_output(format!("{}\n", gid), args.get_out().clone())?;
             }
-
-            // Return only genome id?
-            false => match gid {
-                true => {
-                    let list: Vec<String> =
-                        search_result_list.iter().map(|x| x.gid.clone()).collect();
-
-                    for gid in list {
-                        utils::write_to_output(format!("{}{}", gid, "\n"), output.clone())?;
-                    }
-                }
-                // Return all data in pretty print json?
-                false => match raw {
-                    true => {
-                        for result in search_result_list {
-                            let genome_string = serde_json::to_string(&result)?;
-                            utils::write_to_output(genome_string, output.clone())?;
-                        }
-                    }
-                    false => {
-                        for result in search_result_list {
-                            let genome_string = serde_json::to_string_pretty(&result)?;
-                            utils::write_to_output(genome_string, output.clone())?;
-                        }
-                    }
-                },
-            },
+        } else if args.get_raw() {
+            for result in search_result_list {
+                let genome_string = serde_json::to_string(&result)?;
+                utils::write_to_output(genome_string, args.get_out().clone())?;
+            }
+        } else {
+            for result in search_result_list {
+                let genome_string = serde_json::to_string_pretty(&result)?;
+                utils::write_to_output(genome_string, args.get_out().clone())?;
+            }
         }
     }
 
@@ -145,20 +120,10 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
 }
 
 pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
-    // get args
-    let gid = args.get_gid();
-    let count = args.get_count();
-    let raw = args.get_raw();
-    let output = args.get_out();
-
-    let needles = args.get_needle();
-
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
-    for needle in needles {
-        let oneedle = needle.clone();
-        let search_api = SearchAPI::from(&oneedle, &args);
-
+    for needle in args.get_needle() {
+        let search_api = SearchAPI::from(&needle, &args);
         let request_url = search_api.request();
 
         let response = match agent.get(&request_url).call() {
@@ -173,47 +138,31 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
 
         let mut search_result: SearchResults = response.into_json()?;
         search_result.retain(&args.get_level(), &needle);
+
         ensure!(
             search_result.get_total_rows() != 0,
             "No matching data found in GTDB"
         );
 
-        // Return number of genomes?
-        match count {
-            true => {
-                utils::write_to_output(
-                    format!("{}{}", search_result.get_total_rows(), "\n"),
-                    output.clone(),
-                )?;
+        if args.get_count() {
+            utils::write_to_output(
+                format!("{}\n", search_result.get_total_rows()),
+                args.get_out().clone(),
+            )?;
+        } else if args.get_gid() {
+            let list: Vec<String> = search_result.rows.iter().map(|x| x.gid.clone()).collect();
+            for gid in list {
+                utils::write_to_output(format!("{}\n", gid), args.get_out().clone())?;
             }
-
-            // Return only genome id?
-            false => {
-                match gid {
-                    true => {
-                        let list: Vec<String> =
-                            search_result.rows.iter().map(|x| x.gid.clone()).collect();
-
-                        for gid in list {
-                            utils::write_to_output(format!("{}{}", gid, "\n"), output.clone())?;
-                        }
-                    }
-                    // Return all data in pretty print json?
-                    false => match raw {
-                        true => {
-                            for result in search_result.rows {
-                                let genome_string = serde_json::to_string(&result)?;
-                                utils::write_to_output(genome_string, output.clone())?;
-                            }
-                        }
-                        false => {
-                            for result in search_result.rows {
-                                let genome_string = serde_json::to_string_pretty(&result)?;
-                                utils::write_to_output(genome_string, output.clone())?;
-                            }
-                        }
-                    },
-                }
+        } else if args.get_raw() {
+            for result in &search_result.rows {
+                let genome_string = serde_json::to_string(result)?;
+                utils::write_to_output(genome_string, args.get_out().clone())?;
+            }
+        } else {
+            for result in &search_result.rows {
+                let genome_string = serde_json::to_string_pretty(result)?;
+                utils::write_to_output(genome_string, args.get_out().clone())?;
             }
         }
     }

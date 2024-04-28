@@ -3,7 +3,8 @@ use super::utils::GenomeArgs;
 use crate::api::genome_api::GenomeAPI;
 use crate::api::genome_api::GenomeRequestType;
 
-use anyhow::{bail, Context, Result};
+use anyhow::anyhow;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -185,52 +186,33 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Metadata);
 
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
+        let response = agent.get(&request_url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) => {
+                anyhow!("The server returned an unexpected status code ({})", code)
             }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
-            }
+            _ => anyhow!("There was an error making the request or receiving the response."),
+        })?;
+
+        let genome_card: GenomeMetadata = response.into_json()?;
+
+        let genome_string = if raw {
+            serde_json::to_string(&genome_card)?
+        } else {
+            serde_json::to_string_pretty(&genome_card)?
         };
 
-        let genome: GenomeMetadata = response.into_json()?;
-
-        match raw {
-            true => {
-                let genome_string = serde_json::to_string(&genome)?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                }
-            }
-            false => {
-                let genome_string = serde_json::to_string_pretty(&genome)?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                }
-            }
-        };
+        let output = args.get_output();
+        if let Some(path) = output {
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&path)
+                .with_context(|| format!("Failed to create file {}", path))?;
+            writeln!(file, "{}", genome_string)
+                .with_context(|| format!("Failed to write to {}", path))?;
+        } else {
+            writeln!(io::stdout(), "{}", genome_string)?;
+        }
     }
 
     Ok(())
@@ -249,52 +231,33 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::Card);
 
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
+        let response = agent.get(&request_url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) => {
+                anyhow!("The server returned an unexpected status code ({})", code)
             }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response");
-            }
+            _ => anyhow!("There was an error making the request or receiving the response."),
+        })?;
+
+        let genome_card: GenomeCard = response.into_json()?;
+
+        let genome_string = if raw {
+            serde_json::to_string(&genome_card)?
+        } else {
+            serde_json::to_string_pretty(&genome_card)?
         };
 
-        let genome: GenomeCard = response.into_json()?;
-
-        match raw {
-            true => {
-                let genome_string = serde_json::to_string(&genome)?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                }
-            }
-            false => {
-                let genome_string = serde_json::to_string_pretty(&genome)?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                }
-            }
-        };
+        let output = args.get_output();
+        if let Some(path) = output {
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&path)
+                .with_context(|| format!("Failed to create file {}", path))?;
+            writeln!(file, "{}", genome_string)
+                .with_context(|| format!("Failed to write to {}", path))?;
+        } else {
+            writeln!(io::stdout(), "{}", genome_string)?;
+        }
     }
 
     Ok(())
@@ -313,52 +276,33 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
     for accession in genome_api {
         let request_url = accession.request(GenomeRequestType::TaxonHistory);
 
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
+        let response = agent.get(&request_url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) => {
+                anyhow!("The server returned an unexpected status code ({})", code)
             }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
-            }
-        };
+            _ => anyhow!("There was an error making the request or receiving the response."),
+        })?;
 
         let genome: GenomeTaxonHistory = response.into_json()?;
 
-        match raw {
-            true => {
-                let genome_string = serde_json::to_string(&genome)?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                }
-            }
-            false => {
-                let genome_string = serde_json::to_string_pretty(&genome)?;
-                let output = args.get_output();
-                if let Some(path) = output {
-                    let path_clone = path.clone();
-                    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {path_clone}"))?;
-                    file.write_all(genome_string.as_bytes())
-                        .with_context(|| format!("Failed to write to {path_clone}"))?;
-                } else {
-                    writeln!(io::stdout(), "{genome_string}")?;
-                }
-            }
+        let genome_string = if raw {
+            serde_json::to_string(&genome)?
+        } else {
+            serde_json::to_string_pretty(&genome)?
         };
+
+        let output = args.get_output();
+        if let Some(path) = output {
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&path)
+                .with_context(|| format!("Failed to create file {}", path))?;
+            writeln!(file, "{}", genome_string)
+                .with_context(|| format!("Failed to write to {}", path))?;
+        } else {
+            writeln!(io::stdout(), "{}", genome_string)?;
+        }
     }
 
     Ok(())
