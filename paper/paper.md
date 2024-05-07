@@ -17,74 +17,26 @@ authors:
 affiliations:
  - name: Laboratoire de Microbiologie, Biotechnologies et Bioinformatique, Institut National Polytechnique Félix Houphouët-Boigny, BP 1093 Yamoussoukro, Côte d'Ivoire
    index: 1
-date: 6 May 2024
+date: 06 May 2024
 bibliography: paper.bib
 ---
 
 # Summary
 
-The forces on stars, galaxies, and dark matter under external gravitational
-fields lead to the dynamical evolution of structures in the universe. The orbits
-of these bodies are therefore key to understanding the formation, history, and
-future state of galaxies. The field of "galactic dynamics," which aims to model
-the gravitating components of galaxies to study their structure and evolution,
-is now well-established, commonly taught, and frequently used in astronomy.
-Aside from toy problems and demonstrations, the majority of problems require
-efficient numerical tools, many of which require the same base code (e.g., for
-performing numerical orbit integration).
+Microbial genomic analyses heavily rely on curated genomes for various types of analyses, such as genomic, pangenomic, and structural variation assessments. This valuable data is accessible through the Genome Taxonomy Database (GTDB), which offers meticulously curated genomes and a standardized microbial taxonomy based on genome phylogeny. However, accessing this database programmatically can be challenging due to the limited options provided by its application programming interface. To address this issue, we introduce `xgt`, a free and open-source command-line tool and Rust package. 
+`xgt` facilitates efficient querying and parsing of the GTDB by offering a user-friendly command-line interface. It comprises multiple modules that mirror the functionality of the database's API for search and querying purposes, while also providing enhanced parsing capabilities.
+
+`xgt` offers a suite of tools, including:
+- **xgt search**: This tool allows users to search the GTDB for a taxon by name. It offers both exact and partial matches, along with additional parsing capabilities. Additionally, it supports searching the GTDB using multiple names listed in a plain text file.
+- **xgt genome**: Users can use this tool to retrieve information about a genome. The `--metadata` option provides concise genome metadata such as accession and surveillance data, while `--history` retrieves the genome taxon history in the GTDB. The default option fetches nucleotide, gene, and taxonomy metadata of the genome.
+- **xgt taxon**: This tool fetches information about a specific taxon. Users can search for the direct descendants of a taxon and retrieve taxon genomes in the GTDB using partial or exact matches.
+
+The `xgt` tools fetch real-time data from GTDB, ensuring that each query returns the latest information. Extensive unit tests have been incorporated to guarantee the reliability, correctness, and maintainability of `xgt`. Rust was selected for its emphasis on safety, performance, and concurrency, while package dependencies were meticulously chosen and kept to a minimum. `xgt` has been thoroughly tested on Linux/Unix, Mac OS (Darwin), and Windows platforms. As an open-source Rust package and command-line tool, `xgt` offers efficient and straightforward programmatic access to GTDB data, reducing the likelihood of error-prone manual web access during genomic data analysis.
 
 # Statement of need
 
-`Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
-enables wrapping low-level languages (e.g., C) for speed without losing
-flexibility or ease-of-use in the user-interface. The API for `Gala` was
-designed to provide a class-based and user-friendly interface to fast (C or
-Cython-optimized) implementations of common operations such as gravitational
-potential and force evaluation, orbit integration, dynamical transformations,
-and chaos indicators for nonlinear dynamics. `Gala` also relies heavily on and
-interfaces well with the implementations of physical units and astronomical
-coordinate systems in the `Astropy` package [@astropy] (`astropy.units` and
-`astropy.coordinates`).
+`xgt` participate in solving the recurring challenge of the assessment of results in the context of existing reference database. The Genome Taxonomy Database is one of the most used and high quality database in genomics with more than 500 curated thousand genomes [@parks:2018].
 
-`Gala` was designed to be used by both astronomical researchers and by
-students in courses on gravitational dynamics or astronomy. It has already been
-used in a number of scientific publications [@Pearson:2017] and has also been
-used in graduate courses on Galactic dynamics to, e.g., provide interactive
-visualizations of textbook material [@Binney:2008]. The combination of speed,
-design, and support for Astropy functionality in `Gala` will enable exciting
-scientific explorations of forthcoming data releases from the *Gaia* mission
-[@gaia] by students and experts alike.
-
-# Mathematics
-
-Single dollars ($) are required for inline mathematics e.g. $f(x) = e^{\pi/x}$
-
-Double dollars make self-standing equations:
-
-$$\Theta(x) = \left\{\begin{array}{l}
-0\textrm{ if } x < 0\cr
-1\textrm{ else}
-\end{array}\right.$$
-
-You can also use plain \LaTeX for equations
-\begin{equation}\label{eq:fourier}
-\hat f(\omega) = \int_{-\infty}^{\infty} f(x) e^{i\omega x} dx
-\end{equation}
-and refer to \autoref{eq:fourier} from text.
-
-# Citations
-
-Citations to entries in paper.bib should be in
-[rMarkdown](http://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html)
-format.
-
-If you want to cite a software repository URL (e.g. something on GitHub without a preferred
-citation) then you can do it with the example BibTeX entry below for @fidgit.
-
-For a quick reference, the following citation commands can be used:
-- `@author:2001`  ->  "Author et al. (2001)"
-- `[@author:2001]` -> "(Author et al., 2001)"
-- `[@author1:2001; @author2:2001]` -> "(Author1 et al., 2001; Author2 et al., 2002)"
 
 # Figures
 
@@ -94,10 +46,5 @@ and referenced from text using \autoref{fig:example}.
 
 Figure sizes can be customized by adding an optional second parameter:
 ![Caption for example figure.](figure.png){ width=20% }
-
-# Acknowledgements
-
-We acknowledge contributions from Brigitta Sipocz, Syrtis Major, and Semyeong
-Oh, and support from Kathryn Johnston during the genesis of this project.
 
 # References
