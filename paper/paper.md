@@ -23,8 +23,8 @@ bibliography: paper.bib
 
 # Summary
 
-Microbial genomic analyses heavily rely on curated genomes for various types of analyses, such as genomic, pangenomic, and structural variation assessments. This valuable data is accessible through the Genome Taxonomy Database (GTDB), which offers meticulously curated genomes and a standardized microbial taxonomy based on genome phylogeny [@parks:2018]. However, accessing this database programmatically can be challenging due to the limited options provided by its application programming interface (API). To address this issue, we introduce `xgt`, a free and open-source command-line tool and Rust package. 
-`xgt` facilitates efficient querying and parsing of the GTDB by offering a user-friendly command-line interface. It comprises multiple modules that mirror the functionality of the database's API for search and querying purposes, while also providing enhanced parsing capabilities.
+Microbial genomic analyses heavily rely on curated genomes for various types of analyses, such as genomic, pangenomic, and structural variation assessments. This valuable data is accessible through the Genome Taxonomy Database (GTDB), which offers meticulously curated genomes and a standardized microbial taxonomy based on genome phylogeny [@parks:2018]. However, accessing this database programmatically can be challenging due to the limited options provided by its application programming interface (API). Additionally, many researchers currently access this data manually through web interfaces for tasks like genome annotation and functional characterization, a process prone to errors and time-consuming manual data entry. 
+To streamline this process, we introduce `xgt`, a free and open-source command-line tool and Rust package. `xgt` simplifies querying and parsing of GTDB data with its user-friendly command-line interface. It includes multiple modules mirroring the database's API functionality for search and querying, along with enhanced parsing capabilities.
 
 `xgt` offers a suite of tools, including:
 
@@ -41,7 +41,9 @@ The `xgt` tools fetch real-time data from GTDB, ensuring that each query returns
 
 # Statement of need
 
-`xgt` contributes to addressing the persistent challenge of evaluating results within the framework of established reference databases. The Genome Taxonomy Database (GTDB) stands out as a widely utilized and high-quality resource in genomics, boasting over 500 thousand meticulously curated genomes [@parks:2022]. However, accessing GTDB solely via its API posed limitations due to its lack of built-in parsing capabilities. `xgt` resolves this issue by introducing parsing and querying functionalities, thereby enhancing accessibility and usability. 
+The Genome Taxonomy Database (GTDB) stands out as a widely utilized and high-quality resource in genomics, boasting over 500 thousand meticulously curated genomes [@parks:2022]. However, accessing GTDB solely via its API posed limitations due to its lack of built-in parsing capabilities. `xgt` resolves this issue by introducing parsing and querying functionalities, thereby enhancing accessibility and usability 
+
+Moreover, `xgt` contributes to addressing the persistent challenge of evaluating results within the framework of established reference databases. By streamlining data extraction and analysis processes, `xgt` empowers researchers to efficiently navigate and utilize the vast repository of genomic information housed within GTDB, ultimately facilitating advancements in various fields of biological research.
 
 
 # References
