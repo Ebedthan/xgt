@@ -21,7 +21,7 @@ impl Default for SearchAPI {
             items_per_page: 100,
             sort_by: String::new(),
             sort_desc: String::new(),
-            search_field: "all".to_string(),
+            search_field: "gtdb_tax".to_string(),
             filter_text: String::new(),
             gtdb_species_rep_only: false,
             ncbi_type_material_only: false,
@@ -111,7 +111,7 @@ mod tests {
         assert_eq!(search.items_per_page, 100);
         assert_eq!(search.sort_by, "");
         assert_eq!(search.sort_desc, "");
-        assert_eq!(search.search_field, "all");
+        assert_eq!(search.search_field, "gtdb_tax");
         assert_eq!(search.filter_text, "");
         assert!(!search.gtdb_species_rep_only);
         assert!(!search.ncbi_type_material_only);
@@ -125,7 +125,7 @@ mod tests {
         assert_eq!(api.items_per_page, 100);
         assert_eq!(api.sort_by, "");
         assert_eq!(api.sort_desc, "");
-        assert_eq!(api.search_field, "all");
+        assert_eq!(api.search_field, "gtdb_tax");
         assert_eq!(api.filter_text, "");
         assert_eq!(api.gtdb_species_rep_only, false);
         assert_eq!(api.ncbi_type_material_only, false);

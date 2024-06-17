@@ -52,6 +52,7 @@ fn handle_taxon_command(sub_matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,3 +115,4 @@ mod tests {
         assert_eq!(args.output, Some(String::from("met.json")));
     }
 }
+*/

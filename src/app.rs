@@ -10,7 +10,12 @@ pub fn build_app() -> Command {
         .subcommand(
             Command::new("search")
                 .about("Search GTDB by taxa name")
-                .arg(Arg::new("name").conflicts_with("file").help("taxon name"))
+                .arg(
+                    Arg::new("name")
+                        .conflicts_with("file")
+                        .help("taxon name")
+                        .value_parser(is_valid_taxon),
+                )
                 .arg(
                     Arg::new("count")
                         .short('c')
@@ -154,7 +159,7 @@ pub fn build_app() -> Command {
                     Arg::new("name")
                         .conflicts_with("file")
                         .help("taxon name")
-                        .value_parser(is_correct_taxon),
+                        .value_parser(is_valid_taxon),
                 )
                 .arg(
                     Arg::new("file")
@@ -223,14 +228,14 @@ pub fn build_app() -> Command {
         )
 }
 
-fn is_correct_taxon(s: &str) -> Result<String, String> {
+fn is_valid_taxon(s: &str) -> Result<String, String> {
     let prefixes = ["d__", "p__", "c__", "o__", "f__", "g__", "s__"];
     for prefix in &prefixes {
         if s.starts_with(prefix) {
             return Ok(s.to_string());
         }
     }
-    Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
+    Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
 }
 
 fn is_existing(s: &str) -> Result<String, String> {
@@ -263,20 +268,14 @@ mod tests {
         std::env::set_var("NO_COLOR", "true");
         let app = build_app();
         let args = vec![
-            "xgt",
-            "search",
-            "taxon_name",
-            "-l",
-            "class",
-            "--count",
-            "--raw",
+            "xgt", "search", "p__taxon", "-l", "class", "--count", "--raw",
         ];
         let matches = app.get_matches_from(args);
         assert_eq!(matches.subcommand_name(), Some("search"));
         let submatches = matches.subcommand_matches("search").unwrap();
         assert_eq!(
             submatches.get_one::<String>("name"),
-            Some(&"taxon_name".to_owned())
+            Some(&"p__taxon".to_owned())
         );
         assert_eq!(
             submatches.get_one::<String>("level"),
@@ -291,7 +290,7 @@ mod tests {
         let arg_parser = build_app().get_matches_from(vec![
             "xgt",
             "search",
-            "taxon_name",
+            "p__taxon",
             "-l",
             "class",
             "--count",
@@ -312,7 +311,7 @@ mod tests {
         assert!(subcommand_parser.get_flag("type"));
         assert_eq!(
             subcommand_parser.get_one::<String>("name"),
-            Some(&"taxon_name".to_owned())
+            Some(&"p__taxon".to_owned())
         );
         assert_eq!(
             subcommand_parser.get_one::<String>("level"),
@@ -330,41 +329,38 @@ mod tests {
     }
 
     #[test]
-    fn test_is_correct_taxon() {
+    fn test_is_valid_taxon() {
         // Positive test cases
+        assert_eq!(is_valid_taxon("d__Bacteria"), Ok("d__Bacteria".to_string()));
         assert_eq!(
-            is_correct_taxon("d__Bacteria"),
-            Ok("d__Bacteria".to_string())
-        );
-        assert_eq!(
-            is_correct_taxon("g__Actinobacteria"),
+            is_valid_taxon("g__Actinobacteria"),
             Ok("g__Actinobacteria".to_string())
         );
         assert_eq!(
-            is_correct_taxon("s__Staphylococcus aureus"),
+            is_valid_taxon("s__Staphylococcus aureus"),
             Ok("s__Staphylococcus aureus".to_string())
         );
 
         // Negative test cases
         assert_eq!(
-            is_correct_taxon("Bacteria"),
-            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
+            is_valid_taxon("Bacteria"),
+            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
-            is_correct_taxon("d_"),
-            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
+            is_valid_taxon("d_"),
+            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
-            is_correct_taxon("Actinobacteria"),
-            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
+            is_valid_taxon("Actinobacteria"),
+            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
-            is_correct_taxon("__Actinobacteria"),
-            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
+            is_valid_taxon("__Actinobacteria"),
+            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
         );
         assert_eq!(
-            is_correct_taxon("d_Actinobacteria"),
-            Err("Taxon must be in greengenes format, e.g. g__Foo".to_string())
+            is_valid_taxon("d_Actinobacteria"),
+            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
         );
     }
 }

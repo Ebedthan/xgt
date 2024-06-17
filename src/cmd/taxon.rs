@@ -77,7 +77,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
         } else {
             serde_json::to_string_pretty(&taxon_data)?
         };
-        utils::write_to_output(taxon_string, args.get_output())?;
+        utils::write_to_output(taxon_string.as_bytes(), args.get_output())?;
     }
 
     Ok(())
@@ -120,7 +120,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
             serde_json::to_string_pretty(&taxon_data)?
         };
 
-        utils::write_to_output(format!("{}{}", taxon_string, "\n"), args.get_output())?;
+        utils::write_to_output(taxon_string.as_bytes(), args.get_output())?;
     }
 
     Ok(())
@@ -152,7 +152,7 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
             serde_json::to_string_pretty(&taxon_data)?
         };
 
-        utils::write_to_output(format!("{}{}\n", taxon_string, "\n"), args.get_output())?;
+        utils::write_to_output(taxon_string.as_bytes(), args.get_output())?;
     }
 
     Ok(())

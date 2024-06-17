@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::ArgMatches;
 
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 
 use std::sync::Arc;
@@ -9,10 +10,15 @@ use std::{
     io::{self, BufRead, BufReader, Write},
 };
 
+/// A taxon is known by a particular name and given a particular ranking
+/// Following GreenGenes notation the ranking comes first as a one letter code
+/// followed by the name which start with a Upper case
+/// Here the hashmap key will be the taxon name and the hashmap value the rank
+pub type Taxa = HashMap<String, String>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchArgs {
-    pub(crate) needle: Vec<String>,
-    pub(crate) level: String,
+    pub(crate) taxa: Taxa,
     pub(crate) id: bool,
     pub(crate) count: bool,
     pub(crate) raw: bool,
@@ -25,8 +31,7 @@ pub struct SearchArgs {
 impl Default for SearchArgs {
     fn default() -> Self {
         SearchArgs {
-            needle: Vec::new(),
-            level: "genus".to_string(),
+            taxa: Taxa::new(),
             id: false,
             count: false,
             raw: false,
@@ -39,20 +44,17 @@ impl Default for SearchArgs {
 }
 
 impl SearchArgs {
-    pub fn get_needle(&self) -> Vec<String> {
-        self.needle.clone()
+    pub fn add_taxon(&mut self, taxon: &str) {
+        let parts = taxon.split("__").collect::<Vec<&str>>();
+        self.taxa.insert(parts[1].to_string(), parts[0].to_string());
     }
 
-    pub fn set_needle(&mut self, v: Vec<String>) {
-        self.needle.extend(v);
+    pub fn get_taxon_names(&self) -> Vec<String> {
+        self.taxa.keys().map(|x| x.to_string()).collect()
     }
 
-    pub fn get_level(&self) -> String {
-        self.level.clone()
-    }
-
-    pub(crate) fn set_level(&mut self, s: String) {
-        self.level = s;
+    pub fn get_taxon_rank(&self, name: &str) -> String {
+        self.taxa.get(name).unwrap_or(&String::from("")).to_string()
     }
 
     pub fn get_gid(&self) -> bool {
@@ -121,17 +123,15 @@ impl SearchArgs {
         if let Some(file_path) = args.get_one::<String>("file") {
             let file = File::open(file_path)
                 .unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
-            let needles: Vec<_> = BufReader::new(file)
+            for line in BufReader::new(file)
                 .lines()
                 .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
-                .collect();
-            search_args.set_needle(needles);
+            {
+                let nline = line;
+                search_args.add_taxon(&nline);
+            }
         } else if let Some(name) = args.get_one::<String>("name") {
-            search_args.set_needle(vec![name.to_string()]);
-        }
-
-        if args.contains_id("level") {
-            search_args.set_level(args.get_one::<String>("level").unwrap().to_string());
+            search_args.add_taxon(&name)
         }
 
         search_args.set_id(args.get_flag("id"));
@@ -290,13 +290,14 @@ impl TaxonArgs {
     }
 }
 
-pub fn write_to_output(s: String, output: Option<String>) -> Result<()> {
+pub fn write_to_output(buffer: &[u8], output: Option<String>) -> Result<()> {
     let mut writer: Box<dyn Write> = match output {
         Some(path) => Box::new(OpenOptions::new().append(true).create(true).open(path)?),
         None => Box::new(io::stdout()),
     };
 
-    writer.write_all(s.as_bytes())?;
+    writer.write_all(buffer)?;
+    writer.flush()?;
 
     Ok(())
 }
@@ -361,29 +362,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_needle() {
-        let args = SearchArgs {
-            needle: vec!["needle".to_string()],
-            level: "level".to_string(),
-            id: false,
-            count: false,
-            raw: false,
-            rep: false,
-            type_material: false,
-            out: Some(String::from("test1")),
-            disable_certificate_verification: true,
-        };
-        assert_eq!(args.get_needle(), vec!["needle".to_string()]);
-        assert_eq!(args.get_level(), "level".to_string());
-        assert!(!args.get_gid());
-        assert!(!args.get_count());
-        assert!(!args.get_raw());
-        assert!(!args.get_rep());
-        assert!(!args.get_type_material());
-        assert_eq!(args.get_out(), Some(String::from("test1")));
-    }
-
-    #[test]
     fn test_get_name() {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
@@ -436,12 +414,12 @@ mod tests {
 
     #[test]
     fn test_write_to_output() {
-        let s = "Hello, world!".to_owned();
+        let s = "Hello, world!";
 
         // Test writing to a file
         let file_path = "test.txt";
         let output = Some(file_path.to_owned());
-        write_to_output(s.clone(), output).unwrap();
+        write_to_output(s.as_bytes(), output).unwrap();
         let contents = std::fs::read_to_string(file_path).unwrap();
         assert_eq!(contents, s);
 
