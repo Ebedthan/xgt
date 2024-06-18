@@ -16,7 +16,7 @@ use std::{
 /// Here the hashmap key will be the taxon name and the hashmap value the rank
 pub type Taxa = HashMap<String, String>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct SearchArgs {
     pub(crate) taxa: Taxa,
     pub(crate) id: bool,
@@ -26,21 +26,6 @@ pub struct SearchArgs {
     pub(crate) type_material: bool,
     pub(crate) out: Option<String>,
     pub(crate) disable_certificate_verification: bool,
-}
-
-impl Default for SearchArgs {
-    fn default() -> Self {
-        SearchArgs {
-            taxa: Taxa::new(),
-            id: false,
-            count: false,
-            raw: false,
-            rep: false,
-            type_material: false,
-            out: None,
-            disable_certificate_verification: false,
-        }
-    }
 }
 
 impl SearchArgs {
@@ -131,7 +116,7 @@ impl SearchArgs {
                 search_args.add_taxon(&nline);
             }
         } else if let Some(name) = args.get_one::<String>("name") {
-            search_args.add_taxon(&name)
+            search_args.add_taxon(name)
         }
 
         search_args.set_id(args.get_flag("id"));

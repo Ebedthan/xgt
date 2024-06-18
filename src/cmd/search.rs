@@ -66,9 +66,6 @@ impl SearchResults {
     fn get_total_rows(&self) -> u32 {
         self.total_rows
     }
-    fn get_rows(&self) -> &[SearchResult] {
-        &self.rows
-    }
 }
 
 /// Search GTDB's using taxon name with partial match
@@ -90,7 +87,6 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
         };
 
         let search_result: SearchResults = response.into_json()?;
-        let search_result_list = search_result.get_rows();
         ensure!(
             search_result.get_total_rows() != 0,
             "No matching data found in GTDB"
@@ -218,7 +214,7 @@ mod tests {
             total_rows: 3,
         };
         results.filter("Proteobacteria".to_string(), "p".to_string());
-        assert_eq!(results.get_rows().len(), 2);
+        assert_eq!(results.rows.len(), 2);
         assert_eq!(results.get_total_rows(), 2);
     }
 
@@ -254,7 +250,7 @@ mod tests {
             ],
             total_rows: 3,
         };
-        assert_eq!(results.get_rows().len(), 3);
+        assert_eq!(results.rows.len(), 3);
     }
 
     #[test]
