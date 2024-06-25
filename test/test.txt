@@ -1,2 +1,1 @@
-Aminobacter
-Rhizobium
+g__Aminobacter

@@ -52,7 +52,6 @@ fn handle_taxon_command(sub_matches: &clap::ArgMatches) -> Result<()> {
     Ok(())
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -60,8 +59,6 @@ mod tests {
 
     #[test]
     fn test_search_command() {
-        let needle = vec!["Aminobacter".to_string(), "Rhizobium".to_string()];
-        let level = "phylum".to_string();
         let id = true;
         let count = true;
         let raw = true;
@@ -73,8 +70,6 @@ mod tests {
             OsString::from("search"),
             OsString::from("--file"),
             OsString::from("test/test.txt"),
-            OsString::from("--level"),
-            OsString::from(level.clone()),
             OsString::from("--id"),
             OsString::from("--partial"),
             OsString::from("--count"),
@@ -88,8 +83,6 @@ mod tests {
         let args =
             utils::SearchArgs::from_arg_matches(matches.subcommand_matches("search").unwrap());
 
-        assert_eq!(args.get_needle(), needle);
-        assert_eq!(args.get_level(), level);
         assert_eq!(args.get_gid(), id);
         assert_eq!(args.get_count(), count);
         assert_eq!(args.get_raw(), raw);
@@ -115,4 +108,3 @@ mod tests {
         assert_eq!(args.output, Some(String::from("met.json")));
     }
 }
-*/

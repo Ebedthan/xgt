@@ -26,10 +26,10 @@ xgt -h
 ```
 # Search subcommand: search GTDB
 ## Search all Escherichia (genus) genomes
-xgt search Escherichia
+xgt search g__Escherichia
 
-## Search all genomes with genus name containing escherichia
-xgt search --partial escherichia
+## Search all genomes with genus name containing Escherichia
+xgt search --partial g__Escherichia -o output.json
 
 ## Search from a list
 xgt search -f list.txt
@@ -62,8 +62,6 @@ Full help is available from `xgt --help`.
 `xgt` through `ureq` performs peer SSL certificate verification by default.
 To tell `xgt` to _not_ verify the peer, use the `-k/--insecure` option.
 Currently (as of Apr 28, 2024), you should add this option to your command to get the desired result as GTDB API's server has a certificate issue.
-
-
 
 ## Minimum supported Rust version
 `xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.70.0.

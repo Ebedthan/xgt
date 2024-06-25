@@ -21,41 +21,30 @@ pub fn build_app() -> Command {
                         .short('c')
                         .long("count")
                         .action(ArgAction::SetTrue)
-                        .help("Count the number of genomes"),
+                        .help("count the number of genomes"),
                 )
                 .arg(
                     Arg::new("id")
                         .short('i')
                         .long("id")
                         .action(ArgAction::SetTrue)
-                        .help("Print only genome ID"),
+                        .help("only print genome id"),
                 )
                 .arg(
                     Arg::new("field")
                         .short('F')
                         .long("field")
                         .value_name("STR")
-                        .default_value("gtdb_tax")
-                        .value_parser(["all", "gtdb_tax", "ncbi_tax", "ncbi_org", "ncbi_id"])
-                        .help("Search field"),
+                        .default_value("gtdb")
+                        .value_parser(["gtdb", "ncbi"])
+                        .help("which taxonomy to search"),
                 )
                 .arg(
                     Arg::new("file")
                         .short('f')
                         .long("file")
                         .value_name("FILE")
-                        .help("Search from name in FILE"),
-                )
-                .arg(
-                    Arg::new("level")
-                        .short('l')
-                        .long("level")
-                        .value_name("STR")
-                        .help("Taxon level to search")
-                        .default_value("genus")
-                        .value_parser([
-                            "species", "genus", "family", "order", "class", "phylum", "domain",
-                        ]),
+                        .help("search from name in FILE"),
                 )
                 .arg(
                     Arg::new("out")
@@ -267,19 +256,13 @@ mod tests {
     fn test_app() {
         std::env::set_var("NO_COLOR", "true");
         let app = build_app();
-        let args = vec![
-            "xgt", "search", "p__taxon", "-l", "class", "--count", "--raw",
-        ];
+        let args = vec!["xgt", "search", "p__taxon", "--count", "--raw"];
         let matches = app.get_matches_from(args);
         assert_eq!(matches.subcommand_name(), Some("search"));
         let submatches = matches.subcommand_matches("search").unwrap();
         assert_eq!(
             submatches.get_one::<String>("name"),
             Some(&"p__taxon".to_owned())
-        );
-        assert_eq!(
-            submatches.get_one::<String>("level"),
-            Some(&"class".to_owned())
         );
         assert!(submatches.get_flag("count"));
         assert!(submatches.get_flag("raw"));
@@ -291,8 +274,6 @@ mod tests {
             "xgt",
             "search",
             "p__taxon",
-            "-l",
-            "class",
             "--count",
             "--raw",
             "--id",
@@ -300,7 +281,7 @@ mod tests {
             "--rep",
             "--type",
             "--field",
-            "ncbi_tax",
+            "ncbi",
         ]);
         let subcommand_parser = arg_parser.subcommand_matches("search").unwrap();
         assert!(subcommand_parser.get_flag("count"));
@@ -314,12 +295,8 @@ mod tests {
             Some(&"p__taxon".to_owned())
         );
         assert_eq!(
-            subcommand_parser.get_one::<String>("level"),
-            Some(&"class".to_owned())
-        );
-        assert_eq!(
             subcommand_parser.get_one::<String>("field"),
-            Some(&"ncbi_tax".to_owned())
+            Some(&"ncbi".to_owned())
         );
     }
 
