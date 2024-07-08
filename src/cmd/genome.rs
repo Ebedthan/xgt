@@ -179,7 +179,6 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
         .iter()
         .map(|x| GenomeAPI::from(x.to_string()))
         .collect();
-    let raw = args.get_raw();
 
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
@@ -195,11 +194,7 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
 
         let genome_card: GenomeMetadata = response.into_json()?;
 
-        let genome_string = if raw {
-            serde_json::to_string(&genome_card)?
-        } else {
-            serde_json::to_string_pretty(&genome_card)?
-        };
+        let genome_string = serde_json::to_string_pretty(&genome_card)?;
 
         let output = args.get_output();
         if let Some(path) = output {
@@ -224,7 +219,6 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
         .iter()
         .map(|x| GenomeAPI::from(x.to_string()))
         .collect();
-    let raw = args.get_raw();
 
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
@@ -240,11 +234,7 @@ pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
 
         let genome_card: GenomeCard = response.into_json()?;
 
-        let genome_string = if raw {
-            serde_json::to_string(&genome_card)?
-        } else {
-            serde_json::to_string_pretty(&genome_card)?
-        };
+        let genome_string = serde_json::to_string_pretty(&genome_card)?;
 
         let output = args.get_output();
         if let Some(path) = output {
@@ -269,7 +259,6 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
         .iter()
         .map(|x| GenomeAPI::from(x.to_string()))
         .collect();
-    let raw = args.get_raw();
 
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
@@ -285,11 +274,7 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
 
         let genome: GenomeTaxonHistory = response.into_json()?;
 
-        let genome_string = if raw {
-            serde_json::to_string(&genome)?
-        } else {
-            serde_json::to_string_pretty(&genome)?
-        };
+        let genome_string = serde_json::to_string_pretty(&genome)?;
 
         let output = args.get_output();
         if let Some(path) = output {
@@ -318,7 +303,6 @@ mod tests {
     fn test_genome_gtdb_card_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: false,
             output: None,
             disable_certificate_verification: true,
         };
@@ -330,7 +314,6 @@ mod tests {
     fn test_genome_gtdb_card_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: true,
             output: None,
             disable_certificate_verification: true,
         };
@@ -341,7 +324,6 @@ mod tests {
     fn test_genome_gtdb_metadata_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: false,
             output: None,
             disable_certificate_verification: true,
         };
@@ -352,7 +334,6 @@ mod tests {
     fn test_genome_gtdb_metadata_out() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: false,
             output: Some(String::from("genome")),
             disable_certificate_verification: true,
         };
@@ -364,7 +345,6 @@ mod tests {
     fn test_genome_gtdb_metadata_out_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: true,
             output: Some(String::from("genome1")),
             disable_certificate_verification: true,
         };
@@ -376,7 +356,6 @@ mod tests {
     fn test_genome_gtdb_card_out_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: true,
             output: Some(String::from("genome2")),
             disable_certificate_verification: true,
         };
@@ -388,7 +367,6 @@ mod tests {
     fn test_genome_gtdb_card_out_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: false,
             output: Some(String::from("genome3")),
             disable_certificate_verification: true,
         };
@@ -400,7 +378,6 @@ mod tests {
     fn test_genome_gtdb_tx_out_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: true,
             output: Some(String::from("genome4")),
             disable_certificate_verification: true,
         };
@@ -412,7 +389,6 @@ mod tests {
     fn test_genome_gtdb_tx_out_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: false,
             output: Some(String::from("genome5")),
             disable_certificate_verification: true,
         };
@@ -424,7 +400,6 @@ mod tests {
     fn test_genome_gtdb_metadata_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: true,
             output: None,
             disable_certificate_verification: true,
         };
@@ -435,7 +410,6 @@ mod tests {
     fn test_genome_gtdb_taxon_history_1() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: false,
             output: None,
             disable_certificate_verification: true,
         };
@@ -446,7 +420,6 @@ mod tests {
     fn test_genome_gtdb_taxon_history_2() {
         let args = utils::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
-            raw: true,
             output: None,
             disable_certificate_verification: true,
         };
@@ -457,7 +430,6 @@ mod tests {
     fn test_genome_gtdb_4() {
         let args = utils::GenomeArgs {
             accession: vec!["".to_owned()],
-            raw: true,
             output: None,
             disable_certificate_verification: true,
         };
@@ -469,7 +441,6 @@ mod tests {
     fn test_response_failure() {
         let args = utils::GenomeArgs {
             accession: vec!["&&&&^^^^^||||".to_owned()],
-            raw: true,
             output: None,
             disable_certificate_verification: true,
         };

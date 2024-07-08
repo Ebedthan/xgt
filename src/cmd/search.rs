@@ -105,14 +105,6 @@ pub fn partial_search(args: utils::SearchArgs) -> Result<()> {
                 .collect::<Vec<String>>()
                 .join("\n");
             utils::write_to_output(str.as_bytes(), args.get_out().clone())?;
-        } else if args.get_raw() {
-            let str = search_result
-                .rows
-                .iter()
-                .map(|x| serde_json::to_string(x).unwrap())
-                .collect::<Vec<String>>()
-                .join("\n");
-            utils::write_to_output(str.as_bytes(), args.get_out().clone())?;
         } else {
             let str = search_result
                 .rows
@@ -162,14 +154,6 @@ pub fn exact_search(args: utils::SearchArgs) -> Result<()> {
                 .rows
                 .iter()
                 .map(|x| x.gid.clone())
-                .collect::<Vec<String>>()
-                .join("\n");
-            utils::write_to_output(str.as_bytes(), args.get_out().clone())?;
-        } else if args.get_raw() {
-            let str = search_result
-                .rows
-                .iter()
-                .map(|x| serde_json::to_string(x).unwrap())
                 .collect::<Vec<String>>()
                 .join("\n");
             utils::write_to_output(str.as_bytes(), args.get_out().clone())?;
@@ -325,86 +309,7 @@ mod tests {
     }
 
     #[test]
-    fn test_exact_search_raw() {
-        let mut args = utils::SearchArgs::new();
-        args.add_taxon("g__Azorhizobium");
-        args.set_raw(true);
-        args.set_id(true);
-        args.set_out(Some("test4.txt".to_string()));
-        args.set_disable_certificate_verification(true);
-        let res = exact_search(args.clone());
-        assert!(res.is_ok());
-        let expected = std::fs::read_to_string("test4.txt").unwrap();
-        assert_eq!("GCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1".to_string(), expected);
-        std::fs::remove_file("test4.txt").unwrap();
-    }
-
-    #[test]
-    fn test_partial_search_raw() {
-        let mut args = utils::SearchArgs::new();
-        args.add_taxon("g__Azorhizobium");
-        args.set_raw(true);
-        args.set_id(true);
-        args.set_out(Some("test5.txt".to_string()));
-        args.set_disable_certificate_verification(true);
-        let res = partial_search(args.clone());
-        assert!(res.is_ok());
-        let expected = std::fs::read_to_string("test5.txt").unwrap();
-        assert_eq!(
-            r#"GCA_023405075.1
-GCA_023448105.1
-GCF_000010525.1
-GCF_000473085.1
-GCF_004364705.1
-GCF_014635325.1"#
-                .to_string(),
-            expected
-        );
-        std::fs::remove_file("test5.txt").unwrap();
-    }
-
-    #[test]
-    fn test_exact_search_raw_full() {
-        let mut args = utils::SearchArgs::new();
-        args.add_taxon("g__Azorhizobium");
-        args.set_raw(true);
-        args.set_out(Some("test6.txt".to_string()));
-        args.set_disable_certificate_verification(true);
-        let res = exact_search(args.clone());
-        assert!(res.is_ok());
-        let expected = std::fs::read_to_string("test6.txt").unwrap();
-        let actual = r#"{"gid":"GCA_023405075.1","accession":"GCA_023405075.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}
-{"gid":"GCA_023448105.1","accession":"GCA_023448105.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}
-{"gid":"GCF_000010525.1","accession":"GCF_000010525.1","ncbiOrgName":"Azorhizobium caulinodans ORS 571","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}
-{"gid":"GCF_000473085.1","accession":"GCF_000473085.1","ncbiOrgName":"Azorhizobium doebereinerae UFLA1-100","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}
-{"gid":"GCF_004364705.1","accession":"GCF_004364705.1","ncbiOrgName":"Azorhizobium sp. AG788","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}
-{"gid":"GCF_014635325.1","accession":"GCF_014635325.1","ncbiOrgName":"Azorhizobium oxalatiphilum","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}"#;
-        assert_eq!(actual, expected);
-        std::fs::remove_file("test6.txt").unwrap();
-    }
-
-    #[test]
-    fn test_partial_search_raw_full() {
-        let mut args = utils::SearchArgs::new();
-        args.add_taxon("g__Azorhizobium");
-        args.set_raw(true);
-        args.set_out(Some("test7.txt".to_string()));
-        args.set_disable_certificate_verification(true);
-        let res = partial_search(args.clone());
-        assert!(res.is_ok());
-        let expected = std::fs::read_to_string("test7.txt").unwrap();
-        let actual = r#"{"gid":"GCA_023405075.1","accession":"GCA_023405075.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}
-{"gid":"GCA_023448105.1","accession":"GCA_023448105.1","ncbiOrgName":"Pseudomonadota bacterium","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}
-{"gid":"GCF_000010525.1","accession":"GCF_000010525.1","ncbiOrgName":"Azorhizobium caulinodans ORS 571","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}
-{"gid":"GCF_000473085.1","accession":"GCF_000473085.1","ncbiOrgName":"Azorhizobium doebereinerae UFLA1-100","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}
-{"gid":"GCF_004364705.1","accession":"GCF_004364705.1","ncbiOrgName":"Azorhizobium sp. AG788","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans","isGtdbSpeciesRep":false,"isNcbiTypeMaterial":true}
-{"gid":"GCF_014635325.1","accession":"GCF_014635325.1","ncbiOrgName":"Azorhizobium oxalatiphilum","ncbiTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","gtdbTaxonomy":"d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum","isGtdbSpeciesRep":true,"isNcbiTypeMaterial":true}"#;
-        assert_eq!(actual, expected);
-        std::fs::remove_file("test7.txt").unwrap();
-    }
-
-    #[test]
-    fn test_exact_search_raw_pretty() {
+    fn test_exact_search_pretty() {
         let mut args = utils::SearchArgs::new();
         args.add_taxon("s__Azorhizobium doebereinerae");
         args.set_out(Some("test8.txt".to_string()));
@@ -426,7 +331,7 @@ GCF_014635325.1"#
     }
 
     #[test]
-    fn test_partial_search_raw_pretty() {
+    fn test_partial_search_pretty() {
         let mut args = utils::SearchArgs::new();
         args.add_taxon("s__Azorhizobium doebereinerae");
         args.set_out(Some("test9.txt".to_string()));

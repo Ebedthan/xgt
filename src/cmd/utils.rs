@@ -21,7 +21,6 @@ pub struct SearchArgs {
     pub(crate) taxa: Taxa,
     pub(crate) id: bool,
     pub(crate) count: bool,
-    pub(crate) raw: bool,
     pub(crate) rep: bool,
     pub(crate) type_material: bool,
     pub(crate) out: Option<String>,
@@ -56,14 +55,6 @@ impl SearchArgs {
 
     pub(crate) fn set_count(&mut self, b: bool) {
         self.count = b;
-    }
-
-    pub fn get_raw(&self) -> bool {
-        self.raw
-    }
-
-    pub(crate) fn set_raw(&mut self, b: bool) {
-        self.raw = b;
     }
 
     pub fn get_type_material(&self) -> bool {
@@ -123,11 +114,9 @@ impl SearchArgs {
 
         search_args.set_count(args.get_flag("count"));
 
-        search_args.set_raw(args.get_flag("raw"));
+        search_args.set_rep(args.get_flag("rsp"));
 
-        search_args.set_rep(args.get_flag("rep"));
-
-        search_args.set_type_material(args.get_flag("type"));
+        search_args.set_type_material(args.get_flag("tsp"));
 
         if args.contains_id("out") {
             search_args.set_out(args.get_one::<String>("out").cloned());
@@ -142,7 +131,6 @@ impl SearchArgs {
 #[derive(Debug, Clone)]
 pub struct GenomeArgs {
     pub(crate) accession: Vec<String>,
-    pub(crate) raw: bool,
     pub(crate) output: Option<String>,
     pub(crate) disable_certificate_verification: bool,
 }
@@ -150,10 +138,6 @@ pub struct GenomeArgs {
 impl GenomeArgs {
     pub fn get_accession(&self) -> Vec<String> {
         self.accession.clone()
-    }
-
-    pub fn get_raw(&self) -> bool {
-        self.raw
     }
 
     pub fn get_output(&self) -> Option<String> {
@@ -185,7 +169,6 @@ impl GenomeArgs {
 
         GenomeArgs {
             accession,
-            raw: arg_matches.get_flag("raw"),
             output: arg_matches.get_one::<String>("out").map(String::from),
             disable_certificate_verification: arg_matches.get_flag("insecure"),
         }
@@ -195,7 +178,6 @@ impl GenomeArgs {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TaxonArgs {
     pub(crate) name: Vec<String>,
-    pub(crate) raw: bool,
     pub(crate) output: Option<String>,
     pub(crate) partial: bool,
     pub(crate) search: bool,
@@ -208,10 +190,6 @@ pub struct TaxonArgs {
 impl TaxonArgs {
     pub fn get_name(&self) -> Vec<String> {
         self.name.clone()
-    }
-
-    pub fn get_raw(&self) -> bool {
-        self.raw
     }
 
     pub fn get_output(&self) -> Option<String> {
@@ -263,7 +241,6 @@ impl TaxonArgs {
 
         TaxonArgs {
             name: names,
-            raw: arg_matches.get_flag("raw"),
             output: arg_matches.get_one::<String>("out").map(String::from),
             partial: arg_matches.get_flag("partial"),
             search: arg_matches.get_flag("search"),
@@ -314,7 +291,6 @@ mod tests {
     fn test_get_accession() {
         let genome_args = GenomeArgs {
             accession: vec![String::from("NC_000001.11")],
-            raw: false,
             output: None,
             disable_certificate_verification: true,
         };
@@ -323,22 +299,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_raw() {
-        let genome_args = GenomeArgs {
-            accession: vec![String::from("NC_000001.11")],
-            raw: true,
-            output: None,
-            disable_certificate_verification: true,
-        };
-
-        assert!(genome_args.get_raw());
-    }
-
-    #[test]
     fn test_get_output() {
         let genome_args = GenomeArgs {
             accession: vec![String::from("NC_000001.11")],
-            raw: false,
             output: Some(String::from("output4.txt")),
             disable_certificate_verification: true,
         };
@@ -350,7 +313,6 @@ mod tests {
     fn test_get_name() {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
-            raw: false,
             output: None,
             partial: false,
             search: false,
@@ -367,7 +329,6 @@ mod tests {
     fn test_get_partial() {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
-            raw: false,
             output: None,
             partial: true,
             search: false,
@@ -384,7 +345,6 @@ mod tests {
     fn test_is_search() {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
-            raw: false,
             output: None,
             partial: false,
             search: true,
@@ -420,13 +380,11 @@ mod tests {
             OsString::from("taxon"),
             OsString::from("g__Aminobacter"),
             OsString::from("--partial"),
-            OsString::from("--raw"),
         ]);
 
         let args = TaxonArgs::from_arg_matches(matches.subcommand_matches("taxon").unwrap());
 
         assert_eq!(args.get_name(), name);
-        assert!(args.get_raw());
         assert!(args.get_partial());
         assert!(!args.is_search());
         assert_eq!(args.get_output(), None);
@@ -449,7 +407,6 @@ mod tests {
         let args = TaxonArgs::from_arg_matches(matches.subcommand_matches("taxon").unwrap());
 
         assert_eq!(args.get_name(), name);
-        assert!(!args.get_raw());
         assert!(!args.get_partial());
         assert!(args.is_search());
         assert_eq!(args.get_output(), Some("out".to_string()));
@@ -463,13 +420,11 @@ mod tests {
             OsString::new(),
             OsString::from("genome"),
             OsString::from("GCF_018555685.1"),
-            OsString::from("--raw"),
         ]);
 
         let args = GenomeArgs::from_arg_matches(matches.subcommand_matches("genome").unwrap());
 
         assert_eq!(args.get_accession(), name);
-        assert!(args.get_raw());
         assert_eq!(args.get_output(), None);
     }
 
@@ -489,7 +444,6 @@ mod tests {
         let args = GenomeArgs::from_arg_matches(matches.subcommand_matches("genome").unwrap());
 
         assert_eq!(args.get_accession(), name);
-        assert!(!args.get_raw());
         assert_eq!(args.get_output(), Some("out".to_string()));
     }
 }

@@ -59,7 +59,6 @@ impl TaxonSearchResult {
 }
 
 pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
-    let raw = args.get_raw();
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for name in args.get_name() {
@@ -72,11 +71,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
         };
 
         let taxon_data: TaxonResult = response.into_json()?;
-        let taxon_string = if raw {
-            serde_json::to_string(&taxon_data)?
-        } else {
-            serde_json::to_string_pretty(&taxon_data)?
-        };
+        let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
         utils::write_to_output(taxon_string.as_bytes(), args.get_output())?;
     }
 
@@ -84,7 +79,6 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
 }
 
 pub fn search_taxon(args: TaxonArgs) -> Result<()> {
-    let raw = args.get_raw();
     let partial = args.get_partial();
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
@@ -114,11 +108,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
             name
         );
 
-        let taxon_string = if raw {
-            serde_json::to_string(&taxon_data)?
-        } else {
-            serde_json::to_string_pretty(&taxon_data)?
-        };
+        let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
 
         utils::write_to_output(taxon_string.as_bytes(), args.get_output())?;
     }
@@ -127,7 +117,6 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 }
 
 pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
-    let raw = args.get_raw();
     let sp_reps_only = args.is_reps_only();
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
@@ -146,11 +135,7 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
 
         ensure!(!taxon_data.data.is_empty(), "No data found for {}", name);
 
-        let taxon_string = if raw {
-            serde_json::to_string(&taxon_data)?
-        } else {
-            serde_json::to_string_pretty(&taxon_data)?
-        };
+        let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
 
         utils::write_to_output(taxon_string.as_bytes(), args.get_output())?;
     }
@@ -168,7 +153,6 @@ mod tests {
     fn test_get_taxon_name_with_output() -> Result<()> {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
-            raw: true,
             output: Some("output.json".to_string()),
             partial: false,
             search: false,
@@ -199,7 +183,6 @@ mod tests {
     fn test_get_taxon_name_without_output() -> Result<()> {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
-            raw: false,
             output: None,
             partial: false,
             search: false,
@@ -218,7 +201,6 @@ mod tests {
     fn test_get_taxon_name_without_output_raw() -> Result<()> {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
-            raw: true,
             output: None,
             partial: false,
             search: false,
@@ -237,7 +219,6 @@ mod tests {
     fn test_get_taxon_name_not_found() -> Result<()> {
         let taxon_args = TaxonArgs {
             name: vec!["UnknownTaxonName".to_string()],
-            raw: false,
             output: None,
             partial: true,
             search: false,
@@ -260,7 +241,6 @@ mod tests {
         s.mock("GET", url.as_str()).with_status(450).create();
         let taxon_args = TaxonArgs {
             name: vec!["UnknownTaxonName".to_string()],
-            raw: false,
             output: None,
             partial: true,
             search: false,
@@ -305,7 +285,6 @@ mod tests {
     fn search_taxon_should_return_error_for_nonexistent_taxon() {
         let args = TaxonArgs {
             name: vec!["nonexistent_taxon".to_string()],
-            raw: true,
             partial: false,
             output: None,
             search: true,
@@ -326,7 +305,6 @@ mod tests {
     fn search_taxon_should_print_raw_output_to_stdout() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
-            raw: true,
             partial: false,
             output: None,
             search: true,
@@ -343,7 +321,6 @@ mod tests {
     fn taxon_should_print_raw_output_to_stdout() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
-            raw: true,
             partial: false,
             output: None,
             search: false,
@@ -360,7 +337,6 @@ mod tests {
     fn search_taxon_should_write_pretty_output_to_file() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
-            raw: false,
             partial: false,
             output: Some("test_search.json".to_string()),
             search: true,
@@ -382,7 +358,6 @@ mod tests {
     fn test_get_genomes_with_output() -> Result<()> {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
-            raw: true,
             output: Some("output.json".to_string()),
             partial: false,
             search: false,

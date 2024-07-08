@@ -61,9 +61,8 @@ mod tests {
     fn test_search_command() {
         let id = true;
         let count = true;
-        let raw = true;
-        let rep = true;
-        let type_material = true;
+        let rsp = true;
+        let tsp = true;
 
         let matches = app::build_app().get_matches_from(vec![
             OsString::new(),
@@ -73,9 +72,8 @@ mod tests {
             OsString::from("--id"),
             OsString::from("--partial"),
             OsString::from("--count"),
-            OsString::from("--raw"),
-            OsString::from("--rep"),
-            OsString::from("--type"),
+            OsString::from("--rsp"),
+            OsString::from("--tsp"),
             OsString::from("--out"),
             OsString::from("out"),
         ]);
@@ -85,9 +83,8 @@ mod tests {
 
         assert_eq!(args.get_gid(), id);
         assert_eq!(args.get_count(), count);
-        assert_eq!(args.get_raw(), raw);
-        assert_eq!(args.get_rep(), rep);
-        assert_eq!(args.get_type_material(), type_material);
+        assert_eq!(args.get_rep(), rsp);
+        assert_eq!(args.get_type_material(), tsp);
         assert_eq!(args.get_out(), Some(String::from("out")));
     }
 
