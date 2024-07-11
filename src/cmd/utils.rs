@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::ArgMatches;
 
-use std::collections::HashMap;
+use std::fmt::Display;
 use std::fs::OpenOptions;
 
 use std::sync::Arc;
@@ -13,16 +13,41 @@ use std::{
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
 pub enum SearchField {
     #[default]
-    GTDB,
-    NCBI,
+    All,
+    Acc,
+    Org,
+    Gtdb,
+    Ncbi,
+}
+
+pub fn is_taxonomy_field(search_field: &SearchField) -> bool {
+    search_field == &SearchField::Gtdb || search_field == &SearchField::Ncbi
 }
 
 impl From<String> for SearchField {
     fn from(value: String) -> Self {
-        if value == "ncbi" {
-            return SearchField::NCBI;
+        if value == "acc" {
+            SearchField::Acc
+        } else if value == "org" {
+            SearchField::Org
+        } else if value == "gtdb" {
+            SearchField::Gtdb
+        } else if value == "ncbi" {
+            SearchField::Ncbi
         } else {
-            return SearchField::GTDB;
+            SearchField::All
+        }
+    }
+}
+
+impl Display for SearchField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Acc => write!(f, "accession"),
+            Self::All => write!(f, "all"),
+            Self::Gtdb => write!(f, "gtdb_taxonomy"),
+            Self::Ncbi => write!(f, "ncbi_taxonomy"),
+            Self::Org => write!(f, "ncbi_organism_name"),
         }
     }
 }
@@ -30,38 +55,32 @@ impl From<String> for SearchField {
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
 pub enum OutputFormat {
     #[default]
-    CSV,
-    JSON,
-    TSV,
+    Csv,
+    Json,
+    Tsv,
 }
 
-impl ToString for OutputFormat {
-    fn to_string(&self) -> String {
+impl Display for OutputFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::CSV => String::from("csv"),
-            Self::JSON => String::from("json"),
-            Self::TSV => String::from("tsv"),
+            Self::Csv => write!(f, "csv"),
+            Self::Json => write!(f, "json"),
+            Self::Tsv => write!(f, "tsv"),
         }
     }
 }
 
 impl From<String> for OutputFormat {
     fn from(value: String) -> Self {
-        if value == "csv" {
-            return OutputFormat::CSV;
+        if value == "tsv" {
+            Self::Tsv
         } else if value == "json" {
-            return OutputFormat::JSON;
+            Self::Json
         } else {
-            return OutputFormat::TSV;
+            Self::Csv
         }
     }
 }
-
-/// A taxon is known by a particular name and given a particular ranking
-/// Following GreenGenes notation the ranking comes first as a one letter code
-/// followed by the name which start with a Upper case
-/// Here the hashmap key will be the taxon name and the hashmap value the rank
-pub type Taxa = HashMap<String, String>;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SearchArgs {

@@ -12,9 +12,9 @@ pub fn build_app() -> Command {
             Command::new("search")
                 .about("Search a taxon on GTDB")
                 .arg(
-                    Arg::new("NAME")
-                        .conflicts_with("file")
-                        .help("a value (typically a species or genus name) used for searching."),
+                    Arg::new("NAME").conflicts_with("file").help(
+                        "a value (typically a species or genus name/taxon) used for searching.",
+                    ),
                 )
                 .arg(
                     Arg::new("field")
@@ -139,7 +139,7 @@ pub fn build_app() -> Command {
             Command::new("taxon")
                 .about("Information about a specific taxon")
                 .arg(
-                    Arg::new("name")
+                    Arg::new("NAME")
                         .conflicts_with("file")
                         .help("taxon name")
                         .value_parser(is_valid_taxon),
@@ -248,7 +248,7 @@ mod tests {
         assert_eq!(matches.subcommand_name(), Some("search"));
         let submatches = matches.subcommand_matches("search").unwrap();
         assert_eq!(
-            submatches.get_one::<String>("name"),
+            submatches.get_one::<String>("NAME"),
             Some(&"p__taxon".to_owned())
         );
         assert!(submatches.get_flag("count"));
