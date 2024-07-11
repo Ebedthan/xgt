@@ -12,27 +12,35 @@ pub fn build_app() -> Command {
             Command::new("search")
                 .about("Search a taxon on GTDB")
                 .arg(
-                    Arg::new("name")
+                    Arg::new("NAME")
                         .conflicts_with("file")
-                        .help("taxon name (in greengenes format)")
-                        .value_parser(is_valid_taxon),
+                        .help("a value (typically a species or genus name) used for searching."),
+                )
+                .arg(
+                    Arg::new("field")
+                        .long("field")
+                        .short('F')
+                        .value_name("STR")
+                        .default_value("all")
+                        .value_parser(["all", "acc", "org", "gtdb", "ncbi"])
+                        .help("search field"),
                 )
                 .arg(
                     Arg::new("partial")
                         .short('p')
                         .long("partial")
                         .action(ArgAction::SetTrue)
-                        .help("perform partial matching while searching by taxon"),
+                        .help("perform partial matching"),
                 )
                 .arg(
-                    Arg::new("rsp")
-                        .long("rsp")
+                    Arg::new("rep")
+                        .long("rep")
                         .action(ArgAction::SetTrue)
                         .help("search GTDB representative species only"),
                 )
                 .arg(
-                    Arg::new("tsp")
-                        .long("tsp")
+                    Arg::new("type")
+                        .long("type")
                         .action(ArgAction::SetTrue)
                         .help("search NCBI type species only"),
                 )
@@ -41,29 +49,21 @@ pub fn build_app() -> Command {
                         .short('i')
                         .long("id")
                         .action(ArgAction::SetTrue)
-                        .help("print only matched genomes ID"),
+                        .help("only print matched genomes ID"),
                 )
                 .arg(
                     Arg::new("count")
                         .short('c')
                         .long("count")
                         .action(ArgAction::SetTrue)
-                        .help("print only a count of matched genomes"),
-                )
-                .arg(
-                    Arg::new("tax")
-                        .long("tax")
-                        .value_name("STR")
-                        .default_value("gtdb")
-                        .value_parser(["gtdb", "ncbi"])
-                        .help("search taxon in this taxonomy"),
+                        .help("only print a count of matched genomes"),
                 )
                 .arg(
                     Arg::new("file")
                         .short('f')
                         .long("file")
                         .value_name("FILE")
-                        .help("search from FILE"),
+                        .help("takes NAME from FILE"),
                 )
                 .arg(
                     Arg::new("out")
@@ -72,6 +72,14 @@ pub fn build_app() -> Command {
                         .help("output to FILE")
                         .value_name("FILE")
                         .value_parser(is_existing),
+                )
+                .arg(
+                    Arg::new("outfmt")
+                        .long("outfmt")
+                        .help("output format")
+                        .value_name("STR")
+                        .default_value("csv")
+                        .value_parser(["csv", "json", "tsv"]),
                 )
                 .arg(
                     Arg::new("insecure")
@@ -255,23 +263,23 @@ mod tests {
             "--count",
             "--id",
             "--partial",
-            "--rsp",
-            "--tsp",
-            "--tax",
+            "--rep",
+            "--type",
+            "--field",
             "ncbi",
         ]);
         let subcommand_parser = arg_parser.subcommand_matches("search").unwrap();
         assert!(subcommand_parser.get_flag("count"));
         assert!(subcommand_parser.get_flag("id"));
         assert!(subcommand_parser.get_flag("partial"));
-        assert!(subcommand_parser.get_flag("rsp"));
-        assert!(subcommand_parser.get_flag("tsp"));
+        assert!(subcommand_parser.get_flag("rep"));
+        assert!(subcommand_parser.get_flag("type"));
         assert_eq!(
-            subcommand_parser.get_one::<String>("name"),
+            subcommand_parser.get_one::<String>("NAME"),
             Some(&"p__taxon".to_owned())
         );
         assert_eq!(
-            subcommand_parser.get_one::<String>("tax"),
+            subcommand_parser.get_one::<String>("field"),
             Some(&"ncbi".to_owned())
         );
     }

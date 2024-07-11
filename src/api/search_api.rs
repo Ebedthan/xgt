@@ -11,6 +11,7 @@ pub struct SearchAPI {
     filter_text: String,
     gtdb_species_rep_only: bool,
     ncbi_type_material_only: bool,
+    outfmt: String,
 }
 
 impl Default for SearchAPI {
@@ -25,6 +26,7 @@ impl Default for SearchAPI {
             filter_text: String::new(),
             gtdb_species_rep_only: false,
             ncbi_type_material_only: false,
+            outfmt: "csv".to_string(),
         }
     }
 }
@@ -46,17 +48,28 @@ impl SearchAPI {
         self.ncbi_type_material_only = b;
     }
 
+    fn set_outfmt(&mut self, outfmt: String) {
+        self.outfmt = outfmt;
+    }
+
     pub fn from(search: &str, args: &SearchArgs) -> Self {
         let mut search_api = SearchAPI::new();
         search_api.set_search(search.to_string());
-        search_api.set_gtdb_species_rep_only(args.get_rep());
-        search_api.set_ncbi_type_material_only(args.get_type_material());
-
+        search_api.set_gtdb_species_rep_only(args.is_representative_species_only());
+        search_api.set_ncbi_type_material_only(args.is_type_species_only());
+        search_api.set_outfmt(args.get_outfmt().to_string());
         search_api
     }
 
     pub fn request(self) -> String {
-        let mut url = String::from("https://api.gtdb.ecogenomic.org/search/gtdb?");
+        let mut url = if self.outfmt == "json" {
+            String::from("https://api.gtdb.ecogenomic.org/search/gtdb?")
+        } else {
+            format!(
+                "https://api.gtdb.ecogenomic.org/search/gtdb/{0}?",
+                self.outfmt
+            )
+        };
 
         if !self.search.is_empty() {
             url += &format!("search={}", self.search);
@@ -104,7 +117,8 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let args = SearchArgs::new();
+        let mut args = SearchArgs::new();
+        args.set_outfmt("csv".to_string());
         let search = SearchAPI::from("test", &args);
         assert_eq!(search.search, "test");
         assert_eq!(search.page, 1);
@@ -113,6 +127,7 @@ mod tests {
         assert_eq!(search.sort_desc, "");
         assert_eq!(search.search_field, "gtdb_tax");
         assert_eq!(search.filter_text, "");
+        assert_eq!(search.outfmt, "csv");
         assert!(!search.gtdb_species_rep_only);
         assert!(!search.ncbi_type_material_only);
     }
@@ -127,6 +142,7 @@ mod tests {
         assert_eq!(api.sort_desc, "");
         assert_eq!(api.search_field, "gtdb_tax");
         assert_eq!(api.filter_text, "");
+        assert_eq!(api.outfmt, "csv");
         assert_eq!(api.gtdb_species_rep_only, false);
         assert_eq!(api.ncbi_type_material_only, false);
     }
@@ -162,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn test_request() {
+    fn test_request_csv() {
         let search = SearchAPI {
             search: "test".to_string(),
             page: 2,
@@ -171,6 +187,43 @@ mod tests {
             sort_desc: "false".to_string(),
             search_field: "all".to_string(),
             filter_text: "example".to_string(),
+            outfmt: "csv".to_string(),
+            gtdb_species_rep_only: true,
+            ncbi_type_material_only: true,
+        };
+        let expected = "https://api.gtdb.ecogenomic.org/search/gtdb/csv?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
+        assert_eq!(search.request(), expected);
+    }
+
+    #[test]
+    fn test_request_tsv() {
+        let search = SearchAPI {
+            search: "test".to_string(),
+            page: 2,
+            items_per_page: 20,
+            sort_by: "name".to_string(),
+            sort_desc: "false".to_string(),
+            search_field: "all".to_string(),
+            filter_text: "example".to_string(),
+            outfmt: "tsv".to_string(),
+            gtdb_species_rep_only: true,
+            ncbi_type_material_only: true,
+        };
+        let expected = "https://api.gtdb.ecogenomic.org/search/gtdb/tsv?search=test&page=2&itemsPerPage=20&sortBy=name&sortDesc=false&searchField=all&filterText=example&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
+        assert_eq!(search.request(), expected);
+    }
+
+    #[test]
+    fn test_request_json() {
+        let search = SearchAPI {
+            search: "test".to_string(),
+            page: 2,
+            items_per_page: 20,
+            sort_by: "name".to_string(),
+            sort_desc: "false".to_string(),
+            search_field: "all".to_string(),
+            filter_text: "example".to_string(),
+            outfmt: "json".to_string(),
             gtdb_species_rep_only: true,
             ncbi_type_material_only: true,
         };

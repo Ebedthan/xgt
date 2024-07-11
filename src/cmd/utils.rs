@@ -10,6 +10,53 @@ use std::{
     io::{self, BufRead, BufReader, Write},
 };
 
+#[derive(Debug, Eq, PartialEq, Clone, Default)]
+pub enum SearchField {
+    #[default]
+    GTDB,
+    NCBI,
+}
+
+impl From<String> for SearchField {
+    fn from(value: String) -> Self {
+        if value == "ncbi" {
+            return SearchField::NCBI;
+        } else {
+            return SearchField::GTDB;
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Default)]
+pub enum OutputFormat {
+    #[default]
+    CSV,
+    JSON,
+    TSV,
+}
+
+impl ToString for OutputFormat {
+    fn to_string(&self) -> String {
+        match self {
+            Self::CSV => String::from("csv"),
+            Self::JSON => String::from("json"),
+            Self::TSV => String::from("tsv"),
+        }
+    }
+}
+
+impl From<String> for OutputFormat {
+    fn from(value: String) -> Self {
+        if value == "csv" {
+            return OutputFormat::CSV;
+        } else if value == "json" {
+            return OutputFormat::JSON;
+        } else {
+            return OutputFormat::TSV;
+        }
+    }
+}
+
 /// A taxon is known by a particular name and given a particular ranking
 /// Following GreenGenes notation the ranking comes first as a one letter code
 /// followed by the name which start with a Upper case
@@ -18,75 +65,107 @@ pub type Taxa = HashMap<String, String>;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SearchArgs {
-    pub(crate) taxa: Taxa,
+    // search name supplied by the user
+    pub(crate) needle: Vec<String>,
+    // search field on GTDB: either gtdb or ncbi
+    pub(crate) search_field: SearchField,
+    // enable partial search
+    pub(crate) is_partial_search: bool,
+    // returns entries' ids
     pub(crate) id: bool,
+    // count entries in result
     pub(crate) count: bool,
-    pub(crate) rep: bool,
-    pub(crate) type_material: bool,
+    // search representative species only
+    pub(crate) is_representative_species_only: bool,
+    // search type material species only
+    pub(crate) is_type_species_only: bool,
+    // output file or None for stdout
     pub(crate) out: Option<String>,
+    // output format: either csv, tsv or json
+    pub(crate) outfmt: OutputFormat,
+    // SSL certificate verification: true => disable, false => enable
     pub(crate) disable_certificate_verification: bool,
 }
 
 impl SearchArgs {
-    pub fn add_taxon(&mut self, taxon: &str) {
-        let parts = taxon.split("__").collect::<Vec<&str>>();
-        self.taxa.insert(parts[1].to_string(), parts[0].to_string());
+    pub fn add_needle(&mut self, needle: &str) {
+        self.needle.push(needle.to_string());
     }
 
-    pub fn get_taxon_names(&self) -> Vec<String> {
-        self.taxa.keys().map(|x| x.to_string()).collect()
+    pub fn get_needles(&self) -> &Vec<String> {
+        &self.needle
     }
 
-    pub fn get_taxon_rank(&self, name: &str) -> String {
-        self.taxa.get(name).unwrap_or(&String::from("")).to_string()
+    pub fn set_search_field(&mut self, search_field: &str) {
+        self.search_field = SearchField::from(search_field.to_string());
     }
 
-    pub fn get_gid(&self) -> bool {
-        self.id
+    pub fn get_search_field(&self) -> SearchField {
+        self.search_field.clone()
+    }
+
+    pub fn is_partial_search(&self) -> bool {
+        self.is_partial_search
+    }
+
+    pub fn set_search_mode(&mut self, is_partial_search: bool) {
+        self.is_partial_search = is_partial_search;
     }
 
     pub(crate) fn set_id(&mut self, b: bool) {
         self.id = b;
     }
 
-    pub fn get_count(&self) -> bool {
-        self.count
+    pub fn is_only_print_ids(&self) -> bool {
+        self.id
     }
 
     pub(crate) fn set_count(&mut self, b: bool) {
         self.count = b;
     }
 
-    pub fn get_type_material(&self) -> bool {
-        self.type_material
+    pub fn is_only_num_entries(&self) -> bool {
+        self.count
     }
 
-    pub fn get_disable_certificate_verification(&self) -> bool {
+    pub fn is_representative_species_only(&self) -> bool {
+        self.is_representative_species_only
+    }
+
+    fn set_is_representative_species_only(&mut self, b: bool) {
+        self.is_representative_species_only = b;
+    }
+
+    pub fn is_type_species_only(&self) -> bool {
+        self.is_type_species_only
+    }
+
+    pub fn set_is_type_species_only(&mut self, b: bool) {
+        self.is_type_species_only = b;
+    }
+
+    pub fn disable_certificate_verification(&self) -> bool {
         self.disable_certificate_verification
-    }
-
-    fn set_type_material(&mut self, b: bool) {
-        self.type_material = b;
-    }
-
-    pub fn get_rep(&self) -> bool {
-        self.rep
-    }
-
-    fn set_rep(&mut self, b: bool) {
-        self.rep = b;
-    }
-
-    pub fn get_out(&self) -> Option<String> {
-        self.out.clone()
-    }
-
-    pub(crate) fn set_out(&mut self, s: Option<String>) {
-        self.out = s;
     }
 
     pub fn set_disable_certificate_verification(&mut self, b: bool) {
         self.disable_certificate_verification = b;
+    }
+
+    pub fn get_output(&self) -> Option<String> {
+        self.out.clone()
+    }
+
+    pub(crate) fn set_output(&mut self, s: Option<String>) {
+        self.out = s;
+    }
+
+    pub fn set_outfmt(&mut self, outfmt: String) {
+        self.outfmt = OutputFormat::from(outfmt);
+    }
+
+    pub fn get_outfmt(&self) -> OutputFormat {
+        self.outfmt.clone()
     }
 
     pub fn new() -> Self {
@@ -104,23 +183,28 @@ impl SearchArgs {
                 .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
             {
                 let nline = line;
-                search_args.add_taxon(&nline);
+                search_args.add_needle(&nline);
             }
-        } else if let Some(name) = args.get_one::<String>("name") {
-            search_args.add_taxon(name)
+        } else if let Some(name) = args.get_one::<String>("NAME") {
+            search_args.add_needle(name)
         }
+
+        search_args.set_search_field(args.get_one::<String>("field").unwrap());
+
+        search_args.set_search_mode(args.get_flag("partial"));
 
         search_args.set_id(args.get_flag("id"));
 
         search_args.set_count(args.get_flag("count"));
 
-        search_args.set_rep(args.get_flag("rsp"));
+        search_args.set_is_representative_species_only(args.get_flag("rep"));
 
-        search_args.set_type_material(args.get_flag("tsp"));
+        search_args.set_is_type_species_only(args.get_flag("type"));
 
         if args.contains_id("out") {
-            search_args.set_out(args.get_one::<String>("out").cloned());
+            search_args.set_output(args.get_one::<String>("out").cloned());
         }
+        search_args.set_outfmt(args.get_one::<String>("outfmt").unwrap().to_string());
 
         search_args.set_disable_certificate_verification(args.get_flag("insecure"));
 
@@ -233,7 +317,7 @@ impl TaxonArgs {
         } else {
             names.push(
                 arg_matches
-                    .get_one::<String>("name")
+                    .get_one::<String>("NAME")
                     .unwrap_or_else(|| panic!("Missing name value"))
                     .to_string(),
             );

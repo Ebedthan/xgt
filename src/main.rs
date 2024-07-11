@@ -14,11 +14,7 @@ fn main() -> Result<()> {
     match subcommand {
         Some(("search", sub_matches)) => {
             let args = utils::SearchArgs::from_arg_matches(sub_matches);
-            if sub_matches.get_flag("partial") {
-                search::partial_search(args)?;
-            } else {
-                search::exact_search(args)?;
-            }
+            search::search(args)?;
         }
         Some(("genome", sub_matches)) => handle_genome_command(sub_matches)?,
         Some(("taxon", sub_matches)) => handle_taxon_command(sub_matches)?,
@@ -54,6 +50,8 @@ fn handle_taxon_command(sub_matches: &clap::ArgMatches) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use utils::OutputFormat;
+
     use super::*;
     use std::ffi::OsString;
 
@@ -72,20 +70,23 @@ mod tests {
             OsString::from("--id"),
             OsString::from("--partial"),
             OsString::from("--count"),
-            OsString::from("--rsp"),
-            OsString::from("--tsp"),
+            OsString::from("--rep"),
+            OsString::from("--type"),
             OsString::from("--out"),
             OsString::from("out"),
+            OsString::from("--outfmt"),
+            OsString::from("json"),
         ]);
 
         let args =
             utils::SearchArgs::from_arg_matches(matches.subcommand_matches("search").unwrap());
 
-        assert_eq!(args.get_gid(), id);
-        assert_eq!(args.get_count(), count);
-        assert_eq!(args.get_rep(), rsp);
-        assert_eq!(args.get_type_material(), tsp);
-        assert_eq!(args.get_out(), Some(String::from("out")));
+        assert_eq!(args.is_only_print_ids(), id);
+        assert_eq!(args.is_only_num_entries(), count);
+        assert_eq!(args.is_representative_species_only(), rsp);
+        assert_eq!(args.is_type_species_only(), tsp);
+        assert_eq!(args.get_output(), Some(String::from("out")));
+        assert_eq!(args.get_outfmt(), OutputFormat::from("json".to_string()));
     }
 
     #[test]
