@@ -1,3 +1,10 @@
+/*
+TODO! ROADMAP TO NEXT RELEASE.
+1. I was checking the search tests before I left. So need to go through all this.
+2. Optimize what can be optimized for now.
+3. Improve the README.
+4. Write the manual. Current solution I found is to use the GitHub wiki section.
+*/
 mod api;
 mod app;
 mod cmd;
