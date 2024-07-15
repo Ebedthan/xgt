@@ -1,4 +1,7 @@
 # xgt
+
+*Efficient querying and parsing of the GTDB database*
+
 [![Continuous Integration](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Ebedthan/xgt/branch/main/graph/badge.svg?token=OFAOB6K5KB)](https://codecov.io/gh/Ebedthan/xgt)
 <a href="https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT">
@@ -8,9 +11,30 @@
     <img src="https://img.shields.io/badge/license-APACHE-blue?style=flat">
 </a>
 
+
+## 🗺️ Overview
+
 `xgt` is a [Rust](https://www.rust-lang.org/) tool that enables efficient querying and parsing of the GTDB database. `xgt` consists of a collection of commands mirroring the GTDB API and providing additional parsing capability.
 
-# Installation
+## 📋 Features
+
+### `search` subcommand
+It offers both exact and partial matches, along with additional parsing capabilities. Additionally, it supports searching the GTDB using multiple names listed in a plain text file.
+
+### `genome` subcommand
+It can be used to retrieve information about a genome. The --metadata option provides concise genome metadata such as accession and surveillance data, while --history retrieves the genome taxon history in the GTDB. The default option fetches nucleotide, gene, and taxonomy metadata of the genome.
+
+### `taxon` subcommand
+This tool fetches information about a specific taxon. Users can search for
+the direct descendants of a taxon and retrieve taxon genomes in the GTDB using partial or exact matches.
+
+### Certificate verification
+
+`xgt` through `ureq` performs peer SSL certificate verification by default.
+To tell `xgt` to _not_ verify the peer, use the `-k/--insecure` option.
+Currently (as of Apr 28, 2024), you should add this option to your command to get the desired result as GTDB API's server has a certificate issue.
+
+## 🔧 Installing
 
 ```
 git clone https://github.com/Ebedthan/xgt.git
@@ -21,7 +45,8 @@ cargo install --path . --root ~/.cargo
 xgt -h
 ```
 
-# Quick start guide
+
+## 💡 Example
 
 ```
 # Search subcommand: search GTDB
@@ -55,24 +80,27 @@ xgt taxon --search g__Escherichia
 xgt taxon --search --partial g__Escherichia
 ```
 
+## ⚠️ Issue Tracker
+
+Found a bug ? Have an enhancement request ? Head over to the [GitHub issue
+tracker](https://github.com/Ebedthan/xgt/issues) if you need to report
+or ask something. If you are filing in on a bug, please include as much
+information as you can about the issue, and try to recreate the same bug
+in a simple, easily reproducible situation.
+
+## ⚖️ License
+
+`xgt` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
+
+See [LICENSE-APACHE](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE) and [LICENSE-MIT](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT) for details.
+
 Full help is available from `xgt --help`.
-
-## Certificate verification
-
-`xgt` through `ureq` performs peer SSL certificate verification by default.
-To tell `xgt` to _not_ verify the peer, use the `-k/--insecure` option.
-Currently (as of Apr 28, 2024), you should add this option to your command to get the desired result as GTDB API's server has a certificate issue.
 
 ## Minimum supported Rust version
 `xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.70.0.
 
 ## Semver
 `xgt` is following [Semantic Versioning 2.0](https://semver.org/).
-
-## Licence
-`xgt` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
-
-See [LICENSE-APACHE](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE) and [LICENSE-MIT](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT) for details.
 
 ## Note
 Unstable work is on dev branch.
