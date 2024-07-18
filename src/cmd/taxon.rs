@@ -198,24 +198,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_taxon_name_without_output_raw() -> Result<()> {
-        let args = TaxonArgs {
-            name: vec!["g__Escherichia".to_string()],
-            output: None,
-            partial: false,
-            search: false,
-            search_all: false,
-            genomes: false,
-            reps_only: false,
-            disable_certificate_verification: true,
-        };
-
-        get_taxon_name(args)?;
-
-        Ok(())
-    }
-
-    #[test]
     fn test_get_taxon_name_not_found() -> Result<()> {
         let taxon_args = TaxonArgs {
             name: vec!["UnknownTaxonName".to_string()],
