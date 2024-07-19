@@ -150,6 +150,7 @@ fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
         || whole_taxon_match(haystack[3], needle) // Check word match in ncbi_taxonomy field
 }
 
+/// Filter CSV/TSV API query result by search field value
 fn filter_xsv(
     result: String,
     needle: &str,
@@ -170,6 +171,7 @@ fn filter_xsv(
 
     // Determine the matching function based on the search field
     let matcher: Box<dyn Fn(&str) -> bool> = match search_field {
+        // Dummy matcher for All, real logic is in all_match
         SearchField::All => Box::new(|_| false),
         _ => {
             if is_taxonomy_field(&search_field) {

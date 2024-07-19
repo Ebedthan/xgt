@@ -12,27 +12,46 @@ use std::io::{self, Write};
 use ureq::Agent;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// GenomeCard API query result struct
 pub struct GenomeCard {
+    // Genome struct
     genome: Genome,
+    // MetadataNucleotide struct
     metadata_nucleotide: MetadataNucleotide,
+    // MetadataGene struct
     metadata_gene: MetadataGene,
+    // MetadataNCBI struct
     metadata_ncbi: MetadataNCBI,
+    // MetadataTypeMaterial struct
     metadata_type_material: MetadataTypeMaterial,
+    // MetadataTaxonomy struct
     #[serde(alias = "metadataTaxonomy")]
     metadata_taxonomy: MetadataTaxonomy,
+    // String to specify if it is a type material or not
+    // for example: "not type material"
     #[serde(alias = "gtdbTypeDesignation")]
     gtdb_type_designation: Option<String>,
     subunit_summary: Option<String>,
+    // Representative species name of this genome
+    // for example: "GCA_000010525.1"
     #[serde(alias = "speciesRepName")]
     species_rep_name: Option<String>,
     #[serde(alias = "speciesClusterCount")]
     species_cluster_count: Option<i32>,
+    // Link to Genome page on LPSN if any
+    // for example: "https://lpsn.dsmz.de/species/azorhizobium-caulinodans"
     #[serde(alias = "lpsnUrl")]
     lpsn_url: Option<String>,
+    // Parsed link to NCBI Taxonomy of Genome if any
+    // for example: "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/2/\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/1224/\">p__Pseudomonadota</a>; c__; o__; f__; g__; s__"
     link_ncbi_taxonomy: Option<String>,
+    // Raw link to NCBI Taxonomy of Genome if any
+    // for example: "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/2/\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/1224/\">p__Pseudomonadota</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/81684/\">x__unclassified Pseudomonadota</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/1977087/\">s__Pseudomonadota bacterium</a>"
     link_ncbi_taxonomy_unfiltered: Option<String>,
+    // Parsed NCBI taxonomy as a Vec of Taxon struct
     #[serde(alias = "ncbiTaxonomyFiltered")]
     ncbi_taxonomy_filtered: Vec<Taxon>,
+    // Raw NCBI Taxonomy as a Vec of Taxon struct
     #[serde(alias = "ncbiTaxonomyUnfiltered")]
     ncbi_taxonomy_unfiltered: Vec<Taxon>,
 }

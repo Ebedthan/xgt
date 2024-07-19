@@ -62,7 +62,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for name in args.get_name() {
-        let request_url = TaxonAPI::from(name.to_string()).get_name_request();
+        let request_url = TaxonAPI::new(name.to_string()).get_name_request();
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
             Err(ureq::Error::Status(400, _)) => bail!("Taxon {} not found", name),
@@ -83,7 +83,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for name in args.get_name() {
-        let search_api = TaxonAPI::from(name.to_string());
+        let search_api = TaxonAPI::new(name.to_string());
         let request_url = if args.is_search_all() {
             search_api.get_search_all_request()
         } else {
@@ -121,7 +121,7 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for name in args.get_name() {
-        let search_api = TaxonAPI::from(name.to_string());
+        let search_api = TaxonAPI::new(name.to_string());
         let request_url = search_api.get_genomes_request(sp_reps_only);
 
         let response = match agent.get(&request_url).call() {
