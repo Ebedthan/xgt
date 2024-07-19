@@ -84,41 +84,24 @@ impl SearchResults {
     /// Filter SearchResult for exact match of taxon name
     /// and rank as supplied by the user
     fn filter_json(&mut self, needle: String, search_field: SearchField) {
-        match search_field {
-            SearchField::All => {
-                self.rows.retain(|result| {
-                    [
-                        result.get_accession().unwrap(),
-                        result.get_ncbi_org_name().unwrap(),
-                        result.get_ncbi_taxonomy().unwrap(),
-                        result.get_gtdb_taxonomy().unwrap(),
-                    ]
-                    .iter()
-                    .all(|x| x == &needle)
-                });
-                self.total_rows = self.rows.len() as u32;
-            }
-            SearchField::Acc => {
-                self.rows
-                    .retain(|result| result.get_accession().unwrap() == needle);
-                self.total_rows = self.rows.len() as u32;
-            }
-            SearchField::Org => {
-                self.rows
-                    .retain(|result| result.get_ncbi_org_name().unwrap() == needle);
-                self.total_rows = self.rows.len() as u32;
-            }
-            SearchField::Ncbi => {
-                self.rows
-                    .retain(|result| result.get_ncbi_taxonomy().unwrap() == needle);
-                self.total_rows = self.rows.len() as u32;
-            }
-            SearchField::Gtdb => {
-                self.rows
-                    .retain(|result| result.get_gtdb_taxonomy().unwrap() == needle);
-                self.total_rows = self.rows.len() as u32;
-            }
-        }
+        self.rows.retain(|result| match search_field {
+            SearchField::All => [
+                result.get_accession(),
+                result.get_ncbi_org_name(),
+                result.get_ncbi_taxonomy(),
+                result.get_gtdb_taxonomy(),
+            ]
+            .iter()
+            .all(|field| match field {
+                Some(value) => value == &needle,
+                None => false,
+            }),
+            SearchField::Acc => result.get_accession() == Some(needle.clone()),
+            SearchField::Org => result.get_ncbi_org_name() == Some(needle.clone()),
+            SearchField::Ncbi => result.get_ncbi_taxonomy() == Some(needle.clone()),
+            SearchField::Gtdb => result.get_gtdb_taxonomy() == Some(needle.clone()),
+        });
+        self.total_rows = self.rows.len() as u32;
     }
 
     /// Get total rows
@@ -186,14 +169,26 @@ fn filter_xsv(
     let header = lines.next().expect("Input should have a header");
 
     // Determine the matching function based on the search field
-    let matcher: Box<dyn Fn(&str) -> bool> = if is_taxonomy_field(&search_field) {
-        Box::new(|field| whole_taxon_match(field, needle))
-    } else {
-        Box::new(|field| whole_word_match(field, needle))
+    let matcher: Box<dyn Fn(&str) -> bool> = match search_field {
+        SearchField::All => Box::new(|_| false),
+        _ => {
+            if is_taxonomy_field(&search_field) {
+                Box::new(|field| whole_taxon_match(field, needle))
+            } else {
+                Box::new(|field| whole_word_match(field, needle))
+            }
+        }
     };
 
     // Filter lines based on the determined matcher
-    let filtered_lines: Vec<&str> = if search_field != SearchField::All {
+    let filtered_lines: Vec<&str> = if search_field == SearchField::All {
+        lines
+            .filter(|line| {
+                let fields: Vec<&str> = line.split(split_pat).collect();
+                all_match(fields, needle)
+            })
+            .collect()
+    } else {
         let headers: Vec<&str> = header.split(split_pat).collect();
         let index = headers
             .iter()
@@ -203,13 +198,6 @@ fn filter_xsv(
             .filter(|line| {
                 let fields: Vec<&str> = line.split(split_pat).collect();
                 fields.get(index).map_or(false, |&field| matcher(field))
-            })
-            .collect()
-    } else {
-        lines
-            .filter(|line| {
-                let fields: Vec<&str> = line.split(split_pat).collect();
-                all_match(fields, needle)
             })
             .collect()
     };
@@ -355,34 +343,43 @@ mod tests {
 
         assert_eq!(result, expected_output);
     }
+
+    #[test]
+    fn test_get_total_rows() {
+        let results = SearchResults {
+            rows: vec![
+                SearchResult::default(),
+                SearchResult::default(),
+                SearchResult::default(),
+            ],
+            total_rows: 3,
+        };
+        assert_eq!(results.get_total_rows(), 3);
+    }
+
+    #[test]
+    fn test_get_rows() {
+        let results = SearchResults {
+            rows: vec![
+                SearchResult {
+                    gid: "1".into(),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "2".into(),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "3".into(),
+                    ..Default::default()
+                },
+            ],
+            total_rows: 3,
+        };
+        assert_eq!(results.rows.len(), 3);
+    }
+
     /*
-        #[test]
-        fn test_filter_xsv_tsv_specific_field() {
-            let input = "id\tname\ttaxonomy\r\n1\tAlice\tBacteria\r\n2\tBob\tArchaea\r\n3\tCarol\tBacteria\r\n".to_string();
-            let needle = "Bacteria";
-            let search_field = SearchField::SpecificField("taxonomy".to_string());
-            let outfmt = OutputFormat::Tsv;
-
-            let expected_output =
-                "id\tname\ttaxonomy\r\n1\tAlice\tBacteria\r\n3\tCarol\tBacteria\r\n".to_string();
-            let result = filter_xsv(input, needle, search_field, outfmt);
-
-            assert_eq!(result, expected_output);
-        }
-
-        #[test]
-        fn test_filter_xsv_tsv_all_fields() {
-            let input = "id\tname\ttaxonomy\r\n1\tAlice\tBacteria\r\n2\tBob\tArchaea\r\n3\tCarol\tBacteria\r\n".to_string();
-            let needle = "Carol";
-            let search_field = SearchField::All;
-            let outfmt = OutputFormat::Tsv;
-
-            let expected_output = "id\tname\ttaxonomy\r\n3\tCarol\tBacteria\r\n".to_string();
-            let result = filter_xsv(input, needle, search_field, outfmt);
-
-            assert_eq!(result, expected_output);
-        }
-
         #[test]
         #[should_panic(expected = "taxonomy field not found in header")]
         fn test_filter_xsv_field_not_found() {
@@ -393,41 +390,6 @@ mod tests {
 
             filter_xsv(input, needle, search_field, outfmt);
         }
-        }
-
-        #[test]
-        fn test_get_total_rows() {
-            let results = SearchResults {
-                rows: vec![
-                    SearchResult::default(),
-                    SearchResult::default(),
-                    SearchResult::default(),
-                ],
-                total_rows: 3,
-            };
-            assert_eq!(results.get_total_rows(), 3);
-        }
-
-        #[test]
-        fn test_get_rows() {
-            let results = SearchResults {
-                rows: vec![
-                    SearchResult {
-                        gid: "1".into(),
-                        ..Default::default()
-                    },
-                    SearchResult {
-                        gid: "2".into(),
-                        ..Default::default()
-                    },
-                    SearchResult {
-                        gid: "3".into(),
-                        ..Default::default()
-                    },
-                ],
-                total_rows: 3,
-            };
-            assert_eq!(results.rows.len(), 3);
         }
 
         #[test]
@@ -597,20 +559,5 @@ mod tests {
     }"#;
             assert_eq!(actual, expected);
             std::fs::remove_file("test9.txt").unwrap();
-        }
-
-        #[test]
-        fn test_partial_search_csv() {
-            let mut args = utils::SearchArgs::new();
-            args.add_needle("s__Azorhizobium doebereinerae");
-            args.set_output(Some("test10.txt".to_string()));
-            args.set_disable_certificate_verification(true);
-            args.set_outfmt("csv".to_string());
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test10.txt").unwrap();
-            let actual = "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_023405075.1,Pseudomonadota bacterium,d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans,False,True\r\nGCA_023448105.1,Pseudomonadota bacterium,d__Bacteria; p__Pseudomonadota; c__; o__; f__; g__; s__,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans,False,True\r\nGCF_000010525.1,Azorhizobium caulinodans ORS 571,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans,True,True\r\nGCF_000473085.1,Azorhizobium doebereinerae UFLA1-100,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium doebereinerae,True,True\r\nGCF_003989665.1,Azospirillum doebereinerae,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhodospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Azospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae,True,True\r\nGCF_004364705.1,Azorhizobium sp. AG788,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium caulinodans,False,True\r\nGCF_014635325.1,Azorhizobium oxalatiphilum,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Xanthobacteraceae; g__Azorhizobium; s__Azorhizobium oxalatiphilum,True,True\r\nGCF_022214805.1,Azospirillum doebereinerae,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhodospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Azospirillales; f__Azospirillaceae; g__Azospirillum; s__Azospirillum doebereinerae,False,True\r\n";
-            assert_eq!(actual, expected);
-            std::fs::remove_file("test10.txt").unwrap();
-            }*/
+        }*/
 }
