@@ -10,16 +10,23 @@ use std::{
     io::{self, BufRead, BufReader, Write},
 };
 
+/// Search field as provided by GTDB API
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
 pub enum SearchField {
+    // Search all fields
     #[default]
     All,
+    // Search accession field
     Acc,
+    // Search NCBI organism name field
     Org,
+    // Search GTDB taxonomy field
     Gtdb,
+    // Search NCBI taxonomy field
     Ncbi,
 }
 
+/// Check if a SearchField is a taxonomy field (either GTDB taxonomy or NCBI taxonomy).
 pub fn is_taxonomy_field(search_field: &SearchField) -> bool {
     search_field == &SearchField::Gtdb || search_field == &SearchField::Ncbi
 }
@@ -52,6 +59,7 @@ impl Display for SearchField {
     }
 }
 
+/// Search API possibles output format
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
 pub enum OutputFormat {
     #[default]
@@ -82,6 +90,7 @@ impl From<String> for OutputFormat {
     }
 }
 
+/// Command line arguments struct for search cmd
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SearchArgs {
     // search name supplied by the user
@@ -107,66 +116,82 @@ pub struct SearchArgs {
 }
 
 impl SearchArgs {
+    /// Add a needle needle attribute
     pub fn add_needle(&mut self, needle: &str) {
         self.needle.push(needle.to_string());
     }
 
+    /// Getter for needle attribute
     pub fn get_needles(&self) -> &Vec<String> {
         &self.needle
     }
 
+    /// Setter for search field attribute
     pub fn set_search_field(&mut self, search_field: &str) {
         self.search_field = SearchField::from(search_field.to_string());
     }
 
+    /// Getter for search field attribute
     pub fn get_search_field(&self) -> SearchField {
         self.search_field.clone()
     }
 
+    /// Check if tool was ran into partial search mode
     pub fn is_partial_search(&self) -> bool {
         self.is_partial_search
     }
 
+    /// Setter for search mode attribute
     pub fn set_search_mode(&mut self, is_partial_search: bool) {
         self.is_partial_search = is_partial_search;
     }
 
+    /// Setter for id attribute
     pub(crate) fn set_id(&mut self, b: bool) {
         self.id = b;
     }
 
+    /// Check if tool was called in only prints ids mode
     pub fn is_only_print_ids(&self) -> bool {
         self.id
     }
 
+    /// Setter for count attribute
     pub(crate) fn set_count(&mut self, b: bool) {
         self.count = b;
     }
 
+    /// Check if tool was called in count entries mode
     pub fn is_only_num_entries(&self) -> bool {
         self.count
     }
 
+    /// Check if tool was called with search representative species only
     pub fn is_representative_species_only(&self) -> bool {
         self.is_representative_species_only
     }
 
+    /// Set the search representative species only mode
     fn set_is_representative_species_only(&mut self, b: bool) {
         self.is_representative_species_only = b;
     }
 
+    /// Check if tool was ran in type species mode
     pub fn is_type_species_only(&self) -> bool {
         self.is_type_species_only
     }
 
+    /// Set the type species only mode
     pub fn set_is_type_species_only(&mut self, b: bool) {
         self.is_type_species_only = b;
     }
 
+    /// Check if SSL peer verification is enabled
     pub fn disable_certificate_verification(&self) -> bool {
         self.disable_certificate_verification
     }
 
+    /// Set if tool should perform SSL peer verification
     pub fn set_disable_certificate_verification(&mut self, b: bool) {
         self.disable_certificate_verification = b;
     }
@@ -355,6 +380,7 @@ impl TaxonArgs {
     }
 }
 
+/// Write `buffer` to `output` which can either be stdout or a file name.
 pub fn write_to_output(buffer: &[u8], output: Option<String>) -> Result<()> {
     let mut writer: Box<dyn Write> = match output {
         Some(path) => Box::new(OpenOptions::new().append(true).create(true).open(path)?),
