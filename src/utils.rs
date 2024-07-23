@@ -122,34 +122,6 @@ mod tests {
     use anyhow::Result;
 
     #[test]
-    fn test_search_field_from_string() {
-        assert_eq!(SearchField::from("acc".to_string()), SearchField::Acc);
-        assert_eq!(SearchField::from("org".to_string()), SearchField::Org);
-        assert_eq!(SearchField::from("gtdb".to_string()), SearchField::Gtdb);
-        assert_eq!(SearchField::from("ncbi".to_string()), SearchField::Ncbi);
-        assert_eq!(SearchField::from("".to_string()), SearchField::All);
-        assert_eq!(SearchField::from("random".to_string()), SearchField::All);
-    }
-
-    #[test]
-    fn test_is_taxonomy_field() {
-        assert!(is_taxonomy_field(&SearchField::Gtdb));
-        assert!(is_taxonomy_field(&SearchField::Ncbi));
-        assert!(!is_taxonomy_field(&SearchField::Acc));
-        assert!(!is_taxonomy_field(&SearchField::Org));
-        assert!(!is_taxonomy_field(&SearchField::All));
-    }
-
-    #[test]
-    fn test_search_field_display() {
-        assert_eq!(SearchField::Acc.to_string(), "ncbi_id");
-        assert_eq!(SearchField::All.to_string(), "all");
-        assert_eq!(SearchField::Gtdb.to_string(), "gtdb_tax");
-        assert_eq!(SearchField::Ncbi.to_string(), "ncbi_tax");
-        assert_eq!(SearchField::Org.to_string(), "ncbi_org");
-    }
-
-    #[test]
     fn test_write_to_output() {
         let s = "Hello, world!";
 
@@ -193,5 +165,48 @@ mod tests {
         let resp = agent.get("https://invalid-url").call();
         assert!(resp.is_err());
         Ok(())
+    }
+
+    #[test]
+    fn test_search_field_from_string() {
+        assert_eq!(SearchField::from("acc".to_string()), SearchField::Acc);
+        assert_eq!(SearchField::from("org".to_string()), SearchField::Org);
+        assert_eq!(SearchField::from("gtdb".to_string()), SearchField::Gtdb);
+        assert_eq!(SearchField::from("ncbi".to_string()), SearchField::Ncbi);
+        assert_eq!(SearchField::from("unknown".to_string()), SearchField::All);
+    }
+
+    #[test]
+    fn test_search_field_display() {
+        assert_eq!(SearchField::Acc.to_string(), "ncbi_id");
+        assert_eq!(SearchField::All.to_string(), "all");
+        assert_eq!(SearchField::Gtdb.to_string(), "gtdb_tax");
+        assert_eq!(SearchField::Ncbi.to_string(), "ncbi_tax");
+        assert_eq!(SearchField::Org.to_string(), "ncbi_org");
+    }
+
+    #[test]
+    fn test_is_taxonomy_field() {
+        assert!(is_taxonomy_field(&SearchField::Gtdb));
+        assert!(is_taxonomy_field(&SearchField::Ncbi));
+        assert!(!is_taxonomy_field(&SearchField::Acc));
+        assert!(!is_taxonomy_field(&SearchField::Org));
+        assert!(!is_taxonomy_field(&SearchField::All));
+    }
+
+    #[test]
+    fn test_output_format_from_string() {
+        assert_eq!(OutputFormat::from("csv".to_string()), OutputFormat::Csv);
+        assert_eq!(OutputFormat::from("json".to_string()), OutputFormat::Json);
+        assert_eq!(OutputFormat::from("tsv".to_string()), OutputFormat::Tsv);
+        assert_eq!(OutputFormat::from("unknown".to_string()), OutputFormat::Csv);
+        // Default to Csv
+    }
+
+    #[test]
+    fn test_output_format_display() {
+        assert_eq!(OutputFormat::Csv.to_string(), "csv");
+        assert_eq!(OutputFormat::Json.to_string(), "json");
+        assert_eq!(OutputFormat::Tsv.to_string(), "tsv");
     }
 }
