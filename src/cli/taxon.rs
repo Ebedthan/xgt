@@ -84,7 +84,7 @@ impl TaxonArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::cli;
+    use crate::cli::app;
     use std::ffi::OsString;
 
     #[test]
@@ -139,7 +139,7 @@ mod tests {
     fn test_taxon_from_args() {
         let name = vec!["g__Aminobacter".to_string()];
 
-        let matches = cli::build_cli().get_matches_from(vec![
+        let matches = app::build_app().get_matches_from(vec![
             OsString::new(),
             OsString::from("taxon"),
             OsString::from("g__Aminobacter"),
@@ -158,7 +158,7 @@ mod tests {
     fn test_taxon_from_args_2() {
         let name = vec!["g__Aminobacter".to_string(), "g__Rhizobium".to_string()];
 
-        let matches = cli::build_cli().get_matches_from(vec![
+        let matches = app::build_app().get_matches_from(vec![
             OsString::new(),
             OsString::from("taxon"),
             OsString::from("--file"),

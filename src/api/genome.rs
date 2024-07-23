@@ -33,8 +33,7 @@ impl GenomeAPI {
     pub fn request(&self, request_type: GenomeRequestType) -> String {
         format!(
             "https://api.gtdb.ecogenomic.org/genome/{}/{}",
-            self.accession,
-            request_type.to_string()
+            self.accession, request_type
         )
     }
 }

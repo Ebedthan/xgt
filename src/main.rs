@@ -14,7 +14,7 @@ use anyhow::Result;
 use cmd::{genome, search, taxon};
 
 fn main() -> Result<()> {
-    let matches = cli::cli::build_cli().get_matches_from(env::args_os());
+    let matches = cli::app::build_app().get_matches_from(env::args_os());
     let subcommand = matches.subcommand();
 
     match subcommand {
@@ -68,7 +68,7 @@ mod tests {
         let rsp = true;
         let tsp = true;
 
-        let matches = cli::cli::build_cli().get_matches_from(vec![
+        let matches = cli::app::build_app().get_matches_from(vec![
             OsString::new(),
             OsString::from("search"),
             OsString::from("--file"),
@@ -106,7 +106,7 @@ mod tests {
             "--out",
             "met.json",
         ];
-        let matches = cli::cli::build_cli().get_matches_from(args);
+        let matches = cli::app::build_app().get_matches_from(args);
         let sub_matches = matches.subcommand_matches("genome").unwrap();
         let args = cli::genome::GenomeArgs::from_arg_matches(sub_matches);
         assert_eq!(args.accession, vec!["NC_000912.1".to_string()]);

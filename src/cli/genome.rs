@@ -5,9 +5,13 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
+/// Genome subcmd arguments.
 pub struct GenomeArgs {
+    // Accession
     pub(crate) accession: Vec<String>,
+    // Output format
     pub(crate) output: Option<String>,
+    // Check SSL peer verification
     pub(crate) disable_certificate_verification: bool,
 }
 
@@ -25,27 +29,23 @@ impl GenomeArgs {
     }
 
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> Self {
-        let mut accession = Vec::new();
-
-        if let Some(file_path) = arg_matches.get_one::<String>("file") {
-            let file = File::open(file_path)
-                .unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
-            accession = BufReader::new(file)
-                .lines()
-                .map(|l| l.expect("Cannot parse line"))
-                .collect();
-        } else {
-            accession.push(
-                arg_matches
-                    .get_one::<String>("accession")
-                    .unwrap_or_else(|| panic!("Missing accession value"))
-                    .to_string(),
-            );
-        }
+        let accession = match arg_matches.get_one::<String>("file") {
+            Some(file_path) => {
+                let file = File::open(file_path).expect("Failed to open file");
+                BufReader::new(file)
+                    .lines()
+                    .map(|l| l.expect("Cannot parse line"))
+                    .collect()
+            }
+            None => vec![arg_matches
+                .get_one::<String>("accession")
+                .expect("Missing accession value")
+                .to_string()],
+        };
 
         GenomeArgs {
             accession,
-            output: arg_matches.get_one::<String>("out").map(String::from),
+            output: arg_matches.get_one::<String>("out").cloned(),
             disable_certificate_verification: arg_matches.get_flag("insecure"),
         }
     }
@@ -55,7 +55,7 @@ impl GenomeArgs {
 mod tests {
 
     use super::*;
-    use crate::cli::cli;
+    use crate::cli::app;
     use std::ffi::OsString;
 
     #[test]
@@ -84,7 +84,7 @@ mod tests {
     fn test_genome_from_args() {
         let name = vec!["GCF_018555685.1".to_string()];
 
-        let matches = cli::build_cli().get_matches_from(vec![
+        let matches = app::build_app().get_matches_from(vec![
             OsString::new(),
             OsString::from("genome"),
             OsString::from("GCF_018555685.1"),
@@ -100,7 +100,7 @@ mod tests {
     fn test_genome_from_args_2() {
         let name = vec!["GCF_018555685.1".to_string(), "GCF_900445235.1".to_string()];
 
-        let matches = cli::build_cli().get_matches_from(vec![
+        let matches = app::build_app().get_matches_from(vec![
             OsString::new(),
             OsString::from("genome"),
             OsString::from("--file"),

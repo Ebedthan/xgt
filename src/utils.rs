@@ -99,6 +99,7 @@ pub fn write_to_output(buffer: &[u8], output: Option<String>) -> Result<()> {
     Ok(())
 }
 
+/// Select agent request based on SSL peer verification activation
 pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq::Agent> {
     match disable_certificate_verification {
         true => {
@@ -118,6 +119,7 @@ pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq:
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Result;
 
     #[test]
     fn test_search_field_from_string() {
@@ -159,5 +161,37 @@ mod tests {
         assert_eq!(contents, s);
 
         std::fs::remove_file(file_path).unwrap();
+    }
+
+    #[test]
+    fn test_get_agent_with_certificate_verification() -> Result<()> {
+        let agent = get_agent(false)?;
+        let resp = agent.get("https://www.google.com").call();
+        assert!(resp.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_agent_without_certificate_verification() -> Result<()> {
+        let agent = get_agent(true)?;
+        let resp = agent.get("https://self-signed.badssl.com/").call();
+        assert!(resp.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_agent_invalid_url_with_certificate_verification() -> Result<()> {
+        let agent = get_agent(false)?;
+        let resp = agent.get("https://invalid-url").call();
+        assert!(resp.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_agent_invalid_url_without_certificate_verification() -> Result<()> {
+        let agent = get_agent(true)?;
+        let resp = agent.get("https://invalid-url").call();
+        assert!(resp.is_err());
+        Ok(())
     }
 }

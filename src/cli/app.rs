@@ -2,7 +2,7 @@ use std::path::Path;
 
 use clap::{Arg, ArgAction, Command};
 
-pub fn build_cli() -> Command {
+pub fn build_app() -> Command {
     Command::new("xgt")
         .about("Query and parse GTDB data")
         .subcommand_required(true)
@@ -35,12 +35,14 @@ pub fn build_cli() -> Command {
                 .arg(
                     Arg::new("rep")
                         .long("rep")
+                        .short('r')
                         .action(ArgAction::SetTrue)
                         .help("search GTDB representative species only"),
                 )
                 .arg(
                     Arg::new("type")
                         .long("type")
+                        .short('t')
                         .action(ArgAction::SetTrue)
                         .help("search NCBI type species only"),
                 )
@@ -76,6 +78,7 @@ pub fn build_cli() -> Command {
                 .arg(
                     Arg::new("outfmt")
                         .long("outfmt")
+                        .short('O')
                         .help("output format")
                         .value_name("STR")
                         .default_value("csv")
@@ -242,7 +245,7 @@ mod tests {
     #[test]
     fn test_app() {
         std::env::set_var("NO_COLOR", "true");
-        let app = build_cli();
+        let app = build_app();
         let args = vec!["xgt", "search", "p__taxon", "--count"];
         let matches = app.get_matches_from(args);
         assert_eq!(matches.subcommand_name(), Some("search"));
@@ -256,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_arg_parser() {
-        let arg_parser = build_cli().get_matches_from(vec![
+        let arg_parser = build_app().get_matches_from(vec![
             "xgt",
             "search",
             "p__taxon",
@@ -286,7 +289,7 @@ mod tests {
 
     #[test]
     fn verify_cmd() {
-        build_cli().debug_assert();
+        build_app().debug_assert();
     }
 
     #[test]

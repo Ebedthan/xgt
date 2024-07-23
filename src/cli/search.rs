@@ -170,3 +170,117 @@ impl SearchArgs {
         search_args
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli;
+    use crate::utils::{OutputFormat, SearchField};
+    use std::ffi::OsString;
+
+    #[test]
+    fn test_add_needle() {
+        let mut search_args = SearchArgs::new();
+        search_args.add_needle("test_needle");
+        assert_eq!(search_args.get_needles(), &vec!["test_needle".to_string()]);
+    }
+
+    #[test]
+    fn test_set_search_field() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_search_field("gtdb");
+        assert_eq!(search_args.get_search_field(), SearchField::Gtdb);
+    }
+
+    #[test]
+    fn test_set_search_mode() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_search_mode(true);
+        assert!(search_args.is_partial_search());
+    }
+
+    #[test]
+    fn test_set_id() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_id(true);
+        assert!(search_args.is_only_print_ids());
+    }
+
+    #[test]
+    fn test_set_count() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_count(true);
+        assert!(search_args.is_only_num_entries());
+    }
+
+    #[test]
+    fn test_set_is_representative_species_only() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_is_representative_species_only(true);
+        assert!(search_args.is_representative_species_only());
+    }
+
+    #[test]
+    fn test_set_is_type_species_only() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_is_type_species_only(true);
+        assert!(search_args.is_type_species_only());
+    }
+
+    #[test]
+    fn test_set_disable_certificate_verification() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_disable_certificate_verification(true);
+        assert!(search_args.disable_certificate_verification());
+    }
+
+    #[test]
+    fn test_set_output() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_output(Some("output.txt".to_string()));
+        assert_eq!(search_args.get_output(), Some("output.txt".to_string()));
+    }
+
+    #[test]
+    fn test_set_outfmt() {
+        let mut search_args = SearchArgs::new();
+        search_args.set_outfmt("json".to_string());
+        assert_eq!(search_args.get_outfmt(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_from_arg_matches_with_name() {
+        let matches = cli::app::build_app().get_matches_from(vec![
+            OsString::new(),
+            OsString::from("search"),
+            OsString::from("test_name"),
+            OsString::from("--id"),
+            OsString::from("--partial"),
+            OsString::from("--count"),
+            OsString::from("--rep"),
+            OsString::from("--type"),
+            OsString::from("--out"),
+            OsString::from("output.txt"),
+            OsString::from("--outfmt"),
+            OsString::from("json"),
+            OsString::from("--field"),
+            OsString::from("gtdb"),
+            OsString::from("--insecure"),
+        ]);
+
+        let search_args = cli::search::SearchArgs::from_arg_matches(
+            matches.subcommand_matches("search").unwrap(),
+        );
+
+        assert_eq!(search_args.get_needles(), &vec!["test_name".to_string()]);
+        assert_eq!(search_args.get_search_field(), SearchField::Gtdb);
+        assert!(search_args.is_partial_search());
+        assert!(search_args.is_only_print_ids());
+        assert!(search_args.is_only_num_entries());
+        assert!(search_args.is_representative_species_only());
+        assert!(search_args.is_type_species_only());
+        assert_eq!(search_args.get_output(), Some("output.txt".to_string()));
+        assert_eq!(search_args.get_outfmt(), OutputFormat::Json);
+        assert!(search_args.disable_certificate_verification());
+    }
+}
