@@ -4,21 +4,22 @@ TODO! ROADMAP TO NEXT RELEASE.
 2. Optimize what can be optimized for now.
 */
 mod api;
-mod app;
+mod cli;
 mod cmd;
+mod utils;
 
 use std::env;
 
 use anyhow::Result;
-use cmd::{genome, search, taxon, utils};
+use cmd::{genome, search, taxon};
 
 fn main() -> Result<()> {
-    let matches = app::build_app().get_matches_from(env::args_os());
+    let matches = cli::cli::build_cli().get_matches_from(env::args_os());
     let subcommand = matches.subcommand();
 
     match subcommand {
         Some(("search", sub_matches)) => {
-            let args = utils::SearchArgs::from_arg_matches(sub_matches);
+            let args = cli::search::SearchArgs::from_arg_matches(sub_matches);
             search::search(args)?;
         }
         Some(("genome", sub_matches)) => handle_genome_command(sub_matches)?,
@@ -30,7 +31,7 @@ fn main() -> Result<()> {
 }
 
 fn handle_genome_command(sub_matches: &clap::ArgMatches) -> Result<()> {
-    let args = utils::GenomeArgs::from_arg_matches(sub_matches);
+    let args = cli::genome::GenomeArgs::from_arg_matches(sub_matches);
     if sub_matches.get_flag("history") {
         genome::get_genome_taxon_history(args)?;
     } else if sub_matches.get_flag("metadata") {
@@ -42,7 +43,7 @@ fn handle_genome_command(sub_matches: &clap::ArgMatches) -> Result<()> {
 }
 
 fn handle_taxon_command(sub_matches: &clap::ArgMatches) -> Result<()> {
-    let args = utils::TaxonArgs::from_arg_matches(sub_matches);
+    let args = cli::taxon::TaxonArgs::from_arg_matches(sub_matches);
     if args.is_search() || args.is_search_all() {
         taxon::search_taxon(args)?;
     } else if args.is_genome() {
@@ -67,7 +68,7 @@ mod tests {
         let rsp = true;
         let tsp = true;
 
-        let matches = app::build_app().get_matches_from(vec![
+        let matches = cli::cli::build_cli().get_matches_from(vec![
             OsString::new(),
             OsString::from("search"),
             OsString::from("--file"),
@@ -83,8 +84,9 @@ mod tests {
             OsString::from("json"),
         ]);
 
-        let args =
-            utils::SearchArgs::from_arg_matches(matches.subcommand_matches("search").unwrap());
+        let args = cli::search::SearchArgs::from_arg_matches(
+            matches.subcommand_matches("search").unwrap(),
+        );
 
         assert_eq!(args.is_only_print_ids(), id);
         assert_eq!(args.is_only_num_entries(), count);
@@ -104,9 +106,9 @@ mod tests {
             "--out",
             "met.json",
         ];
-        let matches = app::build_app().get_matches_from(args);
+        let matches = cli::cli::build_cli().get_matches_from(args);
         let sub_matches = matches.subcommand_matches("genome").unwrap();
-        let args = utils::GenomeArgs::from_arg_matches(sub_matches);
+        let args = cli::genome::GenomeArgs::from_arg_matches(sub_matches);
         assert_eq!(args.accession, vec!["NC_000912.1".to_string()]);
         assert_eq!(args.output, Some(String::from("met.json")));
     }

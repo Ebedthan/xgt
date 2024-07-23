@@ -2,9 +2,9 @@ use anyhow::{bail, ensure, Result};
 use serde::{Deserialize, Serialize};
 use ureq::Agent;
 
-use super::utils::{self, is_taxonomy_field, OutputFormat, SearchField};
-
-use crate::api::search_api::SearchAPI;
+use crate::api::search::SearchAPI;
+use crate::cli;
+use crate::utils::{self, is_taxonomy_field, OutputFormat, SearchField};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -162,7 +162,12 @@ fn filter_xsv(
     } else {
         "\t"
     };
-    let sfield = search_field.to_string();
+    let sfield = match search_field {
+        SearchField::Acc => "accession".to_string(),
+        SearchField::Org => "ncbi_organism_name".to_string(),
+        SearchField::Ncbi => "ncbi_taxonomy".to_string(),
+        _ => "gtdb_taxonomy".to_string(),
+    };
 
     // Split the content into lines and parse the header
     let mut lines = result.trim_end().split("\r\n");
@@ -216,7 +221,7 @@ fn filter_xsv(
     output
 }
 
-pub fn search(args: utils::SearchArgs) -> Result<()> {
+pub fn search(args: cli::search::SearchArgs) -> Result<()> {
     let agent: Agent = utils::get_agent(args.disable_certificate_verification())?;
 
     for needle in args.get_needles() {
@@ -268,7 +273,7 @@ pub fn search(args: utils::SearchArgs) -> Result<()> {
 
         if args.get_outfmt() == OutputFormat::Json {
             let mut search_result: SearchResults = response.into_json()?;
-            if args.is_partial_search {
+            if !args.is_partial_search {
                 search_result.filter_json(needle.clone(), args.get_search_field());
             }
 
@@ -297,7 +302,7 @@ pub fn search(args: utils::SearchArgs) -> Result<()> {
             utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
         } else {
             let result = response.into_string()?;
-            if args.is_partial_search() {
+            if !args.is_partial_search() {
                 filter_xsv(
                     result.clone(),
                     needle,

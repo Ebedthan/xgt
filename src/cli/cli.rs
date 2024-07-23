@@ -2,9 +2,9 @@ use std::path::Path;
 
 use clap::{Arg, ArgAction, Command};
 
-pub fn build_app() -> Command {
+pub fn build_cli() -> Command {
     Command::new("xgt")
-        .about("Search and parse GTDB data")
+        .about("Query and parse GTDB data")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_app() {
         std::env::set_var("NO_COLOR", "true");
-        let app = build_app();
+        let app = build_cli();
         let args = vec!["xgt", "search", "p__taxon", "--count"];
         let matches = app.get_matches_from(args);
         assert_eq!(matches.subcommand_name(), Some("search"));
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_arg_parser() {
-        let arg_parser = build_app().get_matches_from(vec![
+        let arg_parser = build_cli().get_matches_from(vec![
             "xgt",
             "search",
             "p__taxon",
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn verify_cmd() {
-        build_app().debug_assert();
+        build_cli().debug_assert();
     }
 
     #[test]

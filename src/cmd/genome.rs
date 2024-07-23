@@ -1,7 +1,7 @@
-use super::utils;
-use super::utils::GenomeArgs;
-use crate::api::genome_api::GenomeAPI;
-use crate::api::genome_api::GenomeRequestType;
+use crate::api::genome::GenomeAPI;
+use crate::api::genome::GenomeRequestType;
+use crate::cli::genome::GenomeArgs;
+use crate::utils;
 
 use anyhow::anyhow;
 use anyhow::{Context, Result};
@@ -315,12 +315,12 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils;
+    use crate::cli::genome;
     use std::path::Path;
 
     #[test]
     fn test_genome_gtdb_card_1() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_card_2() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_metadata_1() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -351,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_metadata_out() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: Some(String::from("genome")),
             disable_certificate_verification: true,
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_metadata_out_1() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: Some(String::from("genome1")),
             disable_certificate_verification: true,
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_card_out_1() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: Some(String::from("genome2")),
             disable_certificate_verification: true,
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_card_out_2() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: Some(String::from("genome3")),
             disable_certificate_verification: true,
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_tx_out_1() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: Some(String::from("genome4")),
             disable_certificate_verification: true,
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_tx_out_2() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: Some(String::from("genome5")),
             disable_certificate_verification: true,
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_metadata_2() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -427,7 +427,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_taxon_history_1() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -437,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_taxon_history_2() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["GCA_001512625.1".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_genome_gtdb_4() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["".to_owned()],
             output: None,
             disable_certificate_verification: true,
@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_response_failure() {
-        let args = utils::GenomeArgs {
+        let args = genome::GenomeArgs {
             accession: vec!["&&&&^^^^^||||".to_owned()],
             output: None,
             disable_certificate_verification: true,

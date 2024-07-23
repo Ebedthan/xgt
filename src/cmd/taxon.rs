@@ -2,9 +2,10 @@ use anyhow::{bail, ensure, Result};
 use serde::{Deserialize, Serialize};
 use ureq::Agent;
 
-use crate::api::taxon_api::TaxonAPI;
+use crate::api::taxon::TaxonAPI;
 
-use super::utils::{self, TaxonArgs};
+use crate::cli::taxon::TaxonArgs;
+use crate::utils;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Taxon {

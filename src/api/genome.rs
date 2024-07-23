@@ -30,12 +30,6 @@ impl From<String> for GenomeAPI {
 }
 
 impl GenomeAPI {
-    pub fn new(accession: &str) -> Self {
-        GenomeAPI {
-            accession: accession.to_string(),
-        }
-    }
-
     pub fn request(&self, request_type: GenomeRequestType) -> String {
         format!(
             "https://api.gtdb.ecogenomic.org/genome/{}/{}",
@@ -57,13 +51,6 @@ mod tests {
     }
 
     #[test]
-    fn test_genome_api_new() {
-        let accession = "GCA_000001405.28";
-        let api = GenomeAPI::new(accession);
-        assert_eq!(api.accession, accession);
-    }
-
-    #[test]
     fn test_genome_api_from_string() {
         let accession = String::from("GCA_000001405.28");
         let api: GenomeAPI = accession.clone().into();
@@ -72,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_genome_api_request_metadata() {
-        let api = GenomeAPI::new("GCA_000001405.28");
+        let api = GenomeAPI::from("GCA_000001405.28".to_string());
         let url = api.request(GenomeRequestType::Metadata);
         assert_eq!(
             url,
@@ -82,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_genome_api_request_taxon_history() {
-        let api = GenomeAPI::new("GCA_000001405.28");
+        let api = GenomeAPI::from("GCA_000001405.28".to_string());
         let url = api.request(GenomeRequestType::TaxonHistory);
         assert_eq!(
             url,
@@ -92,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_genome_api_request_card() {
-        let api = GenomeAPI::new("GCA_000001405.28");
+        let api = GenomeAPI::from("GCA_000001405.28".to_string());
         let url = api.request(GenomeRequestType::Card);
         assert_eq!(
             url,
