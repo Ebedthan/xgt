@@ -1,8 +1,3 @@
-/*
-TODO! ROADMAP TO NEXT RELEASE.
-1. I was checking the search tests before I left. So need to go through all this.
-2. Optimize what can be optimized for now.
-*/
 mod api;
 mod cli;
 mod cmd;

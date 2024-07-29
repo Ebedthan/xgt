@@ -221,13 +221,19 @@ fn filter_xsv(
     output
 }
 
+/// Search GTDB data from `SearchArgs`
 pub fn search(args: cli::search::SearchArgs) -> Result<()> {
+    // Get requests agent
     let agent: Agent = utils::get_agent(args.disable_certificate_verification())?;
 
+    // Loop through all needles and perform search on GTDB for each
     for needle in args.get_needles() {
+        // New instance of GTDB's SearchAPI
         let search_api = SearchAPI::from(needle, &args);
+        // Get request url from SearchAPI
         let request_url = search_api.request();
 
+        // Make a GET request to request_url and handle response
         let response = match agent.get(&request_url).call() {
             Ok(r) => r,
             Err(ureq::Error::Status(code, _)) => {
@@ -238,7 +244,10 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
             }
         };
 
+        // Handle response for OutputFormat::CSV and OutputFormat::TSV
+        // based on the args supplied by user
         let handle_response = |result: String| -> Result<()> {
+            // If --count
             if args.is_only_num_entries() {
                 utils::write_to_output(
                     result
@@ -250,6 +259,7 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
                         .as_bytes(),
                     args.get_output().clone(),
                 )
+            // If --id
             } else if args.is_only_print_ids() {
                 let ids = result
                     .split("\r\n")
@@ -267,13 +277,15 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
                     .join("\n");
                 utils::write_to_output(ids.as_bytes(), args.get_output().clone())
             } else {
+                // Everything else
                 utils::write_to_output(result.as_bytes(), args.get_output().clone())
             }
         };
 
+        // Handle response for OutputFormat::Json
         if args.get_outfmt() == OutputFormat::Json {
             let mut search_result: SearchResults = response.into_json()?;
-            if !args.is_partial_search {
+            if args.is_whole_words_matching() {
                 search_result.filter_json(needle.clone(), args.get_search_field());
             }
 
@@ -301,8 +313,9 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
             };
             utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
         } else {
+            // Implement the handling of response for OutputFormat::CSV and OutputFormat::TSV
             let result = response.into_string()?;
-            if !args.is_partial_search() {
+            if args.is_whole_words_matching() {
                 filter_xsv(
                     result.clone(),
                     needle,
@@ -386,79 +399,67 @@ mod tests {
         assert_eq!(results.rows.len(), 3);
     }
 
+    #[test]
+    fn test_search_id() {
+        let mut args = cli::search::SearchArgs::new();
+        args.add_needle("g__Azorhizobium");
+        args.set_id(true);
+        args.set_output(Some("test3.txt".to_string()));
+        args.set_disable_certificate_verification(true);
+        let res = search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test3.txt").unwrap();
+        assert_eq!(
+            r#"GCA_002279595.1
+GCA_002280795.1
+GCA_002280945.1
+GCA_002281175.1
+GCA_002282175.1
+GCA_023405075.1
+GCA_023448105.1
+GCF_000010525.1
+GCF_000473085.1
+GCF_004364705.1
+GCF_014635325.1
+"#
+            .to_string(),
+            expected
+        );
+        std::fs::remove_file("test3.txt").unwrap();
+    }
+
+    #[test]
+    fn test_partial_search_count() {
+        let mut args = cli::search::SearchArgs::new();
+        args.add_needle("g__Azorhizobium");
+        args.set_count(true);
+        args.set_disable_certificate_verification(true);
+        args.set_output(Some("test.txt".to_string()));
+        args.set_outfmt("json".to_string());
+        let res = search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("11".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
+    }
+
+    #[test]
+    fn test_exact_search_count() {
+        let mut args = cli::search::SearchArgs::new();
+        args.add_needle("Azorhizobium");
+        args.set_count(true);
+        args.set_disable_certificate_verification(true);
+        args.set_output(Some("test1.txt".to_string()));
+        args.set_outfmt("json".to_string());
+        args.set_matching_mode(true);
+        let res = search(args.clone());
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test1.txt").unwrap();
+        assert_eq!("11".to_string(), expected);
+        std::fs::remove_file("test1.txt").unwrap();
+    }
+
     /*
-        #[test]
-        #[should_panic(expected = "taxonomy field not found in header")]
-        fn test_filter_xsv_field_not_found() {
-            let input = "id,name\r\n1,Alice\r\n2,Bob\r\n3,Carol\r\n".to_string();
-            let needle = "Bacteria";
-            let search_field = SearchField::SpecificField("taxonomy".to_string());
-            let outfmt = OutputFormat::Csv;
-
-            filter_xsv(input, needle, search_field, outfmt);
-        }
-        }
-
-        #[test]
-        fn test_exact_search_count() {
-            let mut args = utils::SearchArgs::new();
-            args.add_needle("g__Azorhizobium");
-            args.set_count(true);
-            args.set_disable_certificate_verification(true);
-            args.set_output(Some("test.txt".to_string()));
-            args.set_outfmt("json".to_string());
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test.txt").unwrap();
-            assert_eq!("6".to_string(), expected);
-            std::fs::remove_file("test.txt").unwrap();
-        }
-
-        #[test]
-        fn test_partial_search_count() {
-            let mut args = utils::SearchArgs::new();
-            args.add_needle("g__Azorhizobium");
-            args.set_count(true);
-            args.set_disable_certificate_verification(true);
-            args.set_output(Some("test1.txt".to_string()));
-            args.set_outfmt("json".to_string());
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test1.txt").unwrap();
-            assert_eq!("6".to_string(), expected);
-            std::fs::remove_file("test1.txt").unwrap();
-        }
-
-        #[test]
-        fn test_exact_search_id() {
-            let mut args = utils::SearchArgs::new();
-            args.add_needle("g__Azorhizobium");
-            args.set_id(true);
-            args.set_disable_certificate_verification(true);
-            args.set_output(Some("test2.txt".to_string()));
-            args.set_outfmt("json".to_string());
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test2.txt").unwrap();
-            assert_eq!("GCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1".to_string(), expected);
-            std::fs::remove_file("test2.txt").unwrap();
-        }
-
-        #[test]
-        fn test_partial_search_id() {
-            let mut args = utils::SearchArgs::new();
-            args.add_needle("g__Azorhizobium");
-            args.set_id(true);
-            args.set_output(Some("test3.txt".to_string()));
-            args.set_outfmt("json".to_string());
-            args.set_disable_certificate_verification(true);
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test3.txt").unwrap();
-            assert_eq!("GCA_023405075.1\nGCA_023448105.1\nGCF_000010525.1\nGCF_000473085.1\nGCF_004364705.1\nGCF_014635325.1".to_string(), expected);
-            std::fs::remove_file("test3.txt").unwrap();
-        }
-
         #[test]
         fn test_exact_search_pretty() {
             let mut args = utils::SearchArgs::new();

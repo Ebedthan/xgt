@@ -26,11 +26,11 @@ pub fn build_app() -> Command {
                         .help("search field"),
                 )
                 .arg(
-                    Arg::new("partial")
-                        .short('p')
-                        .long("partial")
+                    Arg::new("word")
+                        .short('w')
+                        .long("word")
                         .action(ArgAction::SetTrue)
-                        .help("perform partial matching"),
+                        .help("match only whole words"),
                 )
                 .arg(
                     Arg::new("rep")
@@ -244,7 +244,6 @@ mod tests {
 
     #[test]
     fn test_app() {
-        std::env::set_var("NO_COLOR", "true");
         let app = build_app();
         let args = vec!["xgt", "search", "p__taxon", "--count"];
         let matches = app.get_matches_from(args);
@@ -260,21 +259,13 @@ mod tests {
     #[test]
     fn test_arg_parser() {
         let arg_parser = build_app().get_matches_from(vec![
-            "xgt",
-            "search",
-            "p__taxon",
-            "--count",
-            "--id",
-            "--partial",
-            "--rep",
-            "--type",
-            "--field",
+            "xgt", "search", "p__taxon", "--count", "--id", "-w", "--rep", "--type", "--field",
             "ncbi",
         ]);
         let subcommand_parser = arg_parser.subcommand_matches("search").unwrap();
         assert!(subcommand_parser.get_flag("count"));
         assert!(subcommand_parser.get_flag("id"));
-        assert!(subcommand_parser.get_flag("partial"));
+        assert!(subcommand_parser.get_flag("word"));
         assert!(subcommand_parser.get_flag("rep"));
         assert!(subcommand_parser.get_flag("type"));
         assert_eq!(

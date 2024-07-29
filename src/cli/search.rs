@@ -12,8 +12,8 @@ pub struct SearchArgs {
     pub(crate) needle: Vec<String>,
     // search field on GTDB: either gtdb or ncbi
     pub(crate) search_field: SearchField,
-    // enable partial search
-    pub(crate) is_partial_search: bool,
+    // enable whole words matching
+    pub(crate) is_whole_words_matching: bool,
     // returns entries' ids
     pub(crate) id: bool,
     // count entries in result
@@ -51,14 +51,14 @@ impl SearchArgs {
         self.search_field.clone()
     }
 
-    /// Check if tool was ran into partial search mode
-    pub fn is_partial_search(&self) -> bool {
-        self.is_partial_search
+    /// Is match only whole words enabled
+    pub fn is_whole_words_matching(&self) -> bool {
+        self.is_whole_words_matching
     }
 
     /// Setter for search mode attribute
-    pub fn set_search_mode(&mut self, is_partial_search: bool) {
-        self.is_partial_search = is_partial_search;
+    pub fn set_matching_mode(&mut self, is_whole_words_matching: bool) {
+        self.is_whole_words_matching = is_whole_words_matching;
     }
 
     /// Setter for id attribute
@@ -150,7 +150,7 @@ impl SearchArgs {
 
         search_args.set_search_field(args.get_one::<String>("field").unwrap());
 
-        search_args.set_search_mode(args.get_flag("partial"));
+        search_args.set_matching_mode(args.get_flag("word"));
 
         search_args.set_id(args.get_flag("id"));
 
@@ -193,10 +193,10 @@ mod tests {
     }
 
     #[test]
-    fn test_set_search_mode() {
+    fn test_set_matching_mode() {
         let mut search_args = SearchArgs::new();
-        search_args.set_search_mode(true);
-        assert!(search_args.is_partial_search());
+        search_args.set_matching_mode(true);
+        assert!(search_args.is_whole_words_matching());
     }
 
     #[test]
@@ -255,7 +255,7 @@ mod tests {
             OsString::from("search"),
             OsString::from("test_name"),
             OsString::from("--id"),
-            OsString::from("--partial"),
+            OsString::from("-w"),
             OsString::from("--count"),
             OsString::from("--rep"),
             OsString::from("--type"),
@@ -274,7 +274,7 @@ mod tests {
 
         assert_eq!(search_args.get_needles(), &vec!["test_name".to_string()]);
         assert_eq!(search_args.get_search_field(), SearchField::Gtdb);
-        assert!(search_args.is_partial_search());
+        assert!(search_args.is_whole_words_matching());
         assert!(search_args.is_only_print_ids());
         assert!(search_args.is_only_num_entries());
         assert!(search_args.is_representative_species_only());
