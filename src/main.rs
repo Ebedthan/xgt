@@ -69,7 +69,7 @@ mod tests {
             OsString::from("--file"),
             OsString::from("test/test.txt"),
             OsString::from("--id"),
-            OsString::from("--partial"),
+            OsString::from("-w"),
             OsString::from("--count"),
             OsString::from("--rep"),
             OsString::from("--type"),
@@ -89,6 +89,7 @@ mod tests {
         assert_eq!(args.is_type_species_only(), tsp);
         assert_eq!(args.get_output(), Some(String::from("out")));
         assert_eq!(args.get_outfmt(), OutputFormat::from("json".to_string()));
+        assert!(args.is_whole_words_matching());
     }
 
     #[test]
