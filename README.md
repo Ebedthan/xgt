@@ -11,6 +11,9 @@
     <img src="https://img.shields.io/badge/license-APACHE-blue?style=flat">
 </a>
 
+> [!WARNING]
+> You should add the `-k/--insecure` option to all your current command as the GTDB API has currently SSL issue.
+> We have not yet decided to switch it as a default configuration as disabling peer SSL certificate verification can be a critical issue.
 
 ## 🗺️ Overview
 
@@ -80,7 +83,7 @@ xgt genome -k --metadata GCA_001512625.1
 
 # Taxon subcommand: information about a specific taxon
 ## Get direct descendant of a taxon
-xgt taxon g__Escherichia
+xgt taxon -k g__Escherichia
 
 ## Search for a taxon in GTDB's current release
 xgt taxon -kw --search g__Escherichia
