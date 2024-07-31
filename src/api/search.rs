@@ -4,7 +4,7 @@ use crate::cli::search::SearchArgs;
 pub struct SearchAPI {
     search: String,
     page: u16,
-    items_per_page: u16,
+    items_per_page: u32,
     sort_by: String,
     sort_desc: String,
     search_field: String,
@@ -19,7 +19,7 @@ impl Default for SearchAPI {
         SearchAPI {
             search: String::new(),
             page: 1,
-            items_per_page: 100,
+            items_per_page: 1_000_000_000,
             sort_by: String::new(),
             sort_desc: String::new(),
             search_field: "all".to_string(),
@@ -131,7 +131,7 @@ mod tests {
         let api = SearchAPI::default();
         assert_eq!(api.search, "");
         assert_eq!(api.page, 1);
-        assert_eq!(api.items_per_page, 100);
+        assert_eq!(api.items_per_page, 1_000_000_000);
         assert_eq!(api.sort_by, "");
         assert_eq!(api.sort_desc, "");
         assert_eq!(api.search_field, "all");
@@ -151,7 +151,7 @@ mod tests {
 
         assert_eq!(api.search, "test_search");
         assert_eq!(api.page, 1);
-        assert_eq!(api.items_per_page, 100);
+        assert_eq!(api.items_per_page, 1_000_000_000);
         assert_eq!(api.sort_by, "");
         assert_eq!(api.sort_desc, "");
         assert_eq!(api.search_field, "all");
