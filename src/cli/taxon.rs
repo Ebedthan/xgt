@@ -8,7 +8,7 @@ use std::{
 pub struct TaxonArgs {
     pub(crate) name: Vec<String>,
     pub(crate) output: Option<String>,
-    pub(crate) partial: bool,
+    pub(crate) is_whole_words_matching: bool,
     pub(crate) search: bool,
     pub(crate) search_all: bool,
     pub(crate) genomes: bool,
@@ -25,8 +25,8 @@ impl TaxonArgs {
         self.output.clone()
     }
 
-    pub fn get_partial(&self) -> bool {
-        self.partial
+    pub fn is_whole_words_matching(&self) -> bool {
+        self.is_whole_words_matching
     }
 
     pub fn get_disable_certificate_verification(&self) -> bool {
@@ -71,7 +71,7 @@ impl TaxonArgs {
         TaxonArgs {
             name: names,
             output: arg_matches.get_one::<String>("out").map(String::from),
-            partial: arg_matches.get_flag("partial"),
+            is_whole_words_matching: arg_matches.get_flag("word"),
             search: arg_matches.get_flag("search"),
             search_all: arg_matches.get_flag("all"),
             genomes: arg_matches.get_flag("genomes"),
@@ -92,7 +92,7 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
             output: None,
-            partial: false,
+            is_whole_words_matching: false,
             search: false,
             search_all: false,
             genomes: false,
@@ -108,7 +108,7 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
             output: None,
-            partial: true,
+            is_whole_words_matching: true,
             search: false,
             search_all: false,
             genomes: false,
@@ -116,7 +116,7 @@ mod tests {
             disable_certificate_verification: true,
         };
 
-        assert_eq!(args.get_partial(), true);
+        assert_eq!(args.is_whole_words_matching(), true);
     }
 
     #[test]
@@ -124,7 +124,7 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["name1".to_string(), "name2".to_string()],
             output: None,
-            partial: false,
+            is_whole_words_matching: false,
             search: true,
             search_all: false,
             genomes: false,
@@ -143,13 +143,13 @@ mod tests {
             OsString::new(),
             OsString::from("taxon"),
             OsString::from("g__Aminobacter"),
-            OsString::from("--partial"),
+            OsString::from("--word"),
         ]);
 
         let args = TaxonArgs::from_arg_matches(matches.subcommand_matches("taxon").unwrap());
 
         assert_eq!(args.get_name(), name);
-        assert!(args.get_partial());
+        assert!(args.is_whole_words_matching());
         assert!(!args.is_search());
         assert_eq!(args.get_output(), None);
     }
@@ -171,7 +171,7 @@ mod tests {
         let args = TaxonArgs::from_arg_matches(matches.subcommand_matches("taxon").unwrap());
 
         assert_eq!(args.get_name(), name);
-        assert!(!args.get_partial());
+        assert!(!args.is_whole_words_matching());
         assert!(args.is_search());
         assert_eq!(args.get_output(), Some("out".to_string()));
     }

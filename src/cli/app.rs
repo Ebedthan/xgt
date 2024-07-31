@@ -163,11 +163,11 @@ pub fn build_app() -> Command {
                         .value_parser(is_existing),
                 )
                 .arg(
-                    Arg::new("partial")
-                        .short('p')
-                        .long("partial")
+                    Arg::new("word")
+                        .short('w')
+                        .long("word")
                         .action(ArgAction::SetTrue)
-                        .help("Matching partially the taxon name"),
+                        .help("match only whole words"),
                 )
                 .arg(
                     Arg::new("search")

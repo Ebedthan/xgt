@@ -80,7 +80,7 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
 }
 
 pub fn search_taxon(args: TaxonArgs) -> Result<()> {
-    let partial = args.get_partial();
+    let is_whole_words_matching = args.is_whole_words_matching();
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
 
     for name in args.get_name() {
@@ -99,7 +99,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
         };
 
         let mut taxon_data: TaxonSearchResult = response.into_json()?;
-        if !partial {
+        if is_whole_words_matching {
             taxon_data.filter(name.to_string());
         }
 
@@ -155,7 +155,7 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
             output: Some("output.json".to_string()),
-            partial: false,
+            is_whole_words_matching: false,
             search: false,
             search_all: false,
             genomes: false,
@@ -185,7 +185,7 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
             output: None,
-            partial: false,
+            is_whole_words_matching: false,
             search: false,
             search_all: false,
             genomes: false,
@@ -203,7 +203,7 @@ mod tests {
         let taxon_args = TaxonArgs {
             name: vec!["UnknownTaxonName".to_string()],
             output: None,
-            partial: true,
+            is_whole_words_matching: true,
             search: false,
             search_all: false,
             genomes: false,
@@ -225,7 +225,7 @@ mod tests {
         let taxon_args = TaxonArgs {
             name: vec!["UnknownTaxonName".to_string()],
             output: None,
-            partial: true,
+            is_whole_words_matching: true,
             search: false,
             search_all: false,
             genomes: false,
@@ -268,7 +268,7 @@ mod tests {
     fn search_taxon_should_return_error_for_nonexistent_taxon() {
         let args = TaxonArgs {
             name: vec!["nonexistent_taxon".to_string()],
-            partial: false,
+            is_whole_words_matching: false,
             output: None,
             search: true,
             search_all: false,
@@ -288,7 +288,7 @@ mod tests {
     fn search_taxon_should_print_raw_output_to_stdout() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
-            partial: false,
+            is_whole_words_matching: false,
             output: None,
             search: true,
             search_all: false,
@@ -304,7 +304,7 @@ mod tests {
     fn taxon_should_print_raw_output_to_stdout() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
-            partial: false,
+            is_whole_words_matching: false,
             output: None,
             search: false,
             search_all: false,
@@ -320,7 +320,7 @@ mod tests {
     fn search_taxon_should_write_pretty_output_to_file() {
         let args = TaxonArgs {
             name: vec!["g__Aminobacter".to_string()],
-            partial: false,
+            is_whole_words_matching: false,
             output: Some("test_search.json".to_string()),
             search: true,
             search_all: false,
@@ -342,7 +342,7 @@ mod tests {
         let args = TaxonArgs {
             name: vec!["g__Escherichia".to_string()],
             output: Some("output.json".to_string()),
-            partial: false,
+            is_whole_words_matching: false,
             search: false,
             search_all: false,
             genomes: true,
