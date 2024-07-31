@@ -1,6 +1,6 @@
 [package]
 name = "xgt"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
 description = "xgt enables efficient querying and parsing of GTDB data"
