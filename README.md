@@ -86,7 +86,7 @@ xgt genome -k --metadata GCA_001512625.1
 xgt taxon -k g__Escherichia
 
 ## Search for a taxon in GTDB's current release
-xgt taxon -kw --search g__Escherichia
+xgt taxon -k --search g__Escherichia
 
 ## Search for a taxon in GTDB's current release with partial matching
 xgt taxon -k --search g__Escherichia
