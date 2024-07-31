@@ -60,33 +60,33 @@ Please find the binaries for the latest release using the [release page](https:/
 ```
 # Search subcommand: search GTDB
 ## Search all Escherichia (genus) genomes
-xgt search g__Escherichia
+xgt search -kw g__Escherichia
 
 ## Search all genomes with genus name containing Escherichia
-xgt search --partial g__Escherichia -o output.json
+xgt search -k -o output.csv g__Escherichia
 
 ## Search from a list
-xgt search -f list.txt
+xgt search -k -f list.txt
 
 # Genome subcommand: information about a genome
 ## Get GTDB genome information
-xgt genome GCA_001512625.1
+xgt genome -k GCA_001512625.1
 
 ## Get taxon history on GTDB
-xgt genome --history GCA_001512625.1
+xgt genome -k --history GCA_001512625.1
 
 ## Get genome metadata
-xgt genome --metadata GCA_001512625.1
+xgt genome -k --metadata GCA_001512625.1
 
 # Taxon subcommand: information about a specific taxon
 ## Get direct descendant of a taxon
 xgt taxon g__Escherichia
 
 ## Search for a taxon in GTDB's current release
-xgt taxon --search g__Escherichia
+xgt taxon -kw --search g__Escherichia
 
 ## Search for a taxon in GTDB's current release with partial matching
-xgt taxon --search --partial g__Escherichia
+xgt taxon -k --search g__Escherichia
 ```
 
 ## ⚠️ Issue Tracker
