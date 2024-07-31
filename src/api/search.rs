@@ -169,14 +169,14 @@ mod tests {
             .set_ncbi_type_material_only(true)
             .set_outfmt("json");
 
-        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test_search&page=1&itemsPerPage=100&searchField=all&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
+        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test_search&page=1&itemsPerPage=1000000000&searchField=all&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
         assert_eq!(api.request(), expected_url);
     }
 
     #[test]
     fn test_search_api_request_default() {
         let api = SearchAPI::default();
-        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb/csv?page=1&itemsPerPage=100&searchField=all";
+        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb/csv?page=1&itemsPerPage=1000000000&searchField=all";
         assert_eq!(api.request(), expected_url);
     }
 }

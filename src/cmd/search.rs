@@ -244,46 +244,12 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
             }
         };
 
-        // Handle response for OutputFormat::CSV and OutputFormat::TSV
-        // based on the args supplied by user
-        let handle_response = |result: String| -> Result<()> {
-            // If --count
-            if args.is_only_num_entries() {
-                utils::write_to_output(
-                    result
-                        .trim_end()
-                        .split("\r\n")
-                        .skip(1)
-                        .count()
-                        .to_string()
-                        .as_bytes(),
-                    args.get_output().clone(),
-                )
-            // If --id
-            } else if args.is_only_print_ids() {
-                let ids = result
-                    .split("\r\n")
-                    .skip(1)
-                    .map(|l| {
-                        l.split(if args.get_outfmt() == OutputFormat::Tsv {
-                            '\t'
-                        } else {
-                            ','
-                        })
-                        .next()
-                        .unwrap_or("")
-                    })
-                    .collect::<Vec<&str>>()
-                    .join("\n");
-                utils::write_to_output(ids.as_bytes(), args.get_output().clone())
-            } else {
-                // Everything else
-                utils::write_to_output(result.as_bytes(), args.get_output().clone())
-            }
-        };
-
-        // Handle response for OutputFormat::Json
-        if args.get_outfmt() == OutputFormat::Json {
+        // If -c or -i just use JSON output format to count entries or
+        // return ids list as converting using into_string can
+        // throw an error of too big to convert to string especially
+        // when querying data related to large genus like Escherichia
+        // See cli/search.rs#L166-L178
+        if args.is_only_print_ids() || args.is_only_num_entries() {
             let mut search_result: SearchResults = response.into_json()?;
             if args.is_whole_words_matching() {
                 search_result.filter_json(needle.clone(), args.get_search_field());
@@ -293,37 +259,50 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
                 search_result.get_total_rows() != 0,
                 "No matching data found in GTDB"
             );
-
             let result_str = if args.is_only_num_entries() {
                 search_result.get_total_rows().to_string()
-            } else if args.is_only_print_ids() {
+            } else {
                 search_result
                     .rows
                     .iter()
                     .map(|x| x.gid.clone())
                     .collect::<Vec<String>>()
                     .join("\n")
-            } else {
-                search_result
+            };
+            utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
+        } else {
+            // Handle response for OutputFormat::Json
+            if args.get_outfmt() == OutputFormat::Json {
+                let mut search_result: SearchResults = response.into_json()?;
+                if args.is_whole_words_matching() {
+                    search_result.filter_json(needle.clone(), args.get_search_field());
+                }
+
+                ensure!(
+                    search_result.get_total_rows() != 0,
+                    "No matching data found in GTDB"
+                );
+
+                let result_str = search_result
                     .rows
                     .iter()
                     .map(|x| serde_json::to_string_pretty(x).unwrap())
                     .collect::<Vec<String>>()
-                    .join("\n")
-            };
-            utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
-        } else {
-            // Implement the handling of response for OutputFormat::CSV and OutputFormat::TSV
-            let result = response.into_string()?;
-            if args.is_whole_words_matching() {
-                filter_xsv(
-                    result.clone(),
-                    needle,
-                    args.get_search_field(),
-                    args.get_outfmt(),
-                );
+                    .join("\n");
+                utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
+            } else {
+                // Implement the handling of response for OutputFormat::CSV and OutputFormat::TSV
+                let result = response.into_string()?;
+                if args.is_whole_words_matching() {
+                    filter_xsv(
+                        result.clone(),
+                        needle,
+                        args.get_search_field(),
+                        args.get_outfmt(),
+                    );
+                }
+                utils::write_to_output(result.as_bytes(), args.get_output().clone())?;
             }
-            handle_response(result)?;
         }
     }
 
@@ -405,6 +384,7 @@ mod tests {
         args.add_needle("g__Azorhizobium");
         args.set_id(true);
         args.set_output(Some("test3.txt".to_string()));
+        args.set_outfmt("json".to_string());
         args.set_disable_certificate_verification(true);
         let res = search(args.clone());
         assert!(res.is_ok());
@@ -420,9 +400,8 @@ GCA_023448105.1
 GCF_000010525.1
 GCF_000473085.1
 GCF_004364705.1
-GCF_014635325.1
-"#
-            .to_string(),
+GCF_014635325.1"#
+                .to_string(),
             expected
         );
         std::fs::remove_file("test3.txt").unwrap();

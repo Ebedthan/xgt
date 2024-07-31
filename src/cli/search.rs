@@ -163,7 +163,19 @@ impl SearchArgs {
         if args.contains_id("out") {
             search_args.set_output(args.get_one::<String>("out").cloned());
         }
-        search_args.set_outfmt(args.get_one::<String>("outfmt").unwrap().to_string());
+        if args.get_flag("count") || args.get_flag("id") {
+            // If the user set --count or --id flag, automatically set
+            // --outfmt=json.
+            // This will help cope with potential issue arising when the queried
+            // taxon has big data and cannot be fitted into a string (which is the corresponding
+            // CSV and TSV output representation).
+            // An example of such taxa is Escherichia. Before fixing this issue, when lauching
+            // xgt search -ki g__Escherichia
+            // we would get: Error: response too big for into_string
+            search_args.set_outfmt("json".to_string());
+        } else {
+            search_args.set_outfmt(args.get_one::<String>("outfmt").unwrap().to_string());
+        }
 
         search_args.set_disable_certificate_verification(args.get_flag("insecure"));
 
