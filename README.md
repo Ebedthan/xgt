@@ -53,10 +53,10 @@ xgt -h
 ### Using binaries
 
 Please find the binaries for the latest release using the [release page](https://github.com/Ebedthan/xgt/releases) or using the direct link below:
-* [Apple Silicon macOS](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-aarch64-apple-darwin.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-aarch64-apple-darwin.tar.xz.sha256)
-* [Intel macOS](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-x86_64-apple-darwin.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-x86_64-apple-darwin.tar.xz.sha256)
-* [x64 Windows](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-x86_64-pc-windows-msvc.zip) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-x86_64-pc-windows-msvc.zip.sha256)
-* [x64 Linux](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-x86_64-unknown-linux-gnu.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.0/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
+* [Apple Silicon macOS](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-aarch64-apple-darwin.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-aarch64-apple-darwin.tar.xz.sha256)
+* [Intel macOS](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-apple-darwin.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-apple-darwin.tar.xz.sha256)
+* [x64 Windows](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-pc-windows-msvc.zip) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-pc-windows-msvc.zip.sha256)
+* [x64 Linux](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-unknown-linux-gnu.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
 
 ## 💡 Example
 
