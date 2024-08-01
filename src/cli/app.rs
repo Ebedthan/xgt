@@ -192,7 +192,7 @@ pub fn build_app() -> Command {
                 )
                 .arg(
                     Arg::new("reps")
-                        .short('e')
+                        .short('r')
                         .long("reps")
                         .action(ArgAction::SetTrue)
                         .help("Set taxon V genomes search to lookup reps seqs only"),
