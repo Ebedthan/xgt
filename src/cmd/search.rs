@@ -1,6 +1,5 @@
-use anyhow::{bail, ensure, Result};
+use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
-use ureq::Agent;
 
 use crate::api::search::SearchAPI;
 use crate::cli;
@@ -223,90 +222,110 @@ fn filter_xsv(
 
 /// Search GTDB data from `SearchArgs`
 pub fn search(args: cli::search::SearchArgs) -> Result<()> {
-    // Get requests agent
-    let agent: Agent = utils::get_agent(args.disable_certificate_verification())?;
+    let agent = utils::get_agent(args.disable_certificate_verification())?;
 
-    // Loop through all needles and perform search on GTDB for each
     for needle in args.get_needles() {
-        // New instance of GTDB's SearchAPI
         let search_api = SearchAPI::from(needle, &args);
-        // Get request url from SearchAPI
         let request_url = search_api.request();
 
-        // Make a GET request to request_url and handle response
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(code, _)) => {
-                bail!("The server returned an unexpected status code ({})", code);
+        let response = agent.get(&request_url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) => {
+                anyhow::anyhow!("The server returned an unexpected status code ({})", code)
             }
-            Err(_) => {
-                bail!("There was an error making the request or receiving the response.");
+            _ => {
+                anyhow::anyhow!("There was an error making the request or receiving the response.")
+            }
+        })?;
+
+        let output_result = if args.is_only_print_ids() || args.is_only_num_entries() {
+            handle_id_or_count_response(response, needle, &args)
+        } else {
+            match args.get_outfmt() {
+                OutputFormat::Json => handle_json_response(response, needle, &args),
+                _ => handle_xsv_response(response, needle, &args),
             }
         };
 
-        // If -c or -i just use JSON output format to count entries or
-        // return ids list as converting using into_string can
-        // throw an error of too big to convert to string especially
-        // when querying data related to large genus like Escherichia
-        // See cli/search.rs#L166-L178
-        if args.is_only_print_ids() || args.is_only_num_entries() {
-            let mut search_result: SearchResults = response.into_json()?;
-            if args.is_whole_words_matching() {
-                search_result.filter_json(needle.clone(), args.get_search_field());
-            }
-
-            ensure!(
-                search_result.get_total_rows() != 0,
-                "No matching data found in GTDB"
-            );
-            let result_str = if args.is_only_num_entries() {
-                search_result.get_total_rows().to_string()
-            } else {
-                search_result
-                    .rows
-                    .iter()
-                    .map(|x| x.gid.clone())
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            };
-            utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
-        } else {
-            // Handle response for OutputFormat::Json
-            if args.get_outfmt() == OutputFormat::Json {
-                let mut search_result: SearchResults = response.into_json()?;
-                if args.is_whole_words_matching() {
-                    search_result.filter_json(needle.clone(), args.get_search_field());
-                }
-
-                ensure!(
-                    search_result.get_total_rows() != 0,
-                    "No matching data found in GTDB"
-                );
-
-                let result_str = search_result
-                    .rows
-                    .iter()
-                    .map(|x| serde_json::to_string_pretty(x).unwrap())
-                    .collect::<Vec<String>>()
-                    .join("\n");
-                utils::write_to_output(result_str.as_bytes(), args.get_output().clone())?;
-            } else {
-                // Implement the handling of response for OutputFormat::CSV and OutputFormat::TSV
-                let result = response.into_string()?;
-                if args.is_whole_words_matching() {
-                    filter_xsv(
-                        result.clone(),
-                        needle,
-                        args.get_search_field(),
-                        args.get_outfmt(),
-                    );
-                }
-                utils::write_to_output(result.as_bytes(), args.get_output().clone())?;
-            }
-        }
+        utils::write_to_output(output_result?.as_bytes(), args.get_output().clone())?;
     }
 
     Ok(())
+}
+
+// If -c or -i just use JSON output format to count entries or
+// return ids list as converting using into_string can
+// throw an error of too big to convert to string especially
+// when querying data related to large genus like Escherichia
+// See cli/search.rs#L166-L178
+fn handle_id_or_count_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    let mut search_result: SearchResults = response.into_json()?;
+    if args.is_whole_words_matching() {
+        search_result.filter_json(needle.to_string(), args.get_search_field());
+    }
+
+    ensure!(
+        search_result.get_total_rows() != 0,
+        "No matching data found in GTDB"
+    );
+
+    let result_str = if args.is_only_num_entries() {
+        search_result.get_total_rows().to_string()
+    } else {
+        search_result
+            .rows
+            .iter()
+            .map(|x| x.gid.clone())
+            .collect::<Vec<String>>()
+            .join("\n")
+    };
+
+    Ok(result_str)
+}
+
+fn handle_json_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    let mut search_result: SearchResults = response.into_json()?;
+    if args.is_whole_words_matching() {
+        search_result.filter_json(needle.to_string(), args.get_search_field());
+    }
+
+    ensure!(
+        search_result.get_total_rows() != 0,
+        "No matching data found in GTDB"
+    );
+
+    let result_str = search_result
+        .rows
+        .iter()
+        .map(|x| serde_json::to_string_pretty(x).unwrap())
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    Ok(result_str)
+}
+
+fn handle_xsv_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    let result = response.into_string()?;
+    if args.is_whole_words_matching() {
+        filter_xsv(
+            result.clone(),
+            needle,
+            args.get_search_field(),
+            args.get_outfmt(),
+        );
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
