@@ -1,8 +1,3 @@
-// Working on v0.5.0
-// Changed the --partial to --word
-// Need to verify that it works as expected
-// See other way to improve the package
-
 mod api;
 mod cli;
 mod cmd;
