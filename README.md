@@ -25,7 +25,7 @@
 It offers both exact and partial matches, along with additional parsing capabilities. Additionally, it supports searching the GTDB using multiple names listed in a plain text file.
 
 ### `genome` subcommand
-It can be used to retrieve information about a genome. The --metadata option provides concise genome metadata such as accession and surveillance data, while --history retrieves the genome taxon history in the GTDB. The default option fetches nucleotide, gene, and taxonomy metadata of the genome.
+It can be used to retrieve information about a genome. The `--metadata` option provides concise genome metadata such as accession and surveillance data, while `--history` retrieves the genome taxon history in the GTDB. The default option fetches nucleotide, gene, and taxonomy metadata of the genome.
 
 ### `taxon` subcommand
 This tool fetches information about a specific taxon. Users can search for
@@ -113,6 +113,3 @@ Full help is available from `xgt --help`.
 
 ## Semver
 `xgt` is following [Semantic Versioning 2.0](https://semver.org/).
-
-## Note
-Unstable work is on dev branch.
