@@ -31,18 +31,27 @@ It can be used to retrieve information about a genome. The `--metadata` option p
 This tool fetches information about a specific taxon. Users can search for
 the direct descendants of a taxon and retrieve taxon genomes in the GTDB using partial or exact matches.
 
-### Certificate verification
-
-`xgt` through `ureq` performs peer SSL certificate verification by default.
-To tell `xgt` to _not_ verify the peer, use the `-k/--insecure` option.
-Currently (as of Apr 28, 2024), you should add this option to your command to get the desired result as GTDB API's server has a certificate issue.
-
 ## 🔧 Installing
 
 ### From source
 
+#### Download source using Git
+
 ```
 git clone https://github.com/Ebedthan/xgt.git
+```
+
+#### Download source using packaged source
+
+* [xgt-0.4.1.tar.gz](https://github.com/Ebedthan/xgt/archive/refs/tags/v0.4.1.tar.gz)
+* [xgt-0.4.1.zip](https://github.com/Ebedthan/xgt/archive/refs/tags/v0.4.1.zip)
+
+#### Installing
+
+You can install using [cargo](https://doc.rust-lang.org/cargo/):
+
+```
+# Change "xgt" to correct folder name
 cd xgt
 
 # If default rust install directory is ~/.cargo
