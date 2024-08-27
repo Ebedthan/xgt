@@ -1,9 +1,12 @@
-use anyhow::{ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 
 use crate::api::search::SearchAPI;
 use crate::cli;
 use crate::utils::{self, is_taxonomy_field, OutputFormat, SearchField};
+
+const INTO_STRING_LIMIT: usize = 20 * 1_024 * 1_024;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -316,7 +319,15 @@ fn handle_xsv_response(
     needle: &str,
     args: &cli::search::SearchArgs,
 ) -> Result<String> {
-    let result = response.into_string()?;
+    let mut buf: Vec<u8> = vec![];
+    response
+        .into_reader()
+        .take((INTO_STRING_LIMIT + 1) as u64)
+        .read_to_end(&mut buf)?;
+    if buf.len() > INTO_STRING_LIMIT {
+        return Err(anyhow!("GTDB response is too big (> 20 MB) to convert to string. Please use JSON output format (-O json)"));
+    }
+    let result = String::from_utf8_lossy(&buf).to_string();
     if args.is_whole_words_matching() {
         filter_xsv(
             result.clone(),
