@@ -67,7 +67,7 @@ Please find the binaries for the latest release using the [release page](https:/
 * [x64 Windows](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-pc-windows-msvc.zip) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-pc-windows-msvc.zip.sha256)
 * [x64 Linux](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-unknown-linux-gnu.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.1/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
 
-## 💡 Example
+## 💡 Examples
 
 ```
 # Search subcommand: search GTDB

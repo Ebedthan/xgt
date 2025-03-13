@@ -152,29 +152,33 @@ fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
         || whole_taxon_match(haystack[3], needle) // Check word match in ncbi_taxonomy field
 }
 
+/// Filter out undefined quality genome by GTDB
+/*
+fn filter_out_low_qual(result: String) -> String {
+    let mut lines = result.trim_end().split("\r\n");
+    if let Some(_) = lines.find("Undefined (Failed Quality Check)") {
+
+    }
+}*/
+
 /// Filter CSV/TSV API query result by search field value
-fn filter_xsv(
-    result: String,
-    needle: &str,
-    search_field: SearchField,
-    outfmt: OutputFormat,
-) -> String {
-    let split_pat = if outfmt == OutputFormat::Csv {
-        ","
-    } else {
-        "\t"
-    };
+fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outfmt: OutputFormat) {
+    // Move content out of `result` to avoid borrowing issues
+    let content = std::mem::take(result);
+
+    // Split the content into lines and parse the header
+    let mut lines = content.trim_end().split("\r\n");
+
+    // Check presence of CSV/TSV header
+    let header = lines.next().expect("Input should have a header");
+
+    // Get the CSV/TSV column which will be subjected to search
     let sfield = match search_field {
         SearchField::Acc => "accession".to_string(),
         SearchField::Org => "ncbi_organism_name".to_string(),
         SearchField::Ncbi => "ncbi_taxonomy".to_string(),
         _ => "gtdb_taxonomy".to_string(),
     };
-
-    // Split the content into lines and parse the header
-    let mut lines = result.trim_end().split("\r\n");
-
-    let header = lines.next().expect("Input should have a header");
 
     // Determine the matching function based on the search field
     let matcher: Box<dyn Fn(&str) -> bool> = match search_field {
@@ -187,6 +191,12 @@ fn filter_xsv(
                 Box::new(|field| whole_word_match(field, needle))
             }
         }
+    };
+
+    let split_pat = if outfmt == OutputFormat::Csv {
+        ","
+    } else {
+        "\t"
     };
 
     // Filter lines based on the determined matcher
@@ -211,16 +221,14 @@ fn filter_xsv(
             .collect()
     };
 
-    // Construct the final output
-    let mut output = String::with_capacity(result.len());
-    output.push_str(header);
-    output.push_str("\r\n");
+    // Modify the original result string
+    result.clear();
+    result.push_str(header);
+    result.push_str("\r\n");
     for line in filtered_lines {
-        output.push_str(line);
-        output.push_str("\r\n");
+        result.push_str(line);
+        result.push_str("\r\n");
     }
-
-    output
 }
 
 /// Search GTDB data from `SearchArgs`
@@ -327,10 +335,12 @@ fn handle_xsv_response(
     if buf.len() > INTO_STRING_LIMIT {
         return Err(anyhow!("GTDB response is too big (> 20 MB) to convert to string. Please use JSON output format (-O json)"));
     }
-    let result = String::from_utf8_lossy(&buf).to_string();
+    let mut result = String::from_utf8_lossy(&buf).to_string();
     if args.is_whole_words_matching() {
+        println!("We are here!");
+        println!("needle: {}", needle);
         filter_xsv(
-            result.clone(),
+            &mut result,
             needle,
             args.get_search_field(),
             args.get_outfmt(),
@@ -344,8 +354,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_whole_word_match() {
+        assert!(whole_word_match("bar bir ber bor", "bor"));
+        assert!(!whole_word_match("bar bir ber bor", "xgt"));
+        assert!(!whole_word_match("Geobacillus", "bacillus"));
+    }
+
+    #[test]
     fn test_filter_xsv_csv_accession_field() {
-        let input =
+        let mut input =
                 "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\nGCA_000020265.1,Rhizobium etli CIAT 652,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium etli,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium phaseoli,False,True".to_string();
         let needle = "GCA_000016265.1";
         let search_field = SearchField::Acc;
@@ -353,14 +370,14 @@ mod tests {
 
         let expected_output =
                 "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\n".to_string();
-        let result = filter_xsv(input, needle, search_field, outfmt);
+        filter_xsv(&mut input, needle, search_field, outfmt);
 
-        assert_eq!(result, expected_output);
+        assert_eq!(input, expected_output);
     }
 
     #[test]
     fn test_filter_xsv_csv_all_fields() {
-        let input =
+        let mut input =
                 "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\nGCA_000020265.1,Rhizobium etli CIAT 652,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium etli,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium phaseoli,False,True".to_string();
         let needle = "Agrobacterium";
         let search_field = SearchField::All;
@@ -368,9 +385,9 @@ mod tests {
 
         let expected_output =
                 "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\n".to_string();
-        let result = filter_xsv(input, needle, search_field, outfmt);
+        filter_xsv(&mut input, needle, search_field, outfmt);
 
-        assert_eq!(result, expected_output);
+        assert_eq!(input, expected_output);
     }
 
     #[test]
@@ -450,5 +467,12 @@ GCF_014635325.1"#
         let expected = std::fs::read_to_string("test.txt").unwrap();
         assert_eq!("11".to_string(), expected);
         std::fs::remove_file("test.txt").unwrap();
+    }
+
+    #[test]
+    fn test_all_match() {
+        let line = "GCA_001512625.1,Clostridiales bacterium DTU036,d__Bacteria; p__Bacillota; c__Clostridia; o__Eubacteriales; f__; g__; s__,d__Bacteria; p__Bacillota_A; c__Clostridia; o__Peptostreptococcales; f__Acidaminobacteraceae; g__DTU036; s__DTU036 sp001512625,True,False";
+        let fields: Vec<&str> = line.split(",").collect();
+        assert!(all_match(fields, "c__Clostridia"));
     }
 }

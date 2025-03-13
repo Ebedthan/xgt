@@ -15,6 +15,7 @@ fn main() -> Result<()> {
     match subcommand {
         Some(("search", sub_matches)) => {
             let args = cli::search::SearchArgs::from_arg_matches(sub_matches);
+            println!("{:?}\n", args.clone());
             search::search(args)?;
         }
         Some(("genome", sub_matches)) => handle_genome_command(sub_matches)?,
