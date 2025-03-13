@@ -152,7 +152,6 @@ fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
         || whole_taxon_match(haystack[3], needle) // Check word match in ncbi_taxonomy field
 }
 
-/// Filter out undefined quality genome by GTDB
 /*
 fn filter_out_low_qual(result: String) -> String {
     let mut lines = result.trim_end().split("\r\n");
@@ -216,7 +215,7 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
         lines
             .filter(|line| {
                 let fields: Vec<&str> = line.split(split_pat).collect();
-                fields.get(index).map_or(false, |&field| matcher(field))
+                fields.get(index).is_some_and(|&field| matcher(field))
             })
             .collect()
     };
