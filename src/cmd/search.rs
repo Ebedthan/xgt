@@ -87,21 +87,37 @@ impl SearchResults {
     /// and rank as supplied by the user
     fn filter_json(&mut self, needle: String, search_field: SearchField) {
         self.rows.retain(|result| match search_field {
-            SearchField::All => [
-                result.get_accession(),
-                result.get_ncbi_org_name(),
-                result.get_ncbi_taxonomy(),
-                result.get_gtdb_taxonomy(),
-            ]
-            .iter()
-            .all(|field| match field {
-                Some(value) => value == &needle,
-                None => false,
-            }),
-            SearchField::Acc => result.get_accession() == Some(needle.clone()),
-            SearchField::Org => result.get_ncbi_org_name() == Some(needle.clone()),
-            SearchField::Ncbi => result.get_ncbi_taxonomy() == Some(needle.clone()),
-            SearchField::Gtdb => result.get_gtdb_taxonomy() == Some(needle.clone()),
+            SearchField::All => {
+                // Apply whole_taxon_match to ncbi_taxonomy and gtdb_taxonomy
+                let taxon_match = [result.get_ncbi_taxonomy(), result.get_gtdb_taxonomy()]
+                    .iter()
+                    .filter_map(|field| field.as_ref()) // Filter out None values
+                    .any(|value| whole_taxon_match(value, needle.as_str()));
+
+                // Apply whole_word_match to accession and ncbi_org_name
+                let word_match = [result.get_accession(), result.get_ncbi_org_name()]
+                    .iter()
+                    .filter_map(|field| field.as_ref())
+                    .any(|value| whole_word_match(value, needle.as_str()));
+
+                taxon_match || word_match
+            }
+            SearchField::Acc => whole_word_match(
+                result.get_accession().unwrap_or_default().as_str(),
+                needle.as_str(),
+            ),
+            SearchField::Org => whole_word_match(
+                result.get_ncbi_org_name().unwrap_or_default().as_str(),
+                needle.as_str(),
+            ),
+            SearchField::Ncbi => whole_taxon_match(
+                result.get_ncbi_taxonomy().unwrap_or_default().as_str(),
+                needle.as_str(),
+            ),
+            SearchField::Gtdb => whole_taxon_match(
+                result.get_gtdb_taxonomy().unwrap_or_default().as_str(),
+                needle.as_str(),
+            ),
         });
         self.total_rows = self.rows.len() as u32;
     }
@@ -276,7 +292,6 @@ fn handle_id_or_count_response(
     if args.is_whole_words_matching() {
         search_result.filter_json(needle.to_string(), args.get_search_field());
     }
-
     ensure!(
         search_result.get_total_rows() != 0,
         "No matching data found in GTDB"
@@ -336,8 +351,6 @@ fn handle_xsv_response(
     }
     let mut result = String::from_utf8_lossy(&buf).to_string();
     if args.is_whole_words_matching() {
-        println!("We are here!");
-        println!("needle: {}", needle);
         filter_xsv(
             &mut result,
             needle,
