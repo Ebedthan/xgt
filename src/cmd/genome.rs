@@ -16,41 +16,55 @@ use ureq::Agent;
 pub struct GenomeCard {
     // Genome struct
     genome: Genome,
+
     // MetadataNucleotide struct
     metadata_nucleotide: MetadataNucleotide,
+
     // MetadataGene struct
     metadata_gene: MetadataGene,
+
     // MetadataNCBI struct
     metadata_ncbi: MetadataNCBI,
+
     // MetadataTypeMaterial struct
     metadata_type_material: MetadataTypeMaterial,
+
     // MetadataTaxonomy struct
     #[serde(alias = "metadataTaxonomy")]
     metadata_taxonomy: MetadataTaxonomy,
+
     // String to specify if it is a type material or not
     // for example: "not type material"
     #[serde(alias = "gtdbTypeDesignation")]
     gtdb_type_designation: Option<String>,
+
     subunit_summary: Option<String>,
+
     // Representative species name of this genome
     // for example: "GCA_000010525.1"
     #[serde(alias = "speciesRepName")]
     species_rep_name: Option<String>,
+
     #[serde(alias = "speciesClusterCount")]
     species_cluster_count: Option<i32>,
+
     // Link to Genome page on LPSN if any
     // for example: "https://lpsn.dsmz.de/species/azorhizobium-caulinodans"
     #[serde(alias = "lpsnUrl")]
     lpsn_url: Option<String>,
+
     // Parsed link to NCBI Taxonomy of Genome if any
     // for example: "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/2/\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/1224/\">p__Pseudomonadota</a>; c__; o__; f__; g__; s__"
     link_ncbi_taxonomy: Option<String>,
+
     // Raw link to NCBI Taxonomy of Genome if any
     // for example: "<a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/2/\">d__Bacteria</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/1224/\">p__Pseudomonadota</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/81684/\">x__unclassified Pseudomonadota</a>; <a target=\"_blank\" href=\"https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/1977087/\">s__Pseudomonadota bacterium</a>"
     link_ncbi_taxonomy_unfiltered: Option<String>,
+
     // Parsed NCBI taxonomy as a Vec of Taxon struct
     #[serde(alias = "ncbiTaxonomyFiltered")]
     ncbi_taxonomy_filtered: Vec<Taxon>,
+
     // Raw NCBI Taxonomy as a Vec of Taxon struct
     #[serde(alias = "ncbiTaxonomyUnfiltered")]
     ncbi_taxonomy_unfiltered: Vec<Taxon>,
@@ -192,31 +206,30 @@ pub struct GenomeTaxonHistory {
     data: Vec<History>,
 }
 
-pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
+fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>(
+    args: &GenomeArgs,
+    request_type: GenomeRequestType,
+) -> Result<()> {
     let genome_api: Vec<GenomeAPI> = args
         .get_accession()
         .iter()
         .map(|x| GenomeAPI::from(x.to_string()))
         .collect();
-
     let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
-
     for accession in genome_api {
-        let request_url = accession.request(GenomeRequestType::Metadata);
-
+        let request_url = accession.request(request_type);
         let response = agent.get(&request_url).call().map_err(|e| match e {
             ureq::Error::Status(code, _) => {
                 anyhow!("The server returned an unexpected status code ({})", code)
             }
-            _ => anyhow!("There was an error making the request or receiving the response."),
+            _ => anyhow!(
+                "There was an error making the request or receiving the response\nError: {}",
+                e
+            ),
         })?;
-
-        let genome_card: GenomeMetadata = response.into_json()?;
-
-        let genome_string = serde_json::to_string_pretty(&genome_card)?;
-
-        let output = args.get_output();
-        if let Some(path) = output {
+        let genome_data: T = response.into_json()?;
+        let genome_string = serde_json::to_string_pretty(&genome_data)?;
+        if let Some(path) = args.get_output() {
             let mut file = OpenOptions::new()
                 .append(true)
                 .create(true)
@@ -228,88 +241,19 @@ pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
             writeln!(io::stdout(), "{}", genome_string)?;
         }
     }
-
     Ok(())
+}
+
+pub fn get_genome_metadata(args: GenomeArgs) -> Result<()> {
+    fetch_and_save_genome_data::<GenomeMetadata>(&args, GenomeRequestType::Metadata)
 }
 
 pub fn get_genome_card(args: GenomeArgs) -> Result<()> {
-    let genome_api: Vec<GenomeAPI> = args
-        .get_accession()
-        .iter()
-        .map(|x| GenomeAPI::from(x.to_string()))
-        .collect();
-
-    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
-
-    for accession in genome_api {
-        let request_url = accession.request(GenomeRequestType::Card);
-
-        let response = agent.get(&request_url).call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => {
-                anyhow!("The server returned an unexpected status code ({})", code)
-            }
-            _ => anyhow!("There was an error making the request or receiving the response."),
-        })?;
-
-        let genome_card: GenomeCard = response.into_json()?;
-
-        let genome_string = serde_json::to_string_pretty(&genome_card)?;
-
-        let output = args.get_output();
-        if let Some(path) = output {
-            let mut file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(&path)
-                .with_context(|| format!("Failed to create file {}", path))?;
-            writeln!(file, "{}", genome_string)
-                .with_context(|| format!("Failed to write to {}", path))?;
-        } else {
-            writeln!(io::stdout(), "{}", genome_string)?;
-        }
-    }
-
-    Ok(())
+    fetch_and_save_genome_data::<GenomeCard>(&args, GenomeRequestType::Card)
 }
 
 pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
-    let genome_api: Vec<GenomeAPI> = args
-        .get_accession()
-        .iter()
-        .map(|x| GenomeAPI::from(x.to_string()))
-        .collect();
-
-    let agent: Agent = utils::get_agent(args.get_disable_certificate_verification())?;
-
-    for accession in genome_api {
-        let request_url = accession.request(GenomeRequestType::TaxonHistory);
-
-        let response = agent.get(&request_url).call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => {
-                anyhow!("The server returned an unexpected status code ({})", code)
-            }
-            _ => anyhow!("There was an error making the request or receiving the response."),
-        })?;
-
-        let genome: GenomeTaxonHistory = response.into_json()?;
-
-        let genome_string = serde_json::to_string_pretty(&genome)?;
-
-        let output = args.get_output();
-        if let Some(path) = output {
-            let mut file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(&path)
-                .with_context(|| format!("Failed to create file {}", path))?;
-            writeln!(file, "{}", genome_string)
-                .with_context(|| format!("Failed to write to {}", path))?;
-        } else {
-            writeln!(io::stdout(), "{}", genome_string)?;
-        }
-    }
-
-    Ok(())
+    fetch_and_save_genome_data::<GenomeTaxonHistory>(&args, GenomeRequestType::TaxonHistory)
 }
 
 #[cfg(test)]
@@ -325,7 +269,6 @@ mod tests {
             output: None,
             disable_certificate_verification: true,
         };
-        println!("{:?}", get_genome_card(args.clone()));
         assert!(get_genome_card(args.clone()).is_ok());
     }
 

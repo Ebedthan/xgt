@@ -18,6 +18,19 @@ impl fmt::Display for GenomeRequestType {
     }
 }
 
+impl std::str::FromStr for GenomeRequestType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "metadata" => Ok(GenomeRequestType::Metadata),
+            "taxon-history" => Ok(GenomeRequestType::TaxonHistory),
+            "card" => Ok(GenomeRequestType::Card),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GenomeAPI {
     accession: String,
@@ -26,6 +39,14 @@ pub struct GenomeAPI {
 impl From<String> for GenomeAPI {
     fn from(accession: String) -> Self {
         GenomeAPI { accession }
+    }
+}
+
+impl From<&str> for GenomeAPI {
+    fn from(accession: &str) -> Self {
+        GenomeAPI {
+            accession: accession.to_string(),
+        }
     }
 }
 
