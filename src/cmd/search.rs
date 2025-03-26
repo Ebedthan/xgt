@@ -259,7 +259,10 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
                 anyhow::anyhow!("The server returned an unexpected status code ({})", code)
             }
             _ => {
-                anyhow::anyhow!("There was an error making the request or receiving the response.")
+                anyhow::anyhow!(
+                    "There was an error making the request or receiving the response:\n{}",
+                    e
+                )
             }
         })?;
 

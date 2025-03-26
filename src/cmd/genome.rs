@@ -223,7 +223,7 @@ fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>
                 anyhow!("The server returned an unexpected status code ({})", code)
             }
             _ => anyhow!(
-                "There was an error making the request or receiving the response\nError: {}",
+                "There was an error making the request or receiving the response\n{}",
                 e
             ),
         })?;
