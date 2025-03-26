@@ -2,16 +2,35 @@ use crate::cli::search::SearchArgs;
 
 #[derive(Debug, Clone)]
 pub struct SearchAPI {
+    /// The search query entered by the user
     search: String,
+
+    /// The current page number for paginated results
     page: u16,
+
+    /// The number of items displayed per page
     items_per_page: u32,
+
+    /// The field by which results should be sorted
     sort_by: String,
-    sort_desc: String,
+
+    /// Sorting order: expected to be "true" for descending, "false" for ascending
+    sort_desc: bool,
+
+    /// The specific field to search within
     search_field: String,
+
+    /// Additional text-based filters applied to the search
     filter_text: String,
+
+    /// Whether to include only GTDB species representative genomes
     gtdb_species_rep_only: bool,
+
+    /// Whether to include only NCBI type material
     ncbi_type_material_only: bool,
-    outfmt: String,
+
+    /// Output format, e.g., "json", "csv" or "tsv"
+    output_format: String,
 }
 
 impl Default for SearchAPI {
@@ -19,14 +38,14 @@ impl Default for SearchAPI {
         SearchAPI {
             search: String::new(),
             page: 1,
-            items_per_page: 1_000_000_000,
+            items_per_page: 1_000,
             sort_by: String::new(),
-            sort_desc: String::new(),
+            sort_desc: false,
             search_field: "all".to_string(),
             filter_text: String::new(),
             gtdb_species_rep_only: false,
             ncbi_type_material_only: false,
-            outfmt: "csv".to_string(),
+            output_format: "csv".to_string(),
         }
     }
 }
@@ -36,13 +55,13 @@ impl SearchAPI {
         SearchAPI::default()
     }
 
-    fn set_search(mut self, s: &str) -> Self {
-        self.search = s.to_string();
+    fn set_search(mut self, s: String) -> Self {
+        self.search = s;
         self
     }
 
-    fn set_search_field(mut self, field: &str) -> Self {
-        self.search_field = field.to_string();
+    fn set_search_field(mut self, field: String) -> Self {
+        self.search_field = field;
         self
     }
 
@@ -57,26 +76,26 @@ impl SearchAPI {
     }
 
     pub fn set_outfmt(mut self, outfmt: &str) -> Self {
-        self.outfmt = outfmt.to_string();
+        self.output_format = outfmt.to_string();
         self
     }
 
     pub fn from(search: &str, args: &SearchArgs) -> Self {
         SearchAPI::new()
-            .set_search(search)
+            .set_search(search.to_owned())
             .set_gtdb_species_rep_only(args.is_representative_species_only())
             .set_ncbi_type_material_only(args.is_type_species_only())
             .set_outfmt(&args.get_outfmt().to_string())
-            .set_search_field(&args.get_search_field().to_string())
+            .set_search_field(args.get_search_field().to_string())
     }
 
     pub fn request(&self) -> String {
         let url = format!(
             "https://api.gtdb.ecogenomic.org/search/gtdb{}?",
-            if self.outfmt == "json" {
+            if self.output_format == "json" {
                 String::from("")
             } else {
-                format!("/{}", self.outfmt)
+                format!("/{}", self.output_format)
             }
         );
 
@@ -98,7 +117,7 @@ impl SearchAPI {
             params.push(format!("sortBy={}", self.sort_by));
         }
 
-        if !self.sort_desc.is_empty() {
+        if self.sort_desc {
             params.push(format!("sortDesc={}", self.sort_desc));
         }
 
@@ -131,52 +150,52 @@ mod tests {
         let api = SearchAPI::default();
         assert_eq!(api.search, "");
         assert_eq!(api.page, 1);
-        assert_eq!(api.items_per_page, 1_000_000_000);
+        assert_eq!(api.items_per_page, 1_000);
         assert_eq!(api.sort_by, "");
-        assert_eq!(api.sort_desc, "");
+        assert_eq!(api.sort_desc, false);
         assert_eq!(api.search_field, "all");
         assert_eq!(api.filter_text, "");
         assert_eq!(api.gtdb_species_rep_only, false);
         assert_eq!(api.ncbi_type_material_only, false);
-        assert_eq!(api.outfmt, "csv");
+        assert_eq!(api.output_format, "csv");
     }
 
     #[test]
     fn test_builder_pattern() {
         let api = SearchAPI::new()
-            .set_search("test_search")
+            .set_search("test_search".to_string())
             .set_gtdb_species_rep_only(true)
             .set_ncbi_type_material_only(true)
             .set_outfmt("json");
 
         assert_eq!(api.search, "test_search");
         assert_eq!(api.page, 1);
-        assert_eq!(api.items_per_page, 1_000_000_000);
+        assert_eq!(api.items_per_page, 1_000);
         assert_eq!(api.sort_by, "");
-        assert_eq!(api.sort_desc, "");
+        assert_eq!(api.sort_desc, false);
         assert_eq!(api.search_field, "all");
         assert_eq!(api.filter_text, "");
         assert_eq!(api.gtdb_species_rep_only, true);
         assert_eq!(api.ncbi_type_material_only, true);
-        assert_eq!(api.outfmt, "json");
+        assert_eq!(api.output_format, "json");
     }
 
     #[test]
     fn test_search_api_request() {
         let api = SearchAPI::new()
-            .set_search("test_search")
+            .set_search("test_search".to_string())
             .set_gtdb_species_rep_only(true)
             .set_ncbi_type_material_only(true)
             .set_outfmt("json");
 
-        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test_search&page=1&itemsPerPage=1000000000&searchField=all&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
+        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb?search=test_search&page=1&itemsPerPage=1000&searchField=all&gtdbSpeciesRepOnly=true&ncbiTypeMaterialOnly=true";
         assert_eq!(api.request(), expected_url);
     }
 
     #[test]
     fn test_search_api_request_default() {
         let api = SearchAPI::default();
-        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb/csv?page=1&itemsPerPage=1000000000&searchField=all";
+        let expected_url = "https://api.gtdb.ecogenomic.org/search/gtdb/csv?page=1&itemsPerPage=1000&searchField=all";
         assert_eq!(api.request(), expected_url);
     }
 }

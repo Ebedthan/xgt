@@ -10,22 +10,31 @@ use std::{
 pub struct SearchArgs {
     // search name supplied by the user
     pub(crate) needle: Vec<String>,
+
     // search field on GTDB: either gtdb or ncbi
     pub(crate) search_field: SearchField,
+
     // enable whole words matching
     pub(crate) is_whole_words_matching: bool,
+
     // returns entries' ids
     pub(crate) id: bool,
+
     // count entries in result
     pub(crate) count: bool,
+
     // search representative species only
     pub(crate) is_representative_species_only: bool,
+
     // search type material species only
     pub(crate) is_type_species_only: bool,
+
     // output file or None for stdout
     pub(crate) out: Option<String>,
+
     // output format: either csv, tsv or json
     pub(crate) outfmt: OutputFormat,
+
     // SSL certificate verification: true => disable, false => enable
     pub(crate) disable_certificate_verification: bool,
 }
