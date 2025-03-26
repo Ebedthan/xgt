@@ -86,9 +86,9 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
     for name in args.get_name() {
         let search_api = TaxonAPI::new(name.to_string());
         let request_url = if args.is_search_all() {
-            search_api.get_search_all_request()
+            search_api.get_search_all_request(1_000)
         } else {
-            search_api.get_search_request()
+            search_api.get_search_request(1_000)
         };
 
         let response = match agent.get(&request_url).call() {

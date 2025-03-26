@@ -12,12 +12,16 @@ pub enum SearchField {
     // Search all fields
     #[default]
     All,
+
     // Search accession field
     Acc,
+
     // Search NCBI organism name field
     Org,
+
     // Search GTDB taxonomy field
     Gtdb,
+
     // Search NCBI taxonomy field
     Ncbi,
 }

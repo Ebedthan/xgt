@@ -15,18 +15,18 @@ impl TaxonAPI {
     }
 
     /// Constructs a URL for a search request.
-    pub fn get_search_request(&self) -> String {
+    pub fn get_search_request(&self, limit: u32) -> String {
         format!(
-            "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit=1000000",
-            self.name
+            "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit={}",
+            self.name, limit
         )
     }
 
     /// Constructs a URL for a search request across all releases.
-    pub fn get_search_all_request(&self) -> String {
+    pub fn get_search_all_request(&self, limit: u32) -> String {
         format!(
-            "https://api.gtdb.ecogenomic.org/taxon/search/{}/all-releases?limit=10000000",
-            self.name
+            "https://api.gtdb.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
+            self.name, limit
         )
     }
 
@@ -59,16 +59,16 @@ mod tests {
     #[test]
     fn test_get_search_request() {
         let api = TaxonAPI::new("test_taxon");
-        let expected_url = "https://api.gtdb.ecogenomic.org/taxon/search/test_taxon?limit=1000000";
-        assert_eq!(api.get_search_request(), expected_url);
+        let expected_url = "https://api.gtdb.ecogenomic.org/taxon/search/test_taxon?limit=1000";
+        assert_eq!(api.get_search_request(1000), expected_url);
     }
 
     #[test]
     fn test_get_search_all_request() {
         let api = TaxonAPI::new("test_taxon");
         let expected_url =
-            "https://api.gtdb.ecogenomic.org/taxon/search/test_taxon/all-releases?limit=10000000";
-        assert_eq!(api.get_search_all_request(), expected_url);
+            "https://api.gtdb.ecogenomic.org/taxon/search/test_taxon/all-releases?limit=1000";
+        assert_eq!(api.get_search_all_request(1000), expected_url);
     }
 
     #[test]
