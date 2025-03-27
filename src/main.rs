@@ -12,6 +12,18 @@ fn main() -> Result<()> {
     let matches = cli::app::build_app().get_matches_from(env::args_os());
     let subcommand = matches.subcommand();
 
+    // Check GTDB db status
+    if utils::is_gtdb_db_online(true)? {
+        eprintln!("GTDB db is online!");
+    } else {
+        eprintln!("GTDB db is offline, please try again later.");
+        std::process::exit(0);
+    }
+
+    // Log API Version
+    let api_version = utils::get_api_version(true)?;
+    eprintln!("GTDB API Version: {}", api_version);
+
     match subcommand {
         Some(("search", sub_matches)) => {
             let args = cli::search::SearchArgs::from_arg_matches(sub_matches);

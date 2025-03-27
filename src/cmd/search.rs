@@ -197,7 +197,7 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
         SearchField::Acc => "accession".to_string(),
         SearchField::Org => "ncbi_organism_name".to_string(),
         SearchField::Ncbi => "ncbi_taxonomy".to_string(),
-        _ => "gtdb_taxonomy".to_string(),
+        _ => "gtdb_taxonomy".to_string(), // which correspond to SearchField::All and SearchField::Gtdb
     };
 
     // Determine the matching function based on the search field

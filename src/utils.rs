@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 use std::fmt::Display;
 use std::fs::OpenOptions;
@@ -118,6 +119,57 @@ pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq:
         }
         false => Ok(ureq::AgentBuilder::new().build()),
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+struct GtdbStatus {
+    #[serde(alias = "timeMs")]
+    time_ms: f32,
+    online: bool,
+}
+
+pub fn is_gtdb_db_online(disable_certificate_verification: bool) -> Result<bool> {
+    let agent = get_agent(disable_certificate_verification)?;
+    let request_url = "https://gtdb-api.ecogenomic.org/status/db";
+    let response = agent.get(request_url).call().map_err(|e| match e {
+        ureq::Error::Status(code, _) => {
+            anyhow::anyhow!("The server returned an unexpected status code ({})", code)
+        }
+        _ => {
+            anyhow::anyhow!(
+                "There was an error making the request or receiving the response:\n{}",
+                e
+            )
+        }
+    })?;
+
+    let result: GtdbStatus = response.into_json()?;
+    Ok(result.online)
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+struct GtdbApiVersion {
+    major: u8,
+    minor: u8,
+    path: u8,
+}
+
+pub fn get_api_version(disable_certificate_verification: bool) -> Result<String> {
+    let agent = get_agent(disable_certificate_verification)?;
+    let request_url = "https://gtdb-api.ecogenomic.org/meta/version";
+    let response = agent.get(request_url).call().map_err(|e| match e {
+        ureq::Error::Status(code, _) => {
+            anyhow::anyhow!("The server returned an unexpected status code ({})", code)
+        }
+        _ => {
+            anyhow::anyhow!(
+                "There was an error making the request or receiving the response:\n{}",
+                e
+            )
+        }
+    })?;
+    let result: GtdbApiVersion = response.into_json()?;
+    Ok(format!("{}.{}.{}", result.major, result.minor, result.path))
 }
 
 #[cfg(test)]
