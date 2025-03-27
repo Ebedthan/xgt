@@ -11,7 +11,7 @@ pub struct SearchArgs {
     // search name supplied by the user
     pub(crate) needle: Vec<String>,
 
-    // search field on GTDB: either gtdb or ncbi
+    // search field on GTDB
     pub(crate) search_field: SearchField,
 
     // enable whole words matching
@@ -210,7 +210,7 @@ mod tests {
     fn test_set_search_field() {
         let mut search_args = SearchArgs::new();
         search_args.set_search_field("gtdb");
-        assert_eq!(search_args.get_search_field(), SearchField::Gtdb);
+        assert_eq!(search_args.get_search_field(), SearchField::GtdbTax);
     }
 
     #[test]
@@ -294,7 +294,7 @@ mod tests {
         );
 
         assert_eq!(search_args.get_needles(), &vec!["test_name".to_string()]);
-        assert_eq!(search_args.get_search_field(), SearchField::Gtdb);
+        assert_eq!(search_args.get_search_field(), SearchField::GtdbTax);
         assert!(search_args.is_whole_words_matching());
         assert!(search_args.is_only_print_ids());
         assert!(search_args.is_only_num_entries());

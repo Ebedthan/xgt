@@ -14,9 +14,9 @@ fn main() -> Result<()> {
 
     // Check GTDB db status
     if utils::is_gtdb_db_online(true)? {
-        eprintln!("GTDB db is online!");
+        eprintln!("GTDB status: online");
     } else {
-        eprintln!("GTDB db is offline, please try again later.");
+        eprintln!("GTDB status: offline. Please try again later.");
         std::process::exit(0);
     }
 

@@ -7,6 +7,8 @@ use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::sync::Arc;
 
+use regex::Regex;
+
 /// Search field as provided by GTDB API
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
 pub enum SearchField {
@@ -15,33 +17,39 @@ pub enum SearchField {
     All,
 
     // Search accession field
-    Acc,
+    NcbiId,
 
     // Search NCBI organism name field
-    Org,
+    NcbiOrg,
 
     // Search GTDB taxonomy field
-    Gtdb,
+    GtdbTax,
 
     // Search NCBI taxonomy field
-    Ncbi,
+    NcbiTax,
 }
 
 /// Check if a SearchField is a taxonomy field (either GTDB taxonomy or NCBI taxonomy).
 pub fn is_taxonomy_field(search_field: &SearchField) -> bool {
-    search_field == &SearchField::Gtdb || search_field == &SearchField::Ncbi
+    search_field == &SearchField::GtdbTax || search_field == &SearchField::NcbiTax
+}
+
+/// Checks if the taxonomy string follows the correct format.
+pub fn is_valid_taxonomy(taxonomy_str: &str) -> bool {
+    let re = Regex::new(r"^(d__[^;]+)?(; p__[^;]+)?(; c__[^;]+)?(; o__[^;]+)?(; f__[^;]+)?(; g__[^;]+)?(; s__[^;]*)$").unwrap();
+    re.is_match(taxonomy_str)
 }
 
 impl From<String> for SearchField {
     fn from(value: String) -> Self {
         if value == "acc" {
-            SearchField::Acc
+            SearchField::NcbiId
         } else if value == "org" {
-            SearchField::Org
+            SearchField::NcbiOrg
         } else if value == "gtdb" {
-            SearchField::Gtdb
+            SearchField::GtdbTax
         } else if value == "ncbi" {
-            SearchField::Ncbi
+            SearchField::NcbiTax
         } else {
             SearchField::All
         }
@@ -51,11 +59,11 @@ impl From<String> for SearchField {
 impl Display for SearchField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Acc => write!(f, "ncbi_id"),
+            Self::NcbiId => write!(f, "ncbi_id"),
             Self::All => write!(f, "all"),
-            Self::Gtdb => write!(f, "gtdb_tax"),
-            Self::Ncbi => write!(f, "ncbi_tax"),
-            Self::Org => write!(f, "ncbi_org"),
+            Self::GtdbTax => write!(f, "gtdb_tax"),
+            Self::NcbiTax => write!(f, "ncbi_tax"),
+            Self::NcbiOrg => write!(f, "ncbi_org"),
         }
     }
 }
@@ -151,7 +159,7 @@ pub fn is_gtdb_db_online(disable_certificate_verification: bool) -> Result<bool>
 struct GtdbApiVersion {
     major: u8,
     minor: u8,
-    path: u8,
+    patch: u8,
 }
 
 pub fn get_api_version(disable_certificate_verification: bool) -> Result<String> {
@@ -169,7 +177,10 @@ pub fn get_api_version(disable_certificate_verification: bool) -> Result<String>
         }
     })?;
     let result: GtdbApiVersion = response.into_json()?;
-    Ok(format!("{}.{}.{}", result.major, result.minor, result.path))
+    Ok(format!(
+        "{}.{}.{}",
+        result.major, result.minor, result.patch
+    ))
 }
 
 #[cfg(test)]
@@ -225,28 +236,28 @@ mod tests {
 
     #[test]
     fn test_search_field_from_string() {
-        assert_eq!(SearchField::from("acc".to_string()), SearchField::Acc);
-        assert_eq!(SearchField::from("org".to_string()), SearchField::Org);
-        assert_eq!(SearchField::from("gtdb".to_string()), SearchField::Gtdb);
-        assert_eq!(SearchField::from("ncbi".to_string()), SearchField::Ncbi);
+        assert_eq!(SearchField::from("acc".to_string()), SearchField::NcbiId);
+        assert_eq!(SearchField::from("org".to_string()), SearchField::NcbiOrg);
+        assert_eq!(SearchField::from("gtdb".to_string()), SearchField::GtdbTax);
+        assert_eq!(SearchField::from("ncbi".to_string()), SearchField::NcbiTax);
         assert_eq!(SearchField::from("unknown".to_string()), SearchField::All);
     }
 
     #[test]
     fn test_search_field_display() {
-        assert_eq!(SearchField::Acc.to_string(), "ncbi_id");
+        assert_eq!(SearchField::NcbiId.to_string(), "ncbi_id");
         assert_eq!(SearchField::All.to_string(), "all");
-        assert_eq!(SearchField::Gtdb.to_string(), "gtdb_tax");
-        assert_eq!(SearchField::Ncbi.to_string(), "ncbi_tax");
-        assert_eq!(SearchField::Org.to_string(), "ncbi_org");
+        assert_eq!(SearchField::GtdbTax.to_string(), "gtdb_tax");
+        assert_eq!(SearchField::NcbiTax.to_string(), "ncbi_tax");
+        assert_eq!(SearchField::NcbiOrg.to_string(), "ncbi_org");
     }
 
     #[test]
     fn test_is_taxonomy_field() {
-        assert!(is_taxonomy_field(&SearchField::Gtdb));
-        assert!(is_taxonomy_field(&SearchField::Ncbi));
-        assert!(!is_taxonomy_field(&SearchField::Acc));
-        assert!(!is_taxonomy_field(&SearchField::Org));
+        assert!(is_taxonomy_field(&SearchField::GtdbTax));
+        assert!(is_taxonomy_field(&SearchField::NcbiTax));
+        assert!(!is_taxonomy_field(&SearchField::NcbiId));
+        assert!(!is_taxonomy_field(&SearchField::NcbiTax));
         assert!(!is_taxonomy_field(&SearchField::All));
     }
 

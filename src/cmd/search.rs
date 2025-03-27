@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 
 use crate::api::search::SearchAPI;
 use crate::cli;
-use crate::utils::{self, is_taxonomy_field, OutputFormat, SearchField};
+use crate::utils::{self, is_valid_taxonomy, OutputFormat, SearchField};
 
 const INTO_STRING_LIMIT: usize = 20 * 1_024 * 1_024;
 
@@ -111,16 +111,16 @@ impl SearchResults {
 
             // Using map_or here avoids allocating a new string when None is encountered
             // instead of previous unwrap_or_default()
-            SearchField::Acc => result
+            SearchField::NcbiId => result
                 .get_accession()
                 .map_or(false, |acc| whole_word_match(acc, needle.as_str())),
-            SearchField::Org => result
+            SearchField::NcbiOrg => result
                 .get_ncbi_org_name()
                 .map_or(false, |name| whole_word_match(name, needle.as_str())),
-            SearchField::Ncbi => result.get_ncbi_taxonomy().map_or(false, |ncbi_tax| {
+            SearchField::NcbiTax => result.get_ncbi_taxonomy().map_or(false, |ncbi_tax| {
                 whole_taxon_match(ncbi_tax, needle.as_str())
             }),
-            SearchField::Gtdb => result.get_gtdb_taxonomy().map_or(false, |gtdb_tax| {
+            SearchField::GtdbTax => result.get_gtdb_taxonomy().map_or(false, |gtdb_tax| {
                 whole_taxon_match(gtdb_tax, needle.as_str())
             }),
         });
@@ -192,27 +192,6 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
     // Check presence of CSV/TSV header
     let header = lines.next().expect("Input should have a header");
 
-    // Get the CSV/TSV column which will be subjected to search
-    let sfield = match search_field {
-        SearchField::Acc => "accession".to_string(),
-        SearchField::Org => "ncbi_organism_name".to_string(),
-        SearchField::Ncbi => "ncbi_taxonomy".to_string(),
-        _ => "gtdb_taxonomy".to_string(), // which correspond to SearchField::All and SearchField::Gtdb
-    };
-
-    // Determine the matching function based on the search field
-    let matcher: Box<dyn Fn(&str) -> bool> = match search_field {
-        // Dummy matcher for All, real logic is in all_match
-        SearchField::All => Box::new(|_| false),
-        _ => {
-            if is_taxonomy_field(&search_field) {
-                Box::new(|field| whole_taxon_match(field, needle))
-            } else {
-                Box::new(|field| whole_word_match(field, needle))
-            }
-        }
-    };
-
     let split_pat = if outfmt == OutputFormat::Csv {
         ","
     } else {
@@ -228,6 +207,13 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
             })
             .collect()
     } else {
+        // Get the CSV/TSV column which will be subjected to filtering
+        let sfield = match search_field {
+            SearchField::NcbiId => "accession".to_string(),
+            SearchField::NcbiOrg => "ncbi_organism_name".to_string(),
+            SearchField::NcbiTax => "ncbi_taxonomy".to_string(),
+            _ => "gtdb_taxonomy".to_string(),
+        };
         let headers: Vec<&str> = header.split(split_pat).collect();
         let index = headers.iter().position(|&field| field == sfield);
         if index.is_none() {
@@ -238,9 +224,22 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
         lines
             .filter(|line| {
                 let fields: Vec<&str> = line.split(split_pat).collect();
-                fields
-                    .get(index.unwrap())
-                    .is_some_and(|&field| matcher(field))
+                if let Some(idx) = index {
+                    if let Some(field) = fields.get(idx) {
+                        return if is_valid_taxonomy(field) {
+                            println!(
+                                "Field: {}, Needle: {}, Result: {}",
+                                field,
+                                needle,
+                                whole_taxon_match(field, needle)
+                            );
+                            whole_taxon_match(field, needle)
+                        } else {
+                            whole_word_match(field, needle)
+                        };
+                    }
+                }
+                false
             })
             .collect()
     };
@@ -395,7 +394,7 @@ mod tests {
         let mut input =
                 "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\nGCA_000020265.1,Rhizobium etli CIAT 652,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium etli,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium phaseoli,False,True".to_string();
         let needle = "GCA_000016265.1";
-        let search_field = SearchField::Acc;
+        let search_field = SearchField::NcbiId;
         let outfmt = OutputFormat::Csv;
 
         let expected_output =
