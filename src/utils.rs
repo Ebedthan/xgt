@@ -29,11 +29,6 @@ pub enum SearchField {
     NcbiTax,
 }
 
-/// Check if a SearchField is a taxonomy field (either GTDB taxonomy or NCBI taxonomy).
-pub fn is_taxonomy_field(search_field: &SearchField) -> bool {
-    search_field == &SearchField::GtdbTax || search_field == &SearchField::NcbiTax
-}
-
 /// Checks if the taxonomy string follows the correct format.
 pub fn is_valid_taxonomy(taxonomy_str: &str) -> bool {
     let re = Regex::new(r"^(d__[^;]+)?(; p__[^;]+)?(; c__[^;]+)?(; o__[^;]+)?(; f__[^;]+)?(; g__[^;]+)?(; s__[^;]*)$").unwrap();
