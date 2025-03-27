@@ -1,6 +1,6 @@
 use anyhow::{anyhow, ensure, Result};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use std::io::{Read, Write};
 
 use crate::api::search::SearchAPI;
 use crate::cli;
@@ -14,17 +14,23 @@ const INTO_STRING_LIMIT: usize = 20 * 1_024 * 1_024;
 struct SearchResult {
     // Genome accession used as table ID
     gid: String,
+
     // Genome accession number
     accession: Option<String>,
+
     // NCBI organism name
     ncbi_org_name: Option<String>,
+
     // NCBI taxonomy
     ncbi_taxonomy: Option<String>,
+
     // GTDB taxonomy
     gtdb_taxonomy: Option<String>,
+
     // Boolean value indicating if species is a GTDB
     // representative species
     is_gtdb_species_rep: Option<bool>,
+
     // Boolean value indicating if species is a NCBI
     // type material
     is_ncbi_type_material: Option<bool>,
@@ -37,8 +43,8 @@ impl SearchResult {
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_accession(), None);
     /// ```
-    fn get_accession(&self) -> Option<String> {
-        self.accession.clone()
+    fn get_accession(&self) -> Option<&String> {
+        self.accession.as_ref()
     }
 
     /// Get NCBI organism name
@@ -47,8 +53,8 @@ impl SearchResult {
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_ncbi_org_name(), None);
     /// ```
-    fn get_ncbi_org_name(&self) -> Option<String> {
-        self.ncbi_org_name.clone()
+    fn get_ncbi_org_name(&self) -> Option<&String> {
+        self.ncbi_org_name.as_ref()
     }
 
     /// Get NCBI taxonomy name
@@ -57,8 +63,8 @@ impl SearchResult {
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_ncbi_taxonomy(), None);
     /// ```
-    fn get_ncbi_taxonomy(&self) -> Option<String> {
-        self.ncbi_taxonomy.clone()
+    fn get_ncbi_taxonomy(&self) -> Option<&String> {
+        self.ncbi_taxonomy.as_ref()
     }
 
     /// Get GTDB taxonomy
@@ -67,8 +73,8 @@ impl SearchResult {
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_gtdb_taxonomy(), None);
     /// ```
-    fn get_gtdb_taxonomy(&self) -> Option<String> {
-        self.gtdb_taxonomy.clone()
+    fn get_gtdb_taxonomy(&self) -> Option<&String> {
+        self.gtdb_taxonomy.as_ref()
     }
 }
 
@@ -102,22 +108,21 @@ impl SearchResults {
 
                 taxon_match || word_match
             }
-            SearchField::Acc => whole_word_match(
-                result.get_accession().unwrap_or_default().as_str(),
-                needle.as_str(),
-            ),
-            SearchField::Org => whole_word_match(
-                result.get_ncbi_org_name().unwrap_or_default().as_str(),
-                needle.as_str(),
-            ),
-            SearchField::Ncbi => whole_taxon_match(
-                result.get_ncbi_taxonomy().unwrap_or_default().as_str(),
-                needle.as_str(),
-            ),
-            SearchField::Gtdb => whole_taxon_match(
-                result.get_gtdb_taxonomy().unwrap_or_default().as_str(),
-                needle.as_str(),
-            ),
+
+            // Using map_or here avoids allocating a new string when None is encountered
+            // instead of previous unwrap_or_default()
+            SearchField::Acc => result
+                .get_accession()
+                .map_or(false, |acc| whole_word_match(acc, needle.as_str())),
+            SearchField::Org => result
+                .get_ncbi_org_name()
+                .map_or(false, |name| whole_word_match(name, needle.as_str())),
+            SearchField::Ncbi => result.get_ncbi_taxonomy().map_or(false, |ncbi_tax| {
+                whole_taxon_match(ncbi_tax, needle.as_str())
+            }),
+            SearchField::Gtdb => result.get_gtdb_taxonomy().map_or(false, |gtdb_tax| {
+                whole_taxon_match(gtdb_tax, needle.as_str())
+            }),
         });
         self.total_rows = self.rows.len() as u32;
     }
@@ -162,10 +167,10 @@ fn whole_taxon_match(taxonomy: &str, taxon: &str) -> bool {
 /// assert!(!all_match(input, "xgt"));
 /// ```
 fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
-    whole_word_match(haystack[0], needle) // Check word match in accession field
-        || whole_word_match(haystack[1], needle) // Check word match in ncbi_org_name field
-        || whole_taxon_match(haystack[2], needle) // Check word match in gtdb_taxonomy field
-        || whole_taxon_match(haystack[3], needle) // Check word match in ncbi_taxonomy field
+    haystack
+        .iter()
+        .take(4)
+        .any(|field| whole_word_match(field, needle) || whole_taxon_match(field, needle))
 }
 
 /*
@@ -182,7 +187,7 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
     let content = std::mem::take(result);
 
     // Split the content into lines and parse the header
-    let mut lines = content.trim_end().split("\r\n");
+    let mut lines = content.lines();
 
     // Check presence of CSV/TSV header
     let header = lines.next().expect("Input should have a header");
@@ -224,14 +229,18 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
             .collect()
     } else {
         let headers: Vec<&str> = header.split(split_pat).collect();
-        let index = headers
-            .iter()
-            .position(|&field| field == sfield)
-            .unwrap_or_else(|| panic!("{sfield} field not found in header"));
+        let index = headers.iter().position(|&field| field == sfield);
+        if index.is_none() {
+            std::io::stdout()
+                .write_all(b"Warning: missing header in the output")
+                .unwrap();
+        }
         lines
             .filter(|line| {
                 let fields: Vec<&str> = line.split(split_pat).collect();
-                fields.get(index).is_some_and(|&field| matcher(field))
+                fields
+                    .get(index.unwrap())
+                    .is_some_and(|&field| matcher(field))
             })
             .collect()
     };
@@ -281,6 +290,26 @@ pub fn search(args: cli::search::SearchArgs) -> Result<()> {
     Ok(())
 }
 
+fn process_response<F>(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+    format_fn: F,
+) -> Result<String>
+where
+    F: FnOnce(&SearchResults) -> Result<String>,
+{
+    let mut search_result: SearchResults = response.into_json()?;
+    if args.is_whole_words_matching() {
+        search_result.filter_json(needle.to_string(), args.get_search_field());
+    }
+    ensure!(
+        search_result.get_total_rows() != 0,
+        "No matching data found in GTDB"
+    );
+    format_fn(&search_result)
+}
+
 // If -c or -i just use JSON output format to count entries or
 // return ids list as converting using into_string can
 // throw an error of too big to convert to string especially
@@ -291,27 +320,18 @@ fn handle_id_or_count_response(
     needle: &str,
     args: &cli::search::SearchArgs,
 ) -> Result<String> {
-    let mut search_result: SearchResults = response.into_json()?;
-    if args.is_whole_words_matching() {
-        search_result.filter_json(needle.to_string(), args.get_search_field());
-    }
-    ensure!(
-        search_result.get_total_rows() != 0,
-        "No matching data found in GTDB"
-    );
-
-    let result_str = if args.is_only_num_entries() {
-        search_result.get_total_rows().to_string()
-    } else {
-        search_result
-            .rows
-            .iter()
-            .map(|x| x.gid.clone())
-            .collect::<Vec<String>>()
-            .join("\n")
-    };
-
-    Ok(result_str)
+    process_response(response, needle, args, |search_result| {
+        if args.is_only_num_entries() {
+            Ok(search_result.get_total_rows().to_string())
+        } else {
+            Ok(search_result
+                .rows
+                .iter()
+                .map(|x| x.gid.clone())
+                .collect::<Vec<String>>()
+                .join("\n"))
+        }
+    })
 }
 
 fn handle_json_response(
@@ -319,31 +339,20 @@ fn handle_json_response(
     needle: &str,
     args: &cli::search::SearchArgs,
 ) -> Result<String> {
-    let mut search_result: SearchResults = response.into_json()?;
-    if args.is_whole_words_matching() {
-        search_result.filter_json(needle.to_string(), args.get_search_field());
-    }
-
-    ensure!(
-        search_result.get_total_rows() != 0,
-        "No matching data found in GTDB"
-    );
-
-    let result_str = search_result
-        .rows
-        .iter()
-        .map(|x| serde_json::to_string_pretty(x).unwrap())
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    Ok(result_str)
+    process_response(response, needle, args, |search_result| {
+        serde_json::to_string_pretty(&search_result.rows).map_err(Into::into)
+    })
 }
 
-fn handle_xsv_response(
+fn process_xsv_response<F>(
     response: ureq::Response,
     needle: &str,
     args: &cli::search::SearchArgs,
-) -> Result<String> {
+    process_fn: F,
+) -> Result<String>
+where
+    F: FnOnce(&mut String, &str),
+{
     let mut buf: Vec<u8> = vec![];
     response
         .into_reader()
@@ -353,15 +362,21 @@ fn handle_xsv_response(
         return Err(anyhow!("GTDB response is too big (> 20 MB) to convert to string. Please use JSON output format (-O json)"));
     }
     let mut result = String::from_utf8_lossy(&buf).to_string();
+
     if args.is_whole_words_matching() {
-        filter_xsv(
-            &mut result,
-            needle,
-            args.get_search_field(),
-            args.get_outfmt(),
-        );
+        process_fn(&mut result, needle);
     }
     Ok(result)
+}
+
+fn handle_xsv_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    process_xsv_response(response, needle, args, |result, needle| {
+        filter_xsv(result, needle, args.get_search_field(), args.get_outfmt());
+    })
 }
 
 #[cfg(test)]
