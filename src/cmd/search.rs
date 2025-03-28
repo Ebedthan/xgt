@@ -114,16 +114,16 @@ impl SearchResults {
             // instead of previous unwrap_or_default()
             SearchField::NcbiId => result
                 .get_accession()
-                .map_or(false, |acc| whole_word_match(acc, needle.as_str())),
+                .is_some_and(|acc| whole_word_match(acc, needle.as_str())),
             SearchField::NcbiOrg => result
                 .get_ncbi_org_name()
-                .map_or(false, |name| whole_word_match(name, needle.as_str())),
-            SearchField::NcbiTax => result.get_ncbi_taxonomy().map_or(false, |ncbi_tax| {
-                whole_taxon_match(ncbi_tax, needle.as_str())
-            }),
-            SearchField::GtdbTax => result.get_gtdb_taxonomy().map_or(false, |gtdb_tax| {
-                whole_taxon_match(gtdb_tax, needle.as_str())
-            }),
+                .is_some_and(|name| whole_word_match(name, needle.as_str())),
+            SearchField::NcbiTax => result
+                .get_ncbi_taxonomy()
+                .is_some_and(|ncbi_tax| whole_taxon_match(ncbi_tax, needle.as_str())),
+            SearchField::GtdbTax => result
+                .get_gtdb_taxonomy()
+                .is_some_and(|gtdb_tax| whole_taxon_match(gtdb_tax, needle.as_str())),
         });
         self.total_rows = self.rows.len() as u32;
     }
