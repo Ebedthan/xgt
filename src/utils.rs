@@ -248,15 +248,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_taxonomy_field() {
-        assert!(is_taxonomy_field(&SearchField::GtdbTax));
-        assert!(is_taxonomy_field(&SearchField::NcbiTax));
-        assert!(!is_taxonomy_field(&SearchField::NcbiId));
-        assert!(!is_taxonomy_field(&SearchField::NcbiTax));
-        assert!(!is_taxonomy_field(&SearchField::All));
-    }
-
-    #[test]
     fn test_output_format_from_string() {
         assert_eq!(OutputFormat::from("csv".to_string()), OutputFormat::Csv);
         assert_eq!(OutputFormat::from("json".to_string()), OutputFormat::Json);

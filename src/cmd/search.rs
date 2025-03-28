@@ -8,6 +8,7 @@ use crate::utils::{self, is_valid_taxonomy, OutputFormat, SearchField};
 
 const INTO_STRING_LIMIT: usize = 20 * 1_024 * 1_024;
 
+/*----- GTDB API Search Result(s) structures and their methods -----*/
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 /// API search result struct
@@ -138,48 +139,130 @@ impl SearchResults {
     }
 }
 
-/// Perform whole word exact matching
-/// # Example
-/// ```
-/// assert!(whole_word_match("bar bir ber bor", "bor"));
-/// assert!(!whole_word_match("bar bir ber bor", "xgt"));
-/// ```
-fn whole_word_match(haystack: &str, needle: &str) -> bool {
-    haystack.split_whitespace().any(|word| word == needle)
-}
+/*----- Main Search Function and its methods -----*/
+/// Search GTDB data from `SearchArgs`
+pub fn search(args: cli::search::SearchArgs) -> Result<()> {
+    let agent = utils::get_agent(args.disable_certificate_verification())?;
 
-/// Perform whole taxon exact matching
-/// # Example
-/// ```
-/// assert!(whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "d__domain"));
-/// assert!(!whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "xgt"));
-/// ```
-fn whole_taxon_match(taxonomy: &str, taxon: &str) -> bool {
-    taxonomy.split("; ").any(|tax| tax == taxon)
-}
+    for needle in args.get_needles() {
+        let search_api = SearchAPI::from(needle, &args);
+        let request_url = search_api.request();
 
-/// Perform a match on all `SearchResult` fields
-/// # Example
-/// ```
-/// let input = ["GCA00000.1", "org name", "d__d1; p__p1; c__c1; o__o1; f__f1; g__g1; s__s1", "d__d2; p__p2; c__c2; o__o2; f__f2; g__g2; s__s2"];
-/// assert!(all_match(input, "d__d1"));
-/// assert!(all_match(input, "org name"));
-/// assert!(!all_match(input, "xgt"));
-/// ```
-fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
-    haystack
-        .iter()
-        .take(4)
-        .any(|field| whole_word_match(field, needle) || whole_taxon_match(field, needle))
-}
+        let response = agent.get(&request_url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) => {
+                anyhow::anyhow!("The server returned an unexpected status code ({})", code)
+            }
+            _ => {
+                anyhow::anyhow!(
+                    "There was an error making the request or receiving the response:\n{}",
+                    e
+                )
+            }
+        })?;
 
-/*
-fn filter_out_low_qual(result: String) -> String {
-    let mut lines = result.trim_end().split("\r\n");
-    if let Some(_) = lines.find("Undefined (Failed Quality Check)") {
+        let output_result = if args.is_only_print_ids() || args.is_only_num_entries() {
+            handle_id_or_count_response(response, needle, &args)
+        } else {
+            match args.get_outfmt() {
+                OutputFormat::Json => handle_json_response(response, needle, &args),
+                _ => handle_xsv_response(response, needle, &args),
+            }
+        };
 
+        utils::write_to_output(output_result?.as_bytes(), args.get_output().clone())?;
     }
-}*/
+
+    Ok(())
+}
+
+// If -c or -i just use JSON output format to count entries or
+// return ids list as converting using into_string can
+// throw an error of too big to convert to string especially
+// when querying data related to large genus like Escherichia
+// See cli/search.rs#L166-L178
+fn handle_id_or_count_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    process_response(response, needle, args, |search_result| {
+        if args.is_only_num_entries() {
+            Ok(search_result.get_total_rows().to_string())
+        } else {
+            Ok(search_result
+                .rows
+                .iter()
+                .map(|x| x.gid.clone())
+                .collect::<Vec<String>>()
+                .join("\n"))
+        }
+    })
+}
+
+fn process_response<F>(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+    format_fn: F,
+) -> Result<String>
+where
+    F: FnOnce(&SearchResults) -> Result<String>,
+{
+    let mut search_result: SearchResults = response.into_json()?;
+    if args.is_whole_words_matching() {
+        search_result.filter_json(needle.to_string(), args.get_search_field());
+    }
+    ensure!(
+        search_result.get_total_rows() != 0,
+        "No matching data found in GTDB"
+    );
+    format_fn(&search_result)
+}
+
+fn handle_json_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    process_response(response, needle, args, |search_result| {
+        serde_json::to_string_pretty(&search_result.rows).map_err(Into::into)
+    })
+}
+
+fn handle_xsv_response(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+) -> Result<String> {
+    process_xsv_response(response, needle, args, |result, needle| {
+        filter_xsv(result, needle, args.get_search_field(), args.get_outfmt());
+    })
+}
+
+fn process_xsv_response<F>(
+    response: ureq::Response,
+    needle: &str,
+    args: &cli::search::SearchArgs,
+    process_fn: F,
+) -> Result<String>
+where
+    F: FnOnce(&mut String, &str),
+{
+    let mut buf: Vec<u8> = vec![];
+    response
+        .into_reader()
+        .take((INTO_STRING_LIMIT + 1) as u64)
+        .read_to_end(&mut buf)?;
+    if buf.len() > INTO_STRING_LIMIT {
+        return Err(anyhow!("GTDB response is too big (> 20 MB) to convert to string. Please use JSON output format (-O json)"));
+    }
+    let mut result = String::from_utf8_lossy(&buf).to_string();
+
+    if args.is_whole_words_matching() {
+        process_fn(&mut result, needle);
+    }
+    Ok(result)
+}
 
 /// Filter CSV/TSV API query result by search field value
 fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outfmt: OutputFormat) {
@@ -254,128 +337,39 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
     }
 }
 
-/// Search GTDB data from `SearchArgs`
-pub fn search(args: cli::search::SearchArgs) -> Result<()> {
-    let agent = utils::get_agent(args.disable_certificate_verification())?;
-
-    for needle in args.get_needles() {
-        let search_api = SearchAPI::from(needle, &args);
-        let request_url = search_api.request();
-
-        let response = agent.get(&request_url).call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => {
-                anyhow::anyhow!("The server returned an unexpected status code ({})", code)
-            }
-            _ => {
-                anyhow::anyhow!(
-                    "There was an error making the request or receiving the response:\n{}",
-                    e
-                )
-            }
-        })?;
-
-        let output_result = if args.is_only_print_ids() || args.is_only_num_entries() {
-            handle_id_or_count_response(response, needle, &args)
-        } else {
-            match args.get_outfmt() {
-                OutputFormat::Json => handle_json_response(response, needle, &args),
-                _ => handle_xsv_response(response, needle, &args),
-            }
-        };
-
-        utils::write_to_output(output_result?.as_bytes(), args.get_output().clone())?;
-    }
-
-    Ok(())
+/// Perform a match on all `SearchResult` fields
+/// # Example
+/// ```
+/// let input = ["GCA00000.1", "org name", "d__d1; p__p1; c__c1; o__o1; f__f1; g__g1; s__s1", "d__d2; p__p2; c__c2; o__o2; f__f2; g__g2; s__s2"];
+/// assert!(all_match(input, "d__d1"));
+/// assert!(all_match(input, "org name"));
+/// assert!(!all_match(input, "xgt"));
+/// ```
+fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
+    haystack
+        .iter()
+        .take(4)
+        .any(|field| whole_word_match(field, needle) || whole_taxon_match(field, needle))
 }
 
-fn process_response<F>(
-    response: ureq::Response,
-    needle: &str,
-    args: &cli::search::SearchArgs,
-    format_fn: F,
-) -> Result<String>
-where
-    F: FnOnce(&SearchResults) -> Result<String>,
-{
-    let mut search_result: SearchResults = response.into_json()?;
-    if args.is_whole_words_matching() {
-        search_result.filter_json(needle.to_string(), args.get_search_field());
-    }
-    ensure!(
-        search_result.get_total_rows() != 0,
-        "No matching data found in GTDB"
-    );
-    format_fn(&search_result)
+/// Perform whole taxon exact matching
+/// # Example
+/// ```
+/// assert!(whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "d__domain"));
+/// assert!(!whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "xgt"));
+/// ```
+fn whole_taxon_match(taxonomy: &str, taxon: &str) -> bool {
+    taxonomy.split("; ").any(|tax| tax == taxon)
 }
 
-// If -c or -i just use JSON output format to count entries or
-// return ids list as converting using into_string can
-// throw an error of too big to convert to string especially
-// when querying data related to large genus like Escherichia
-// See cli/search.rs#L166-L178
-fn handle_id_or_count_response(
-    response: ureq::Response,
-    needle: &str,
-    args: &cli::search::SearchArgs,
-) -> Result<String> {
-    process_response(response, needle, args, |search_result| {
-        if args.is_only_num_entries() {
-            Ok(search_result.get_total_rows().to_string())
-        } else {
-            Ok(search_result
-                .rows
-                .iter()
-                .map(|x| x.gid.clone())
-                .collect::<Vec<String>>()
-                .join("\n"))
-        }
-    })
-}
-
-fn handle_json_response(
-    response: ureq::Response,
-    needle: &str,
-    args: &cli::search::SearchArgs,
-) -> Result<String> {
-    process_response(response, needle, args, |search_result| {
-        serde_json::to_string_pretty(&search_result.rows).map_err(Into::into)
-    })
-}
-
-fn process_xsv_response<F>(
-    response: ureq::Response,
-    needle: &str,
-    args: &cli::search::SearchArgs,
-    process_fn: F,
-) -> Result<String>
-where
-    F: FnOnce(&mut String, &str),
-{
-    let mut buf: Vec<u8> = vec![];
-    response
-        .into_reader()
-        .take((INTO_STRING_LIMIT + 1) as u64)
-        .read_to_end(&mut buf)?;
-    if buf.len() > INTO_STRING_LIMIT {
-        return Err(anyhow!("GTDB response is too big (> 20 MB) to convert to string. Please use JSON output format (-O json)"));
-    }
-    let mut result = String::from_utf8_lossy(&buf).to_string();
-
-    if args.is_whole_words_matching() {
-        process_fn(&mut result, needle);
-    }
-    Ok(result)
-}
-
-fn handle_xsv_response(
-    response: ureq::Response,
-    needle: &str,
-    args: &cli::search::SearchArgs,
-) -> Result<String> {
-    process_xsv_response(response, needle, args, |result, needle| {
-        filter_xsv(result, needle, args.get_search_field(), args.get_outfmt());
-    })
+/// Perform whole word exact matching
+/// # Example
+/// ```
+/// assert!(whole_word_match("bar bir ber bor", "bor"));
+/// assert!(!whole_word_match("bar bir ber bor", "xgt"));
+/// ```
+fn whole_word_match(haystack: &str, needle: &str) -> bool {
+    haystack.split_whitespace().any(|word| word == needle)
 }
 
 #[cfg(test)]
