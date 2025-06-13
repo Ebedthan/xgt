@@ -1,124 +1,113 @@
-# xgt
+# 🚀 xgt
 
-*Efficient querying and parsing of the GTDB database*
+**Fast and Flexible GTDB Query Tool, Built in Rust**
 
-[![Continuous Integration](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml)
+[![CI](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Ebedthan/xgt/branch/main/graph/badge.svg?token=OFAOB6K5KB)](https://codecov.io/gh/Ebedthan/xgt)
-<a href="https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT">
-    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat">
-</a>
-<a href="https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE">
-    <img src="https://img.shields.io/badge/license-APACHE-blue?style=flat">
-</a>
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE)
 
-> [!WARNING]
-> You should add the `-k/--insecure` option to all your current command as the GTDB API has currently SSL issue.
-> We have not yet decided to switch it as a default configuration as disabling peer SSL certificate verification can be a critical issue.
+> ⚠️ **Note**: Due to current SSL issues with the GTDB API, please use the `-k/--insecure` flag with all commands. Disabling SSL verification is not a default due to security concerns.
 
-## 🗺️ Overview
+---
 
-`xgt` is a [Rust](https://www.rust-lang.org/) tool that enables efficient querying and parsing of the GTDB database. `xgt` consists of a collection of commands mirroring the GTDB API and providing additional parsing capability.
+## 🧭 What is `xgt`?
 
-## 📋 Features
+`xgt` is a blazing-fast command-line utility written in [Rust](https://www.rust-lang.org/) for querying and parsing data from the [GTDB](https://gtdb.ecogenomic.org/) (Genome Taxonomy Database). It mirrors core GTDB API functions and adds flexible parsing, metadata retrieval, and taxonomy exploration tools—making GTDB data more accessible for researchers and developers.
 
-### `search` subcommand
-It offers both exact and partial matches, along with additional parsing capabilities. Additionally, it supports searching the GTDB using multiple names listed in a plain text file.
+---
 
-### `genome` subcommand
-It can be used to retrieve information about a genome. The `--metadata` option provides concise genome metadata such as accession and surveillance data, while `--history` retrieves the genome taxon history in the GTDB. The default option fetches nucleotide, gene, and taxonomy metadata of the genome.
+## ✨ Key Features
 
-### `taxon` subcommand
-This tool fetches information about a specific taxon. Users can search for
-the direct descendants of a taxon and retrieve taxon genomes in the GTDB using partial or exact matches.
+* 🔍 **`search`**: Search the GTDB using exact or partial name matches, or from a file of names.
+* 🧬 **`genome`**: Retrieve genome metadata, taxonomic history, and more.
+* 🌳 **`taxon`**: Explore taxonomic lineages, descendants, and associated genomes.
 
-## 🔧 Installing
+---
 
-### From source
+## 📦 Installation
 
-#### Download source using Git
+### 🛠️ From Source (via Cargo)
 
-```
+```bash
 git clone https://github.com/Ebedthan/xgt.git
-```
-
-#### Download source using packaged source
-
-* [xgt-0.4.2.tar.gz](https://github.com/Ebedthan/xgt/archive/refs/tags/v0.4.2.tar.gz)
-* [xgt-0.4.2.zip](https://github.com/Ebedthan/xgt/archive/refs/tags/v0.4.2.zip)
-
-#### Installing
-
-You can install using [cargo](https://doc.rust-lang.org/cargo/):
-
-```
-# Change "xgt" to correct folder name
 cd xgt
-
-# If default rust install directory is ~/.cargo
 cargo install --path . --root ~/.cargo
-xgt -h
+xgt --help
 ```
 
-### Using binaries
+### 📁 Prebuilt Binaries
 
-Please find the binaries for the latest release using the [release page](https://github.com/Ebedthan/xgt/releases) or using the direct link below:
-* [Apple Silicon macOS](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-aarch64-apple-darwin.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-aarch64-apple-darwin.tar.xz.sha256)
-* [Intel macOS](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-apple-darwin.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-apple-darwin.tar.xz.sha256)
-* [x64 Windows](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip.sha256)
-* [x64 Linux](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz) with its [checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
+Download binaries for your platform from the [releases page](https://github.com/Ebedthan/xgt/releases):
 
-## 💡 Examples
+* macOS (Apple Silicon): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-aarch64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-aarch64-apple-darwin.tar.xz.sha256)
+* macOS (Intel): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-apple-darwin.tar.xz.sha256)
+* Linux (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
+* Windows (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip.sha256)
 
-```
-# Search subcommand: search GTDB
-## Search all Escherichia (genus) genomes
+---
+
+## 💡 Usage Examples
+
+```bash
+# 🔍 Search for Escherichia genomes (exact match)
 xgt search -kw g__Escherichia
 
-## Search all genomes with genus name containing Escherichia
-xgt search -k -o output.csv g__Escherichia
+# 🔎 Search by name with output to CSV
+xgt search -k -o results.csv g__Escherichia
 
-## Search from a list
+# 📁 Search from a list of names
 xgt search -k -f list.txt
 
-# Genome subcommand: information about a genome
-## Get GTDB genome information
+# 🧬 Genome metadata and taxonomy
 xgt genome -k GCA_001512625.1
 
-## Get taxon history on GTDB
-xgt genome -k --history GCA_001512625.1
-
-## Get genome metadata
-xgt genome -k --metadata GCA_001512625.1
-
-# Taxon subcommand: information about a specific taxon
-## Get direct descendant of a taxon
+# 📜 Taxon lineage exploration
+xgt taxon -k --search g__Escherichia
 xgt taxon -k g__Escherichia
-
-## Search for a taxon in GTDB's current release
-xgt taxon -k --search g__Escherichia
-
-## Search for a taxon in GTDB's current release with partial matching
-xgt taxon -k --search g__Escherichia
 ```
 
-## ⚠️ Issue Tracker
+---
 
-Found a bug ? Have an enhancement request ? Head over to the [GitHub issue
-tracker](https://github.com/Ebedthan/xgt/issues) if you need to report
-or ask something. If you are filing in on a bug, please include as much
-information as you can about the issue, and try to recreate the same bug
-in a simple, easily reproducible situation.
+## 🧰 Subcommand Highlights
 
-## ⚖️ License
+### `search`
 
-`xgt` is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
+* Exact or partial match search
+* Input from CLI or file
+* Output formatting (CSV)
 
-See [LICENSE-APACHE](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE) and [LICENSE-MIT](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT) for details.
+### `genome`
 
-Full help is available from `xgt --help`.
+* Retrieve genome metadata (`--metadata`)
+* Access taxonomic history (`--history`)
+* Full metadata by default
 
-## Minimum supported Rust version
-`xgt` minimum [Rust](https://www.rust-lang.org/) version is 1.70.0.
+### `taxon`
 
-## Semver
-`xgt` is following [Semantic Versioning 2.0](https://semver.org/).
+* Fetch direct descendants
+* Search taxon names with partial matches
+* Explore genomes within a taxon
+
+---
+
+## 🐞 Reporting Issues
+
+Found a bug or want to request a feature? [Open an issue](https://github.com/Ebedthan/xgt/issues). When submitting bugs, please include:
+
+* OS and architecture
+* Version of `xgt`
+* Reproduction steps or input
+
+---
+
+## 📜 License
+
+This project is licensed under both the [MIT License](LICENSE-MIT) and the [Apache 2.0 License](LICENSE-APACHE). You may choose the license that best suits your needs.
+
+---
+
+## 🦀 Developer Notes
+
+* **Minimum Rust version**: `1.70.0`
+* **Follows**: [Semantic Versioning](https://semver.org/)
