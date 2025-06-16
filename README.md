@@ -3,19 +3,17 @@
 **Fast and Flexible GTDB Query Tool, Built in Rust**
 
 [![CI](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Ebedthan/xgt/branch/main/graph/badge.svg?token=OFAOB6K5KB)](https://codecov.io/gh/Ebedthan/xgt)
+[![codecov](https://codecov.io/gh/Ebedthan/hyperex/graph/badge.svg?token=V0FVCFVAHO)](https://codecov.io/gh/Ebedthan/hyperex)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE)
 
 > ⚠️ **Note**: Due to current SSL issues with the GTDB API, please use the `-k/--insecure` flag with all commands. Disabling SSL verification is not a default due to security concerns.
 
----
 
 ## 🧭 What is `xgt`?
 
 `xgt` is a blazing-fast command-line utility written in [Rust](https://www.rust-lang.org/) for querying and parsing data from the [GTDB](https://gtdb.ecogenomic.org/) (Genome Taxonomy Database). It mirrors core GTDB API functions and adds flexible parsing, metadata retrieval, and taxonomy exploration tools—making GTDB data more accessible for researchers and developers.
 
----
 
 ## ✨ Key Features
 
@@ -23,7 +21,6 @@
 * 🧬 **`genome`**: Retrieve genome metadata, taxonomic history, and more.
 * 🌳 **`taxon`**: Explore taxonomic lineages, descendants, and associated genomes.
 
----
 
 ## 📦 Installation
 
@@ -45,7 +42,6 @@ Download binaries for your platform from the [releases page](https://github.com/
 * Linux (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
 * Windows (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip.sha256)
 
----
 
 ## 💡 Usage Examples
 
@@ -67,8 +63,6 @@ xgt taxon -k --search g__Escherichia
 xgt taxon -k g__Escherichia
 ```
 
----
-
 ## 🧰 Subcommand Highlights
 
 ### `search`
@@ -89,7 +83,6 @@ xgt taxon -k g__Escherichia
 * Search taxon names with partial matches
 * Explore genomes within a taxon
 
----
 
 ## 🐞 Reporting Issues
 
@@ -99,13 +92,11 @@ Found a bug or want to request a feature? [Open an issue](https://github.com/Ebe
 * Version of `xgt`
 * Reproduction steps or input
 
----
 
 ## 📜 License
 
 This project is licensed under both the [MIT License](LICENSE-MIT) and the [Apache 2.0 License](LICENSE-APACHE). You may choose the license that best suits your needs.
 
----
 
 ## 🦀 Developer Notes
 
