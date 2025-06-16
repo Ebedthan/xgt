@@ -470,7 +470,12 @@ GCA_023448105.1
 GCF_000010525.1
 GCF_000473085.1
 GCF_004364705.1
-GCF_014635325.1"#
+GCF_014635325.1
+GCF_036600855.1
+GCF_036600875.1
+GCF_036600895.1
+GCF_036600915.1
+GCF_943371865.1"#
                 .to_string(),
             expected
         );
@@ -488,7 +493,7 @@ GCF_014635325.1"#
         let res = search(args.clone());
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test.txt").unwrap();
-        assert_eq!("11".to_string(), expected);
+        assert_eq!("16".to_string(), expected);
         std::fs::remove_file("test.txt").unwrap();
     }
 
