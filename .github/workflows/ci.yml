@@ -80,7 +80,12 @@ jobs:
         run: cargo tarpaulin --all-features --timeout 600 --out Xml -- --test-threads 1
 
       - name: Upload coverage to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_ORG_TOKEN }}
+        with:
+          verbose: true
+          fail_ci_if_error: true
 
   lints:
     name: Lints
