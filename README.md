@@ -3,7 +3,7 @@
 **Fast and Flexible GTDB Query Tool, Built in Rust**
 
 [![CI](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml/badge.svg)](https://github.com/Ebedthan/xgt/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Ebedthan/hyperex/graph/badge.svg?token=V0FVCFVAHO)](https://codecov.io/gh/Ebedthan/hyperex)
+[![codecov](https://codecov.io/gh/Ebedthan/xgt/graph/badge.svg?token=OFAOB6K5KB)](https://codecov.io/gh/Ebedthan/xgt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE)
 
