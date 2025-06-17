@@ -82,7 +82,7 @@ jobs:
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v5
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_ORG_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           verbose: true
           fail_ci_if_error: true
