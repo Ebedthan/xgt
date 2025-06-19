@@ -292,34 +292,73 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
             }
             prev_record = Some(record);
         }
-
-        // Generate timeline output (Markdown)
-        println!(
-            "## Genome {} Classification Timeline (Newest → Oldest)\n",
-            accession.get_accession()
-        );
-        for (i, record) in genome_data.iter().enumerate() {
-            if let Some(release) = &record.release {
+        if let Some(path) = args.get_output() {
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&path)
+                .with_context(|| format!("Failed to create file {}", path))?;
+            writeln!(file, "release,domain,phylum,family,species,changes")?;
+            for (i, record) in genome_data.iter().enumerate() {
                 let is_first = i == genome_data.len() - 1;
-                let has_changes = changes.contains_key(release);
+                let has_changes = record
+                    .release
+                    .as_ref()
+                    .map_or(false, |r| changes.contains_key(r));
 
                 if is_first || has_changes {
-                    println!("### {}", release);
-                    println!("- **Taxonomy**:");
-                    print_field("Domain", &record.d);
-                    print_field("Phylum", &record.p);
-                    print_field("Family", &record.f);
-                    print_field("Species", &record.s);
-
-                    if has_changes {
-                        println!("- **Changes**:");
-                        for note in changes.get(release).unwrap() {
-                            println!("  - {}", note);
-                        }
+                    let changes_str = if has_changes {
+                        changes
+                            .get(&record.release.clone().unwrap())
+                            .unwrap()
+                            .join("; ")
                     } else if is_first {
-                        println!("- Initial classification.");
+                        "initial classification".to_string()
+                    } else {
+                        String::new()
+                    };
+
+                    writeln!(
+                        file,
+                        "{},{},{},{},{},{}",
+                        record.release.as_deref().unwrap_or(""),
+                        record.d.as_deref().unwrap_or(""),
+                        record.p.as_deref().unwrap_or(""),
+                        record.f.as_deref().unwrap_or(""),
+                        record.s.as_deref().unwrap_or(""),
+                        changes_str
+                    )?;
+                }
+            }
+        } else {
+            // Generate timeline output (Markdown)
+            println!(
+                "## Genome {} Classification Timeline (Newest → Oldest)\n",
+                accession.get_accession()
+            );
+            for (i, record) in genome_data.iter().enumerate() {
+                if let Some(release) = &record.release {
+                    let is_first = i == genome_data.len() - 1;
+                    let has_changes = changes.contains_key(release);
+
+                    if is_first || has_changes {
+                        println!("### {}", release);
+                        println!("- **Taxonomy**:");
+                        print_field("Domain", &record.d);
+                        print_field("Phylum", &record.p);
+                        print_field("Family", &record.f);
+                        print_field("Species", &record.s);
+
+                        if has_changes {
+                            println!("- **Changes**:");
+                            for note in changes.get(release).unwrap() {
+                                println!("  - {}", note);
+                            }
+                        } else if is_first {
+                            println!("- Initial classification.");
+                        }
+                        println!();
                     }
-                    println!();
                 }
             }
         }

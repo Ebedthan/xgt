@@ -9,7 +9,7 @@ use std::{
 pub struct GenomeArgs {
     // Accession
     pub(crate) accession: Vec<String>,
-    // Output format
+    // Output file
     pub(crate) output: Option<String>,
     // Check SSL peer verification
     pub(crate) disable_certificate_verification: bool,
