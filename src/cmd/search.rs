@@ -569,7 +569,7 @@ GCF_943371865.1"#
 
         fn to_ureq_response(self) -> Response {
             // `ureq::Response` is not mockable directly; simulate using `ureq::Response::into_reader()`
-            ureq::Response::new(200, "OK", str::from_utf8(&self.body).unwrap()).unwrap()
+            ureq::Response::new(200, "OK", std::str::from_utf8(&self.body).unwrap()).unwrap()
         }
     }
 
