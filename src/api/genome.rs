@@ -57,6 +57,10 @@ impl GenomeAPI {
             self.accession, request_type
         )
     }
+
+    pub fn get_accession(&self) -> &str {
+        &self.accession
+    }
 }
 
 #[cfg(test)]
