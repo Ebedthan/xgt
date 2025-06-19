@@ -1,5 +1,3 @@
-use crate::cli::search::SearchArgs;
-
 #[derive(Debug, Clone)]
 pub struct SearchAPI {
     /// The search query entered by the user
@@ -80,13 +78,13 @@ impl SearchAPI {
         self
     }
 
-    pub fn from(search: &str, args: &SearchArgs) -> Self {
+    pub fn from(search: &str, rep: bool, mat: bool, ofmt: &str, sf: String) -> Self {
         SearchAPI::new()
             .set_search(search.to_owned())
-            .set_gtdb_species_rep_only(args.is_representative_species_only())
-            .set_ncbi_type_material_only(args.is_type_species_only())
-            .set_outfmt(&args.get_outfmt().to_string())
-            .set_search_field(args.get_search_field().to_string())
+            .set_gtdb_species_rep_only(rep)
+            .set_ncbi_type_material_only(mat)
+            .set_outfmt(ofmt)
+            .set_search_field(sf)
     }
 
     pub fn request(&self) -> String {
