@@ -1,7 +1,0 @@
-release,domain,phylum,family,species,changes
-R226,d__Bacteria,p__Bacillota,f__Acidaminobacteraceae,s__DTU036 sp001512625,Phylum: p__Bacillota_A → p__Bacillota
-R214,d__Bacteria,p__Bacillota_A,f__Acidaminobacteraceae,s__DTU036 sp001512625,Phylum: p__Firmicutes_A → p__Bacillota_A
-R202,d__Bacteria,p__Firmicutes_A,f__Acidaminobacteraceae,s__DTU036 sp001512625,Family: f__DTU036 → f__Acidaminobacteraceae
-R89,d__Bacteria,p__Firmicutes_A,f__DTU036,s__DTU036 sp001512625,Species: s__ → s__DTU036 sp001512625
-R83,d__Bacteria,p__Firmicutes_A,f__DTU036,s__,Phylum: p__Firmicutes → p__Firmicutes_A
-R80,d__Bacteria,p__Firmicutes,f__DTU036,s__,initial classification
