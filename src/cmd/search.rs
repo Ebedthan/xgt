@@ -375,6 +375,70 @@ fn whole_word_match(haystack: &str, needle: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::search::SearchResult;
+    use crate::utils::SearchField;
+    use cli::search::SearchArgs;
+    use ureq::Response;
+
+    #[test]
+    fn test_search_result_getters() {
+        let sr = SearchResult {
+            gid: "G00001".to_string(),
+            accession: Some("GCA_000001.1".to_string()),
+            ncbi_org_name: Some("Escherichia coli".to_string()),
+            ncbi_taxonomy: Some("d__Bacteria;p__Proteobacteria".to_string()),
+            gtdb_taxonomy: Some("d__Bacteria;p__Pseudomonadota".to_string()),
+            is_gtdb_species_rep: Some(true),
+            is_ncbi_type_material: Some(false),
+        };
+
+        assert_eq!(sr.get_accession(), Some(&"GCA_000001.1".to_string()));
+        assert_eq!(
+            sr.get_ncbi_org_name(),
+            Some(&"Escherichia coli".to_string())
+        );
+        assert_eq!(
+            sr.get_ncbi_taxonomy(),
+            Some(&"d__Bacteria;p__Proteobacteria".to_string())
+        );
+        assert_eq!(
+            sr.get_gtdb_taxonomy(),
+            Some(&"d__Bacteria;p__Pseudomonadota".to_string())
+        );
+    }
+
+    #[test]
+    fn test_search_results_filter_json_exact_ncbi_id() {
+        let mut results = SearchResults {
+            rows: vec![
+                SearchResult {
+                    gid: "id1".to_string(),
+                    accession: Some("GCA_000123.1".to_string()),
+                    ..Default::default()
+                },
+                SearchResult {
+                    gid: "id2".to_string(),
+                    accession: Some("GCA_999999.1".to_string()),
+                    ..Default::default()
+                },
+            ],
+            total_rows: 2,
+        };
+
+        results.filter_json("GCA_999999.1".to_string(), SearchField::NcbiId);
+        assert_eq!(results.total_rows, 1);
+        assert_eq!(results.rows[0].gid, "id2");
+    }
+
+    #[test]
+    fn test_get_total_rows() {
+        let results = SearchResults {
+            rows: vec![Default::default(); 3],
+            total_rows: 3,
+        };
+
+        assert_eq!(results.get_total_rows(), 3);
+    }
 
     #[test]
     fn test_whole_word_match() {
@@ -414,19 +478,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_total_rows() {
-        let results = SearchResults {
-            rows: vec![
-                SearchResult::default(),
-                SearchResult::default(),
-                SearchResult::default(),
-            ],
-            total_rows: 3,
-        };
-        assert_eq!(results.get_total_rows(), 3);
-    }
-
-    #[test]
     fn test_get_rows() {
         let results = SearchResults {
             rows: vec![
@@ -450,7 +501,7 @@ mod tests {
 
     #[test]
     fn test_search_id() {
-        let mut args = cli::search::SearchArgs::new();
+        let mut args = SearchArgs::new();
         args.add_needle("g__Azorhizobium");
         args.set_id(true);
         args.set_output(Some("test3.txt".to_string()));
@@ -502,5 +553,38 @@ GCF_943371865.1"#
         let line = "GCA_001512625.1,Clostridiales bacterium DTU036,d__Bacteria; p__Bacillota; c__Clostridia; o__Eubacteriales; f__; g__; s__,d__Bacteria; p__Bacillota_A; c__Clostridia; o__Peptostreptococcales; f__Acidaminobacteraceae; g__DTU036; s__DTU036 sp001512625,True,False";
         let fields: Vec<&str> = line.split(",").collect();
         assert!(all_match(fields, "c__Clostridia"));
+    }
+
+    // Dummy ureq::Response-like type
+    struct MockResponse {
+        body: Vec<u8>,
+    }
+
+    impl MockResponse {
+        fn new_from_str(s: &str) -> Self {
+            Self {
+                body: s.as_bytes().to_vec(),
+            }
+        }
+
+        fn to_ureq_response(self) -> Response {
+            // `ureq::Response` is not mockable directly; simulate using `ureq::Response::into_reader()`
+            ureq::Response::new(200, "OK", str::from_utf8(&self.body).unwrap()).unwrap()
+        }
+    }
+
+    #[test]
+    fn test_process_xsv_response_too_large() {
+        let big_str = "a".repeat(INTO_STRING_LIMIT + 1);
+        let response = MockResponse::new_from_str(&big_str).to_ureq_response();
+
+        let args = cli::search::SearchArgs {
+            is_whole_words_matching: true,
+            ..Default::default()
+        };
+
+        let result = process_xsv_response(response, "ACC123", &args, |_, _| {});
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("GTDB response is too big"));
     }
 }
