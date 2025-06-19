@@ -304,7 +304,7 @@ pub fn get_genome_taxon_history(args: GenomeArgs) -> Result<()> {
                 let has_changes = record
                     .release
                     .as_ref()
-                    .map_or(false, |r| changes.contains_key(r));
+                    .is_some_and(|r| changes.contains_key(r));
 
                 if is_first || has_changes {
                     let changes_str = if has_changes {
