@@ -6,7 +6,7 @@ use std::path::Path;
 #[command(about = "Query and parse GTDB data", version)]
 #[command(arg_required_else_help = true)]
 pub struct Cli {
-    /// Force overwriting output
+    /// Add verbosity to program
     #[arg(short = 'v', long, action = clap::ArgAction::SetTrue)]
     pub verbose: bool,
 
