@@ -58,95 +58,102 @@ impl TaxonSearchResult {
     }
 }
 
-pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
-    let agent: Agent = utils::get_agent(args.insecure)?;
+// The Taxon command actually repeats a certain logic:
+// - Create a request URL from a GtdbApiRequest
+// - Call utils::fetch_data
+// - Deserialize the response with into_json()
+// - Serialize with serde_json::to_string_pretty
+// - Write using utils::write_to_output
+// To avoid code duplication, we can create a helper function that encapsulates this logic.
 
+// Helper function to fetch and write JSON
+fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize>(
+    agent: &Agent,
+    request: GtdbApiRequest,
+    err_msg: String,
+    out_path: Option<String>,
+) -> Result<T> {
+    let url = request.to_url();
+    let response = utils::fetch_data(agent, &url, err_msg)?;
+    let data: T = response.into_json()?;
+    let json = serde_json::to_string_pretty(&data)?;
+    utils::write_to_output(json.as_bytes(), out_path)?;
+    Ok(data)
+}
+
+pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
     if let Some(name) = args.name {
-        let taxon = GtdbApiRequest::Taxon {
+        let agent = utils::get_agent(args.insecure)?;
+        let request = GtdbApiRequest::Taxon {
             name: name.clone(),
             kind: TaxonEndPoint::Name,
             limit: None,
             is_reps_only: None,
         };
-        let request_url = taxon.to_url();
-        let response =
-            utils::fetch_data(&agent, &request_url, format!("Taxon {} not found", name))?;
 
-        let taxon_data: TaxonResult = response.into_json()?;
-        let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
-        utils::write_to_output(taxon_string.as_bytes(), args.out.clone())?;
-    }
-
-    Ok(())
-}
-
-pub fn search_taxon(args: TaxonArgs) -> Result<()> {
-    let is_whole_words_matching = args.word;
-    let agent: Agent = utils::get_agent(args.insecure)?;
-
-    if let Some(name) = args.name {
-        let request_url = if args.all {
-            let search = GtdbApiRequest::Taxon {
-                name: name.clone(),
-                kind: TaxonEndPoint::SearchAll,
-                limit: None,
-                is_reps_only: None,
-            };
-            search.to_url()
-        } else {
-            let search = GtdbApiRequest::Taxon {
-                name: name.clone(),
-                kind: TaxonEndPoint::Search,
-                limit: None,
-                is_reps_only: None,
-            };
-            search.to_url()
-        };
-
-        let response =
-            utils::fetch_data(&agent, &request_url, format!("No match found for {}", name))?;
-
-        let mut taxon_data: TaxonSearchResult = response.into_json()?;
-        if is_whole_words_matching {
-            taxon_data.filter(name.to_string());
-        }
-
-        ensure!(
-            !taxon_data.matches.is_empty(),
-            "No match found for {}",
-            name
-        );
-
-        let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
-
-        utils::write_to_output(taxon_string.as_bytes(), args.out.clone())?;
+        fetch_and_write_json::<TaxonResult>(
+            &agent,
+            request,
+            format!("Taxon {} not found", name),
+            args.out,
+        )?;
     }
 
     Ok(())
 }
 
 pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
-    let agent: Agent = utils::get_agent(args.insecure)?;
-
     if let Some(name) = args.name {
-        let search = GtdbApiRequest::Taxon {
+        let agent = utils::get_agent(args.insecure)?;
+        let request = GtdbApiRequest::Taxon {
             name: name.clone(),
             kind: TaxonEndPoint::Genomes,
             limit: None,
             is_reps_only: Some(args.reps),
         };
-        let request_url = search.to_url();
+        let data = fetch_and_write_json::<TaxonGenomes>(
+            &agent,
+            request,
+            format!("No match found for {}", name),
+            args.out,
+        )?;
 
-        let response =
-            utils::fetch_data(&agent, &request_url, format!("No match found for {}", name))?;
+        ensure!(!data.data.is_empty(), "No data found for {}", name);
+    }
 
-        let taxon_data: TaxonGenomes = response.into_json()?;
+    Ok(())
+}
 
-        ensure!(!taxon_data.data.is_empty(), "No data found for {}", name);
+pub fn search_taxon(args: TaxonArgs) -> Result<()> {
+    if let Some(name) = args.name.as_deref() {
+        let agent = utils::get_agent(args.insecure)?;
 
-        let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
+        let kind = if args.all {
+            TaxonEndPoint::SearchAll
+        } else {
+            TaxonEndPoint::Search
+        };
+        let request = GtdbApiRequest::Taxon {
+            name: name.into(),
+            kind,
+            limit: None,
+            is_reps_only: None,
+        };
 
-        utils::write_to_output(taxon_string.as_bytes(), args.out.clone())?;
+        let mut data = fetch_and_write_json::<TaxonSearchResult>(
+            &agent,
+            request,
+            format!("No match found for {}", name),
+            None,
+        )?;
+
+        if args.word {
+            data.filter(name.into());
+        }
+        ensure!(!data.matches.is_empty(), "No match found for {}", name);
+
+        let json = serde_json::to_string_pretty(&data)?;
+        utils::write_to_output(json.as_bytes(), args.out)?;
     }
 
     Ok(())

@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use ureq::{Agent, Response};
 
 use std::fmt::Display;
