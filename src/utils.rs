@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use ureq::Agent;
+use ureq::{Agent, Response};
 
 use std::fmt::Display;
 use std::fs::{File, OpenOptions};
@@ -229,6 +229,15 @@ pub fn load_input<T: InputSource>(args: &T, err_msg: String) -> Result<Vec<Strin
         Ok(vec![value.clone()])
     } else {
         Err(anyhow!(err_msg))
+    }
+}
+
+pub fn fetch_data(agent: &Agent, url: &str, err_msg: String) -> Result<Response, anyhow::Error> {
+    match agent.get(url).call() {
+        Ok(r) => Ok(r),
+        Err(ureq::Error::Status(400, _)) => bail!(err_msg),
+        Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
+        Err(_) => bail!("Error making the request or receiving the response."),
     }
 }
 

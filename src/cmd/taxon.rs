@@ -1,4 +1,4 @@
-use anyhow::{bail, ensure, Result};
+use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
 use ureq::Agent;
 
@@ -69,12 +69,8 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
             is_reps_only: None,
         };
         let request_url = taxon.to_url();
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(400, _)) => bail!("Taxon {} not found", name),
-            Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
-            Err(_) => bail!("Error making the request or receiving the response."),
-        };
+        let response =
+            utils::fetch_data(&agent, &request_url, format!("Taxon {} not found", name))?;
 
         let taxon_data: TaxonResult = response.into_json()?;
         let taxon_string = serde_json::to_string_pretty(&taxon_data)?;
@@ -107,12 +103,8 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
             search.to_url()
         };
 
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(400, _)) => bail!("No match found for {}", name),
-            Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
-            Err(_) => bail!("Error making the request or receiving the response."),
-        };
+        let response =
+            utils::fetch_data(&agent, &request_url, format!("No match found for {}", name))?;
 
         let mut taxon_data: TaxonSearchResult = response.into_json()?;
         if is_whole_words_matching {
@@ -145,12 +137,8 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
         };
         let request_url = search.to_url();
 
-        let response = match agent.get(&request_url).call() {
-            Ok(r) => r,
-            Err(ureq::Error::Status(400, _)) => bail!("No match found for {}", name),
-            Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
-            Err(_) => bail!("Error making the request or receiving the response."),
-        };
+        let response =
+            utils::fetch_data(&agent, &request_url, format!("No match found for {}", name))?;
 
         let taxon_data: TaxonGenomes = response.into_json()?;
 

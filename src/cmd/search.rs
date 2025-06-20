@@ -159,18 +159,11 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             filter_text: "".into(),
         };
         let request_url = search.to_url();
-
-        let response = agent.get(&request_url).call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => {
-                anyhow::anyhow!("The server returned an unexpected status code ({})", code)
-            }
-            _ => {
-                anyhow::anyhow!(
-                    "There was an error making the request or receiving the response:\n{}",
-                    e
-                )
-            }
-        })?;
+        let response = utils::fetch_data(
+            &agent,
+            &request_url,
+            "The server returned an unexpected status code (400)".into(),
+        )?;
 
         let output_result = if args.id || args.count {
             handle_id_or_count_response(response, &query, args)

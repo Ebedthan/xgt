@@ -2,7 +2,7 @@ use crate::api::GtdbApiRequest;
 use crate::cli::GenomeArgs;
 use crate::utils;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -226,15 +226,11 @@ fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>
             };
             genome.to_url()
         };
-        let response = agent.get(&request_url).call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => {
-                anyhow!("The server returned an unexpected status code ({})", code)
-            }
-            _ => anyhow!(
-                "There was an error making the request or receiving the response\n{}",
-                e
-            ),
-        })?;
+        let response = utils::fetch_data(
+            &agent,
+            &request_url,
+            "The server returned an unexpected status code (400)".into(),
+        )?;
         let genome_data: T = response.into_json()?;
         let genome_string = serde_json::to_string_pretty(&genome_data)?;
         if let Some(path) = &args.out {
@@ -275,10 +271,11 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
             let request_url = genome.to_url();
             let agent = utils::get_agent(args.insecure)?;
 
-            let response = agent
-                .get(&request_url)
-                .call()
-                .with_context(|| format!("Faild to fetch history for {}", &accession))?;
+            let response = utils::fetch_data(
+                &agent,
+                &request_url,
+                format!("Faild to fetch history for {}", &accession),
+            )?;
             let mut genome_data: Vec<History> = response
                 .into_json()
                 .with_context(|| format!("Failed to parse JSON for {}", &accession))?;
