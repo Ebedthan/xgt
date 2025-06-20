@@ -1,7 +1,5 @@
 use anyhow::{anyhow, ensure, Result};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::io::{Read, Write};
 
 use crate::api::search::SearchAPI;
@@ -145,24 +143,11 @@ impl SearchResults {
 /// Search GTDB data from `SearchArgs`
 pub fn search(args: &SearchArgs) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
-    let mut needles = Vec::new();
+    let queries = utils::load_input(args, "No query or file provided".to_string())?;
 
-    if let Some(file_path) = args.file.clone() {
-        let file =
-            File::open(&file_path).unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
-        for line in BufReader::new(file)
-            .lines()
-            .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
-        {
-            needles.push(line.clone());
-        }
-    } else if let Some(name) = &args.name {
-        needles.push(name.clone());
-    }
-
-    for needle in needles {
+    for query in queries {
         let search_api = SearchAPI::from(
-            &needle,
+            &query,
             args.rep,
             args.r#type,
             &args.outfmt,
@@ -183,11 +168,11 @@ pub fn search(args: &SearchArgs) -> Result<()> {
         })?;
 
         let output_result = if args.id || args.count {
-            handle_id_or_count_response(response, &needle, args)
+            handle_id_or_count_response(response, &query, args)
         } else {
             match OutputFormat::from(args.outfmt.clone()) {
-                OutputFormat::Json => handle_json_response(response, &needle, args),
-                _ => handle_xsv_response(response, &needle, args),
+                OutputFormat::Json => handle_json_response(response, &query, args),
+                _ => handle_xsv_response(response, &query, args),
             }
         };
 

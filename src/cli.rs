@@ -30,7 +30,7 @@ pub enum Commands {
 pub struct SearchArgs {
     /// A value (typically a species or genus name/taxon) used for searching
     #[arg(conflicts_with = "file")]
-    pub name: Option<String>,
+    pub query: Option<String>,
 
     /// Search field
     #[arg(short = 'F', long, value_name = "STR", default_value = "all", value_parser = ["all", "acc", "org", "gtdb", "ncbi"])]

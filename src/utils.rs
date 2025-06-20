@@ -1,13 +1,17 @@
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use anyhow::{anyhow, Context, Result};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use ureq::Agent;
 
 use std::fmt::Display;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 
-use std::io::{self, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::sync::Arc;
 
 use regex::Regex;
+
+use crate::api::genome::{GenomeAPI, GenomeRequestType};
+use crate::cli::{GenomeArgs, SearchArgs, TaxonArgs};
 
 /// Search field as provided by GTDB API
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
@@ -176,6 +180,74 @@ pub fn get_api_version(disable_certificate_verification: bool) -> Result<String>
         "{}.{}.{}",
         result.major, result.minor, result.patch
     ))
+}
+
+// Generic helper to load accession or name from file or stdin
+pub trait InputSource {
+    fn file(&self) -> Option<&String>;
+    fn fallback(&self) -> Option<&String>;
+}
+
+impl InputSource for GenomeArgs {
+    fn file(&self) -> Option<&String> {
+        self.file.as_ref()
+    }
+
+    fn fallback(&self) -> Option<&String> {
+        self.accession.as_ref()
+    }
+}
+
+impl InputSource for TaxonArgs {
+    fn file(&self) -> Option<&String> {
+        self.file.as_ref()
+    }
+
+    fn fallback(&self) -> Option<&String> {
+        self.name.as_ref()
+    }
+}
+
+impl InputSource for SearchArgs {
+    fn file(&self) -> Option<&String> {
+        self.file.as_ref()
+    }
+
+    fn fallback(&self) -> Option<&String> {
+        self.query.as_ref()
+    }
+}
+
+pub fn load_input<T: InputSource>(args: &T, err_msg: String) -> Result<Vec<String>> {
+    if let Some(file_path) = args.file() {
+        let file =
+            File::open(file_path).with_context(|| format!("Failed to open file: {}", file_path))?;
+        BufReader::new(file)
+            .lines()
+            .collect::<std::io::Result<Vec<String>>>()
+            .map_err(Into::into)
+    } else if let Some(value) = args.fallback() {
+        Ok(vec![value.clone()])
+    } else {
+        Err(anyhow!(err_msg))
+    }
+}
+
+// Send request helper function
+pub fn fetch_genome_data<T: DeserializeOwned>(
+    agent: &Agent,
+    accession: &str,
+    request_type: GenomeRequestType,
+) -> Result<T> {
+    let api = GenomeAPI::from(accession.to_string());
+    let request_url = api.request(request_type);
+    let response = agent.get(&request_url).call().map_err(|e| match e {
+        ureq::Error::Status(code, _) => {
+            anyhow!("Server returned unexpected status code ({})", code)
+        }
+        _ => anyhow!("Request or response error: {}", e),
+    })?;
+    response.into_json().map_err(Into::into)
 }
 
 #[cfg(test)]

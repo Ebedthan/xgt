@@ -1,4 +1,5 @@
 mod api;
+mod appi;
 mod cli;
 mod cmd;
 mod utils;

@@ -1,4 +1,5 @@
 use crate::api::genome::{GenomeAPI, GenomeRequestType};
+use crate::appi::GtdbApiRequest;
 use crate::cli::GenomeArgs;
 use crate::utils;
 
@@ -6,8 +7,8 @@ use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    fs::{File, OpenOptions},
-    io::{self, BufRead, BufReader, BufWriter, Write},
+    fs::OpenOptions,
+    io::{self, BufWriter, Write},
 };
 
 use ureq::Agent;
@@ -210,26 +211,25 @@ pub struct GenomeTaxonHistory {
 fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>(
     args: &GenomeArgs,
 ) -> Result<()> {
-    let mut acc = Vec::new();
-    if let Some(file_path) = args.file.clone() {
-        let file =
-            File::open(&file_path).unwrap_or_else(|_| panic!("Failed to open file: {}", file_path));
-        for line in BufReader::new(file)
-            .lines()
-            .map(|l| l.unwrap_or_else(|e| panic!("Failed to read line: {}", e)))
-        {
-            acc.push(line.clone());
-        }
-    } else if let Some(name) = &args.accession {
-        acc.push(name.clone());
-    }
-    let genome_api: Vec<GenomeAPI> = acc.iter().map(|x| GenomeAPI::from(x.to_string())).collect();
+    let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
+    let genome_api: Vec<GenomeAPI> = accessions
+        .iter()
+        .map(|x| GenomeAPI::from(x.to_string()))
+        .collect();
     let agent: Agent = utils::get_agent(args.insecure)?;
-    for accession in genome_api {
+    for accession in accessions {
         let request_url = if args.metadata {
-            accession.request(GenomeRequestType::Metadata)
+            let genome = GtdbApiRequest::Genome {
+                accession: accession.to_string(),
+                request_type: crate::appi::GenomeRequestType::Metadata,
+            };
+            genome.to_url()
         } else {
-            accession.request(GenomeRequestType::Card)
+            let genome = GtdbApiRequest::Genome {
+                accession: accession.to_string(),
+                request_type: crate::appi::GenomeRequestType::Card,
+            };
+            genome.to_url()
         };
         let response = agent.get(&request_url).call().map_err(|e| match e {
             ureq::Error::Status(code, _) => {
@@ -267,15 +267,7 @@ pub fn get_genome_card(args: &GenomeArgs) -> Result<()> {
 
 pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
     // Input handling
-    let accessions = if let Some(file_path) = &args.file {
-        BufReader::new(File::open(file_path)?)
-            .lines()
-            .collect::<Result<Vec<_>, _>>()?
-    } else if let Some(accession) = &args.accession {
-        vec![accession.clone()]
-    } else {
-        return Err(anyhow!("No accession or file provided"));
-    };
+    let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
 
     // Processing for multiple accessions
     let results: Vec<Result<()>> = accessions
