@@ -153,3 +153,88 @@ impl GtdbApiRequest {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_taxon_name_url() {
+        let req = GtdbApiRequest::Taxon {
+            name: "Bacillus".into(),
+            kind: TaxonEndPoint::Name,
+            limit: None,
+            is_reps_only: None,
+        };
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/taxon/Bacillus"
+        );
+    }
+
+    #[test]
+    fn test_taxon_search_url() {
+        let req = GtdbApiRequest::Taxon {
+            name: "Bacillus".into(),
+            kind: TaxonEndPoint::Search,
+            limit: Some(500),
+            is_reps_only: None,
+        };
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/taxon/search/Bacillus?limit=500"
+        );
+    }
+
+    #[test]
+    fn test_taxon_genomes_url() {
+        let req = GtdbApiRequest::Taxon {
+            name: "Bacillus".into(),
+            kind: TaxonEndPoint::Genomes,
+            limit: None,
+            is_reps_only: Some(true),
+        };
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/taxon/Bacillus/genomes?sp_reps_only=true"
+        );
+    }
+
+    #[test]
+    fn test_search_api_url_csv() {
+        let req = GtdbApiRequest::Search {
+            query: "Bacillus".into(),
+            page: 2,
+            items_per_page: 500,
+            sort_by: "name".into(),
+            sort_desc: true,
+            search_field: "gtdb_tax".into(),
+            filter_text: "species".into(),
+            gtdb_species_rep_only: true,
+            ncbi_type_material_only: true,
+            output_format: "csv".into(),
+        };
+
+        let url = req.to_url();
+        assert!(url.starts_with("https://api.gtdb.ecogenomic.org/search/gtdb/csv?"));
+        assert!(url.contains("search=Bacillus"));
+        assert!(url.contains("sortBy=name"));
+        assert!(url.contains("sortDesc=true"));
+        assert!(url.contains("searchField=gtdb_tax"));
+        assert!(url.contains("gtdbSpeciesRepOnly=true"));
+        assert!(url.contains("ncbiTypeMaterialOnly=true"));
+    }
+
+    #[test]
+    fn test_genome_card_request_url() {
+        let req = GtdbApiRequest::Genome {
+            accession: "GCF_000005845.2".into(),
+            request_type: GenomeRequestType::Card,
+        };
+
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card"
+        );
+    }
+}
