@@ -2,7 +2,7 @@ use anyhow::{anyhow, ensure, Result};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
-use crate::api::search::SearchAPI;
+use crate::api::GtdbApiRequest;
 use crate::cli::SearchArgs;
 use crate::utils::{self, is_valid_taxonomy, OutputFormat, SearchField};
 
@@ -146,14 +146,19 @@ pub fn search(args: &SearchArgs) -> Result<()> {
     let queries = utils::load_input(args, "No query or file provided".to_string())?;
 
     for query in queries {
-        let search_api = SearchAPI::from(
-            &query,
-            args.rep,
-            args.r#type,
-            &args.outfmt,
-            args.field.clone(),
-        );
-        let request_url = search_api.request();
+        let search = GtdbApiRequest::Search {
+            query: query.clone(),
+            search_field: args.field.clone(),
+            gtdb_species_rep_only: args.rep,
+            ncbi_type_material_only: args.r#type,
+            output_format: args.outfmt.clone(),
+            page: 1,
+            items_per_page: 1000,
+            sort_by: "".into(),
+            sort_desc: false,
+            filter_text: "".into(),
+        };
+        let request_url = search.to_url();
 
         let response = agent.get(&request_url).call().map_err(|e| match e {
             ureq::Error::Status(code, _) => {

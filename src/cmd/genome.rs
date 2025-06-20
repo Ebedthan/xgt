@@ -1,5 +1,4 @@
-use crate::api::genome::{GenomeAPI, GenomeRequestType};
-use crate::appi::GtdbApiRequest;
+use crate::api::GtdbApiRequest;
 use crate::cli::GenomeArgs;
 use crate::utils;
 
@@ -212,22 +211,18 @@ fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>
     args: &GenomeArgs,
 ) -> Result<()> {
     let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
-    let genome_api: Vec<GenomeAPI> = accessions
-        .iter()
-        .map(|x| GenomeAPI::from(x.to_string()))
-        .collect();
     let agent: Agent = utils::get_agent(args.insecure)?;
     for accession in accessions {
         let request_url = if args.metadata {
             let genome = GtdbApiRequest::Genome {
                 accession: accession.to_string(),
-                request_type: crate::appi::GenomeRequestType::Metadata,
+                request_type: crate::api::GenomeRequestType::Metadata,
             };
             genome.to_url()
         } else {
             let genome = GtdbApiRequest::Genome {
                 accession: accession.to_string(),
-                request_type: crate::appi::GenomeRequestType::Card,
+                request_type: crate::api::GenomeRequestType::Card,
             };
             genome.to_url()
         };
@@ -273,16 +268,20 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
     let results: Vec<Result<()>> = accessions
         .into_iter()
         .map(|accession| {
-            let accession = GenomeAPI::from(accession);
-            let request_url = accession.request(GenomeRequestType::TaxonHistory);
+            let genome = GtdbApiRequest::Genome {
+                accession: accession.clone(),
+                request_type: crate::api::GenomeRequestType::TaxonHistory,
+            };
+            let request_url = genome.to_url();
             let agent = utils::get_agent(args.insecure)?;
 
-            let response = agent.get(&request_url).call().with_context(|| {
-                format!("Faild to fetch history for {}", accession.get_accession())
-            })?;
-            let mut genome_data: Vec<History> = response.into_json().with_context(|| {
-                format!("Failed to parse JSON for {}", accession.get_accession())
-            })?;
+            let response = agent
+                .get(&request_url)
+                .call()
+                .with_context(|| format!("Faild to fetch history for {}", &accession))?;
+            let mut genome_data: Vec<History> = response
+                .into_json()
+                .with_context(|| format!("Failed to parse JSON for {}", &accession))?;
 
             // Reverse history to compare from newest to oldest
             genome_data.reverse();
@@ -353,7 +352,7 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
                     &mut output,
                     format_args!(
                         "## Genome {} Classification Timeline (Newest -> Oldest)\n",
-                        accession.get_accession()
+                        &accession
                     ),
                 )?;
                 for record in &genome_data {

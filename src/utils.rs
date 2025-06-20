@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 use regex::Regex;
 
-use crate::api::genome::{GenomeAPI, GenomeRequestType};
 use crate::cli::{GenomeArgs, SearchArgs, TaxonArgs};
 
 /// Search field as provided by GTDB API
@@ -231,23 +230,6 @@ pub fn load_input<T: InputSource>(args: &T, err_msg: String) -> Result<Vec<Strin
     } else {
         Err(anyhow!(err_msg))
     }
-}
-
-// Send request helper function
-pub fn fetch_genome_data<T: DeserializeOwned>(
-    agent: &Agent,
-    accession: &str,
-    request_type: GenomeRequestType,
-) -> Result<T> {
-    let api = GenomeAPI::from(accession.to_string());
-    let request_url = api.request(request_type);
-    let response = agent.get(&request_url).call().map_err(|e| match e {
-        ureq::Error::Status(code, _) => {
-            anyhow!("Server returned unexpected status code ({})", code)
-        }
-        _ => anyhow!("Request or response error: {}", e),
-    })?;
-    response.into_json().map_err(Into::into)
 }
 
 #[cfg(test)]
