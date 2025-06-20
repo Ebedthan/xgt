@@ -2,14 +2,14 @@ use crate::api::GtdbApiRequest;
 use crate::cli::GenomeArgs;
 use crate::utils;
 
+use crate::api::GenomeRequestType;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::OpenOptions,
-    io::{self, BufWriter, Write},
+    io::{self, Write},
 };
-
 use ureq::Agent;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -257,174 +257,134 @@ pub fn get_genome_card(args: &GenomeArgs) -> Result<()> {
 }
 
 pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
-    // Input handling
-    let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
+    let accessions = utils::load_input(args, "No accession or file provided".into())?;
+    let agent = utils::get_agent(args.insecure)?;
+    for acc in accessions {
+        process_taxon_history(&acc, &agent, &args.out)?;
+    }
+    Ok(())
+}
 
-    // Processing for multiple accessions
-    let results: Vec<Result<()>> = accessions
-        .into_iter()
-        .map(|accession| {
-            let genome = GtdbApiRequest::Genome {
-                accession: accession.clone(),
-                request_type: crate::api::GenomeRequestType::TaxonHistory,
-            };
-            let request_url = genome.to_url();
-            let agent = utils::get_agent(args.insecure)?;
+fn process_taxon_history(accession: &str, agent: &Agent, out: &Option<String>) -> Result<()> {
+    let genome_api = GtdbApiRequest::Genome {
+        accession: accession.into(),
+        request_type: GenomeRequestType::TaxonHistory,
+    };
+    let url = genome_api.to_url();
+    let response = utils::fetch_data(
+        agent,
+        &url,
+        format!("The server returned unexpected response (400)"),
+    )?;
 
-            let response = utils::fetch_data(
-                &agent,
-                &request_url,
-                format!("Faild to fetch history for {}", &accession),
-            )?;
-            let mut genome_data: Vec<History> = response
-                .into_json()
-                .with_context(|| format!("Failed to parse JSON for {}", &accession))?;
+    let records: Vec<History> = response.into_json()?;
+    let changes = compute_taxonomic_changes(&records);
 
-            // Reverse history to compare from newest to oldest
-            genome_data.reverse();
-
-            let changes = genome_data
-                .windows(2)
-                .filter_map(|window| {
-                    let (prev, current) = (&window[0], &window[1]);
-                    let mut changes = Vec::new();
-
-                    compare_field(&prev.d, &current.d, "Domain", &mut changes);
-                    compare_field(&prev.p, &current.p, "Phylum", &mut changes);
-                    compare_field(&prev.f, &current.f, "Family", &mut changes);
-                    compare_field(&prev.s, &current.s, "Species", &mut changes);
-
-                    if changes.is_empty() {
-                        None
-                    } else {
-                        current.release.as_ref().map(|r| (r.clone(), changes))
-                    }
-                })
-                .collect::<HashMap<_, _>>();
-
-            // Output generation
-            if let Some(path) = &args.out {
-                // Bufered writing for bettter I/O performance
-                let mut writer = BufWriter::new(
-                    OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(path)
-                        .with_context(|| format!("Failed to create file {}", path))?,
-                );
-                writeln!(writer, "release,domain,phylum,family,species,changes")?;
-
-                for record in &genome_data {
-                    if record
-                        .release
-                        .as_ref()
-                        .map_or(false, |r| changes.contains_key(r))
-                        || genome_data
-                            .last()
-                            .map_or(false, |last| last.release == record.release)
-                    {
-                        let change_str = record
-                            .release
-                            .as_ref()
-                            .and_then(|r| changes.get(r))
-                            .map(|c| c.join("; "))
-                            .unwrap_or_else(|| "initial classification".to_string());
-
-                        writeln!(
-                            writer,
-                            "{},{},{},{},{},{}",
-                            record.release.as_deref().unwrap_or(""),
-                            record.d.as_deref().unwrap_or(""),
-                            record.p.as_deref().unwrap_or(""),
-                            record.f.as_deref().unwrap_or(""),
-                            record.s.as_deref().unwrap_or(""),
-                            change_str
-                        )?;
-                    }
-                }
-            } else {
-                // Pre-allocate String for output
-                let mut output = String::new();
-                std::fmt::Write::write_fmt(
-                    &mut output,
-                    format_args!(
-                        "## Genome {} Classification Timeline (Newest -> Oldest)\n",
-                        &accession
-                    ),
-                )?;
-                for record in &genome_data {
-                    if let Some(release) = &record.release {
-                        let has_changes = changes.contains_key(release);
-                        let is_first = genome_data
-                            .last()
-                            .map_or(false, |last| last.release == record.release);
-
-                        if has_changes || is_first {
-                            std::fmt::Write::write_fmt(
-                                &mut output,
-                                format_args!("### {}\n- **Taxonomy**:", release),
-                            )?;
-
-                            if let Some(d) = &record.d {
-                                std::fmt::Write::write_fmt(
-                                    &mut output,
-                                    format_args!("  - Domain: `{}`", d),
-                                )?;
-                            }
-
-                            if let Some(p) = &record.p {
-                                std::fmt::Write::write_fmt(
-                                    &mut output,
-                                    format_args!("  - Phylum: `{}`", p),
-                                )?;
-                            }
-                            if let Some(f) = &record.f {
-                                std::fmt::Write::write_fmt(
-                                    &mut output,
-                                    format_args!("  - Family: `{}`", f),
-                                )?;
-                            }
-                            if let Some(s) = &record.s {
-                                std::fmt::Write::write_fmt(
-                                    &mut output,
-                                    format_args!("  - Species: `{}`", s),
-                                )?;
-                            }
-
-                            if has_changes {
-                                std::fmt::Write::write_fmt(
-                                    &mut output,
-                                    format_args!("- **Changes**:"),
-                                )?;
-                                for note in changes.get(release).unwrap() {
-                                    std::fmt::Write::write_fmt(
-                                        &mut output,
-                                        format_args!("  - {}", note),
-                                    )?;
-                                }
-                            } else if is_first {
-                                std::fmt::Write::write_fmt(
-                                    &mut output,
-                                    format_args!("- Initial classification."),
-                                )?;
-                            }
-                            std::fmt::Write::write_fmt(&mut output, format_args!(""))?;
-                        }
-                    }
-                }
-                print!("{}", output);
-            }
-            Ok(())
-        })
-        .collect();
-
-    results.into_iter().collect::<Result<Vec<_>, _>>()?;
+    if let Some(path) = out {
+        write_csv_output(path, &records, &changes)?;
+    } else {
+        print_timeline(accession, &records, &changes);
+    }
 
     Ok(())
 }
 
+fn compute_taxonomic_changes(records: &[History]) -> HashMap<String, Vec<String>> {
+    let mut changes = HashMap::new();
+    let mut prev: Option<&History> = None;
+
+    for rec in records.iter().rev() {
+        if let Some(last) = prev {
+            let mut notes = Vec::new();
+            compare_field(&last.d, &rec.d, "Domain", &mut notes);
+            compare_field(&last.p, &rec.p, "Phylum", &mut notes);
+            compare_field(&last.f, &rec.f, "Family", &mut notes);
+            compare_field(&last.s, &rec.s, "Species", &mut notes);
+
+            if !notes.is_empty() {
+                if let Some(release) = &rec.release {
+                    changes.insert(release.clone(), notes);
+                }
+            }
+        }
+        prev = Some(rec);
+    }
+
+    changes
+}
+
+fn write_csv_output(
+    path: &str,
+    records: &[History],
+    changes: &HashMap<String, Vec<String>>,
+) -> Result<()> {
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(path)
+        .with_context(|| format!("Failed to open output file: {}", path))?;
+    writeln!(file, "release,domain,phylum,family,species,changes")?;
+
+    for (i, rec) in records.iter().enumerate() {
+        let is_first = i == records.len() - 1;
+        let rel = rec.release.as_deref().unwrap_or("");
+        let change_notes = if changes.contains_key(rel) {
+            changes[rel].join("; ")
+        } else if is_first {
+            "initial classification".to_string()
+        } else {
+            String::new()
+        };
+
+        writeln!(
+            file,
+            "{},{},{},{},{},{}",
+            rel,
+            rec.d.as_deref().unwrap_or(""),
+            rec.p.as_deref().unwrap_or(""),
+            rec.f.as_deref().unwrap_or(""),
+            rec.s.as_deref().unwrap_or(""),
+            change_notes
+        )?;
+    }
+
+    Ok(())
+}
+
+fn print_timeline(accession: &str, records: &[History], changes: &HashMap<String, Vec<String>>) {
+    println!(
+        "## Genome {} Classification Timeline (Newest → Oldest)\n",
+        accession
+    );
+
+    for (i, rec) in records.iter().enumerate() {
+        let is_first = i == records.len() - 1;
+        let rel = rec.release.as_deref().unwrap_or("");
+        let has_changes = changes.contains_key(rel);
+
+        if is_first || has_changes {
+            println!("### {}", rel);
+            println!("- **Taxonomy**:");
+            print_field("Domain", &rec.d);
+            print_field("Phylum", &rec.p);
+            print_field("Family", &rec.f);
+            print_field("Species", &rec.s);
+
+            if has_changes {
+                println!("- **Changes**:");
+                for note in &changes[rel] {
+                    println!("  - {}", note);
+                }
+            } else if is_first {
+                println!("- Initial classification.");
+            }
+
+            println!();
+        }
+    }
+}
+
 // Helper to compare fields
-#[inline]
 fn compare_field(
     prev: &Option<String>,
     current: &Option<String>,
@@ -432,10 +392,23 @@ fn compare_field(
     notes: &mut Vec<String>,
 ) {
     match (prev, current) {
-        (Some(p), Some(c)) if p != c => notes.push(format!("{}: {}→{}", name, p, c)),
-        (Some(p), None) => notes.push(format!("{} removed: {}", name, p)),
-        (None, Some(c)) => notes.push(format!("{} added: {}", name, c)),
+        (Some(prev_val), Some(current_val)) if prev_val != current_val => {
+            notes.push(format!("{}: {} -> {}", name, prev_val, current_val));
+        }
+        (Some(prev_val), None) => {
+            notes.push(format!("{} removed (was {})", name, prev_val));
+        }
+        (None, Some(current_val)) => {
+            notes.push(format!("{} added: {}", name, current_val));
+        }
         _ => {}
+    }
+}
+
+// Helper: Print a field if it exists
+fn print_field(name: &str, field: &Option<String>) {
+    if let Some(value) = field {
+        println!("  - {}: {}", name, value);
     }
 }
 
