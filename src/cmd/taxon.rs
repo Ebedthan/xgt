@@ -45,19 +45,6 @@ pub struct TaxonGenomes {
     data: Vec<String>,
 }
 
-// Struct for error 400 occuring from wrongly formatted
-// taxon name
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct TaxonGenomesError {
-    detail: String,
-}
-
-impl TaxonSearchResult {
-    fn filter(&mut self, pattern: String) {
-        self.matches.retain(|x| x == &pattern);
-    }
-}
-
 // The Taxon command actually repeats a certain logic:
 // - Create a request URL from a GtdbApiRequest
 // - Call utils::fetch_data
@@ -148,7 +135,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
         )?;
 
         if args.word {
-            data.filter(name.into());
+            data.matches.retain(|x| x == name);
         }
         ensure!(!data.matches.is_empty(), "No match found for {}", name);
 
