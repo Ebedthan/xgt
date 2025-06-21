@@ -40,9 +40,3 @@ lto = "thin"
 name = "xgt"
 path = "src/main.rs"
 bench = false
-
-[package.metadata.dist.github-workflows]
-runner = "ubuntu-22.04"
-
-[package.metadata.dist]
-allow-dirty = true
