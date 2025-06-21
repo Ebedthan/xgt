@@ -14,6 +14,15 @@ targets = [
     "x86_64-unknown-linux-gnu",
     "x86_64-pc-windows-msvc",
 ]
+[targets.x86_64-unknown-linux-gnu]
+runner = "ubuntu-22.04"
+
+[targets.x86_64-pc-windows-msvc]
+runner = "windows-2022"
+
+[targets.aarch64-apple-darwin]
+runner = "macos-13"
+
 # CI backends to support
 ci = "github"
 # Which actions to run on pull requests
