@@ -245,6 +245,59 @@ pub fn fetch_data(agent: &Agent, url: &str, err_msg: String) -> Result<Response,
 mod tests {
     use super::*;
     use anyhow::Result;
+    use mockito::Server;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+    use ureq::Agent;
+
+    #[test]
+    fn test_fetch_data_ok() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/success")
+            .with_status(200)
+            .with_body("{\"status\": \"ok\"}")
+            .create();
+
+        let agent = Agent::new();
+        let url = format!("{}/success", server.url());
+        let response = fetch_data(&agent, &url, "Failed to fetch".to_string()).unwrap();
+
+        let text = response.into_string().unwrap();
+        assert!(text.contains("ok"));
+    }
+
+    #[test]
+    fn test_fetch_data_bad_request() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/bad")
+            .with_status(400)
+            .with_body("Bad Request")
+            .create();
+
+        let agent = Agent::new();
+        let url = format!("{}/bad", server.url());
+        let err = fetch_data(&agent, &url, "Bad Request occurred".to_string()).unwrap_err();
+
+        assert_eq!(err.to_string(), "Bad Request occurred");
+    }
+
+    #[test]
+    fn test_fetch_data_unexpected_status() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/teapot")
+            .with_status(418)
+            .with_body("I'm a teapot")
+            .create();
+
+        let agent = Agent::new();
+        let url = format!("{}/teapot", server.url());
+        let err = fetch_data(&agent, &url, "Error!".to_string()).unwrap_err();
+
+        assert_eq!(err.to_string(), "Unexpected status code: 418");
+    }
 
     #[test]
     fn test_write_to_output() {
@@ -324,5 +377,58 @@ mod tests {
         assert_eq!(OutputFormat::Csv.to_string(), "csv");
         assert_eq!(OutputFormat::Json.to_string(), "json");
         assert_eq!(OutputFormat::Tsv.to_string(), "tsv");
+    }
+
+    struct TestArgs {
+        file: Option<String>,
+        fallback: Option<String>,
+    }
+
+    impl InputSource for TestArgs {
+        fn file(&self) -> Option<&String> {
+            self.file.as_ref()
+        }
+
+        fn fallback(&self) -> Option<&String> {
+            self.fallback.as_ref()
+        }
+    }
+
+    #[test]
+    fn test_load_input_from_fallback() {
+        let args = TestArgs {
+            file: None,
+            fallback: Some("ABC123".to_string()),
+        };
+
+        let result = load_input(&args, "Missing input".to_string()).unwrap();
+        assert_eq!(result, vec!["ABC123".to_string()]);
+    }
+
+    #[test]
+    fn test_load_input_from_file() {
+        let mut tmpfile = NamedTempFile::new().unwrap();
+        writeln!(tmpfile, "line1\nline2").unwrap();
+
+        let path = tmpfile.path().to_str().unwrap().to_string();
+        let args = TestArgs {
+            file: Some(path),
+            fallback: None,
+        };
+
+        let result = load_input(&args, "Missing input".to_string()).unwrap();
+        assert_eq!(result, vec!["line1".to_string(), "line2".to_string()]);
+    }
+
+    #[test]
+    fn test_load_input_error() {
+        let args = TestArgs {
+            file: None,
+            fallback: None,
+        };
+
+        let result = load_input(&args, "Missing input".to_string());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Missing input".to_string());
     }
 }

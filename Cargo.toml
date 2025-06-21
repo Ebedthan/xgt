@@ -20,7 +20,8 @@ ureq = { version = "2.6.2", features = ["json", "native-tls"] }
 native-tls = "0.2"
 
 [dev-dependencies]
-mockito = "1.0.2"
+mockito = "1.7"
+tempfile = "3.8"
 
 [profile.release]
 opt-level = 3
