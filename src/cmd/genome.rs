@@ -274,7 +274,7 @@ fn process_taxon_history(accession: &str, agent: &Agent, out: &Option<String>) -
     let response = utils::fetch_data(
         agent,
         &url,
-        format!("The server returned unexpected response (400)"),
+        "The server returned unexpected response (400)".to_string(),
     )?;
 
     let records: Vec<History> = response.into_json()?;
