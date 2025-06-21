@@ -19,4 +19,4 @@ ci = "github"
 # Which actions to run on pull requests
 pr-run-mode = "plan"
 # Allow dirty workspace
-allow-dirty = "ci"
+allow-dirty = ["ci"]
