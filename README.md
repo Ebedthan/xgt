@@ -100,5 +100,5 @@ This project is licensed under both the [MIT License](LICENSE-MIT) and the [Apac
 
 ## 🦀 Developer Notes
 
-* **Minimum Rust version**: `1.70.0`
+* **Minimum Rust version**: `1.74.1`
 * **Follows**: [Semantic Versioning](https://semver.org/)
