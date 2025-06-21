@@ -251,6 +251,43 @@ mod tests {
     use ureq::Agent;
 
     #[test]
+    fn test_gtdb_is_online_real() {
+        let is_online = is_gtdb_db_online(true);
+        assert!(is_online.unwrap());
+    }
+
+    #[test]
+    fn test_get_api_version_real() {
+        let version = get_api_version(true);
+        assert_eq!(version.unwrap(), String::from("2.21.1"));
+    }
+
+    fn with_mocked_agent() -> ureq::Agent {
+        // Ensures we always use mockito's base URL
+        ureq::AgentBuilder::new().build()
+    }
+
+    fn set_mock_base_url(path: &str) -> String {
+        let server = Server::new();
+        format!("{}/{}", server.url(), path.trim_start_matches('/'))
+    }
+
+    #[test]
+    fn test_get_api_version_failure() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/meta/version")
+            .with_status(500)
+            .create();
+
+        let agent = with_mocked_agent();
+        let request_url = set_mock_base_url("/meta/version");
+
+        let result = agent.get(&request_url).call();
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_fetch_data_ok() {
         let mut server = Server::new();
         let _m = server

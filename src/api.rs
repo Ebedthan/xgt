@@ -157,6 +157,37 @@ impl GtdbApiRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_display_genome_request_type() {
+        assert_eq!(GenomeRequestType::Metadata.to_string(), "metadata");
+        assert_eq!(GenomeRequestType::TaxonHistory.to_string(), "taxon-history");
+        assert_eq!(GenomeRequestType::Card.to_string(), "card");
+    }
+
+    #[test]
+    fn test_from_str_valid_inputs() {
+        assert_eq!(
+            GenomeRequestType::from_str("metadata").unwrap(),
+            GenomeRequestType::Metadata
+        );
+        assert_eq!(
+            GenomeRequestType::from_str("taxon-history").unwrap(),
+            GenomeRequestType::TaxonHistory
+        );
+        assert_eq!(
+            GenomeRequestType::from_str("card").unwrap(),
+            GenomeRequestType::Card
+        );
+    }
+
+    #[test]
+    fn test_from_str_invalid_input() {
+        assert!(GenomeRequestType::from_str("invalid").is_err());
+        assert!(GenomeRequestType::from_str("").is_err());
+        assert!(GenomeRequestType::from_str("CARD").is_err()); // case sensitive
+    }
 
     #[test]
     fn test_taxon_name_url() {
