@@ -147,226 +147,206 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests { /*
-            use super::*;
-            use mockito::Server;
-            use std::fs;
+mod tests {
+    use super::*;
+    use mockito::Server;
+    use std::fs;
 
-            #[test]
-            fn test_get_taxon_name_with_output() -> Result<()> {
-                let args = TaxonArgs {
-                    name: vec!["g__Escherichia".to_string()],
-                    output: Some("output.json".to_string()),
-                    is_whole_words_matching: false,
-                    search: false,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
+    #[test]
+    fn test_get_taxon_name_with_output() -> Result<()> {
+        let args = TaxonArgs {
+            name: Some("g__Escherichia".to_string()),
+            out: Some("output.json".to_string()),
+            word: false,
+            search: false,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let actual_output = args.out.clone();
+        get_taxon_name(args)?;
 
-                get_taxon_name(args.clone())?;
+        let expected_output = fs::read_to_string("output.json")?;
+        let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)?;
 
-                let expected_output = fs::read_to_string("output.json")?;
-                let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)?;
+        let actual_output = fs::read_to_string(actual_output.unwrap())?;
+        let actual_taxon_data: TaxonResult = serde_json::from_str(&actual_output)?;
 
-                let actual_output = args.get_output().unwrap();
-                let actual_output = fs::read_to_string(actual_output)?;
-                let actual_taxon_data: TaxonResult = serde_json::from_str(&actual_output)?;
+        assert_eq!(expected_taxon_data, actual_taxon_data);
 
-                assert_eq!(expected_taxon_data, actual_taxon_data);
+        // Clean up the output file
+        fs::remove_file("output.json")?;
 
-                // Clean up the output file
-                fs::remove_file("output.json")?;
+        Ok(())
+    }
 
-                Ok(())
-            }
+    #[test]
+    fn test_get_taxon_name_without_output() -> Result<()> {
+        let args = TaxonArgs {
+            name: Some("g__Escherichia".to_string()),
+            out: None,
+            word: false,
+            search: false,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
 
-            #[test]
-            fn test_get_taxon_name_without_output() -> Result<()> {
-                let args = TaxonArgs {
-                    name: vec!["g__Escherichia".to_string()],
-                    output: None,
-                    is_whole_words_matching: false,
-                    search: false,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
+        get_taxon_name(args)?;
 
-                get_taxon_name(args)?;
+        Ok(())
+    }
 
-                Ok(())
-            }
+    #[test]
+    fn test_get_taxon_name_not_found() -> Result<()> {
+        let args = TaxonArgs {
+            name: Some("UnknownTaxonName".to_string()),
+            out: None,
+            word: true,
+            search: false,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let result = get_taxon_name(args);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Taxon UnknownTaxonName not found"));
+        Ok(())
+    }
 
-            #[test]
-            fn test_get_taxon_name_not_found() -> Result<()> {
-                let taxon_args = TaxonArgs {
-                    name: vec!["UnknownTaxonName".to_string()],
-                    output: None,
-                    is_whole_words_matching: true,
-                    search: false,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
-                let result = get_taxon_name(taxon_args);
-                assert!(result.is_err());
-                let err = result.unwrap_err().to_string();
-                assert!(err.contains("Taxon UnknownTaxonName not found"));
-                Ok(())
-            }
+    #[test]
+    fn test_get_taxon_name_server_error() {
+        let mut s = Server::new();
+        let url = s.url();
+        s.mock("GET", url.as_str()).with_status(450).create();
+        let args = TaxonArgs {
+            name: Some("UnknownTaxonName".to_string()),
+            out: None,
+            word: true,
+            search: false,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let result = get_taxon_name(args);
+        assert!(result.is_err());
+    }
 
-            #[test]
-            fn test_get_taxon_name_server_error() {
-                let mut s = Server::new();
-                let url = s.url();
-                s.mock("GET", url.as_str()).with_status(450).create();
-                let taxon_args = TaxonArgs {
-                    name: vec!["UnknownTaxonName".to_string()],
-                    output: None,
-                    is_whole_words_matching: true,
-                    search: false,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
-                let result = get_taxon_name(taxon_args);
-                assert!(result.is_err());
-            }
+    #[test]
+    fn search_taxon_should_return_error_for_nonexistent_taxon() {
+        let args = TaxonArgs {
+            name: Some("nonexistent_taxon".to_string()),
+            out: None,
+            word: false,
+            search: true,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "No match found for nonexistent_taxon".to_string()
+        );
+    }
 
-            #[test]
-            fn test_taxon_search_result_filter() {
-                let mut taxon_search_result = TaxonSearchResult {
-                    matches: vec!["abc".to_string(), "abcd".to_string()],
-                };
-                taxon_search_result.filter("abc".to_string());
-                assert_eq!(taxon_search_result.matches, vec!["abc".to_string()]);
-            }
+    #[test]
+    fn search_taxon_should_print_raw_output_to_stdout() {
+        let args = TaxonArgs {
+            name: Some("g__Aminobacter".to_string()),
+            out: None,
+            word: false,
+            search: true,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_ok());
+    }
 
-            #[test]
-            fn test_filter() {
-                let mut result = TaxonSearchResult {
-                    matches: vec!["dog".to_string(), "cat".to_string(), "rat".to_string()],
-                };
-                result.filter("cat".to_string());
-                assert_eq!(result.matches, vec!["cat".to_string()]);
-            }
+    #[test]
+    fn taxon_should_print_raw_output_to_stdout() {
+        let args = TaxonArgs {
+            name: Some("g__Aminobacter".to_string()),
+            out: None,
+            word: false,
+            search: false,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_ok());
+    }
 
-            #[test]
-            fn test_filter_no_match() {
-                let mut result = TaxonSearchResult {
-                    matches: vec!["dog".to_string(), "cat".to_string(), "rat".to_string()],
-                };
-                result.filter("bird".to_string());
-                let v: Vec<String> = Vec::new();
-                assert_eq!(result.matches, v);
-            }
+    #[test]
+    fn search_taxon_should_write_pretty_output_to_file() {
+        let args = TaxonArgs {
+            name: Some("g__Aminobacter".to_string()),
+            out: Some("test_search.json".to_string()),
+            word: false,
+            search: true,
+            all: false,
+            genomes: false,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
+        let result = search_taxon(args);
+        assert!(result.is_ok());
 
-            #[test]
-            fn search_taxon_should_return_error_for_nonexistent_taxon() {
-                let args = TaxonArgs {
-                    name: vec!["nonexistent_taxon".to_string()],
-                    is_whole_words_matching: false,
-                    output: None,
-                    search: true,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
-                let result = search_taxon(args);
-                assert!(result.is_err());
-                assert_eq!(
-                    result.unwrap_err().to_string(),
-                    "No match found for nonexistent_taxon".to_string()
-                );
-            }
+        // Check that the output file was created and contains the taxon name
+        let file_contents = std::fs::read_to_string("test_search.json").unwrap();
+        assert!(file_contents.contains("g__Aminobacter"));
+        std::fs::remove_file("test_search.json").unwrap();
+    }
 
-            #[test]
-            fn search_taxon_should_print_raw_output_to_stdout() {
-                let args = TaxonArgs {
-                    name: vec!["g__Aminobacter".to_string()],
-                    is_whole_words_matching: false,
-                    output: None,
-                    search: true,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
-                let result = search_taxon(args);
-                assert!(result.is_ok());
-            }
+    #[test]
+    fn test_get_genomes_with_output() -> Result<()> {
+        let args = TaxonArgs {
+            name: Some("g__Aminobacter".to_string()),
+            out: Some("output.json".to_string()),
+            word: false,
+            search: false,
+            all: false,
+            genomes: true,
+            reps: false,
+            insecure: true,
+            file: None,
+        };
 
-            #[test]
-            fn taxon_should_print_raw_output_to_stdout() {
-                let args = TaxonArgs {
-                    name: vec!["g__Aminobacter".to_string()],
-                    is_whole_words_matching: false,
-                    output: None,
-                    search: false,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
-                let result = search_taxon(args);
-                assert!(result.is_ok());
-            }
+        let actual_output = args.out.clone();
 
-            #[test]
-            fn search_taxon_should_write_pretty_output_to_file() {
-                let args = TaxonArgs {
-                    name: vec!["g__Aminobacter".to_string()],
-                    is_whole_words_matching: false,
-                    output: Some("test_search.json".to_string()),
-                    search: true,
-                    search_all: false,
-                    genomes: false,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
-                let result = search_taxon(args);
-                assert!(result.is_ok());
+        get_taxon_genomes(args)?;
 
-                // Check that the output file was created and contains the taxon name
-                let file_contents = std::fs::read_to_string("test_search.json").unwrap();
-                assert!(file_contents.contains("g__Aminobacter"));
-                std::fs::remove_file("test_search.json").unwrap();
-            }
+        let expected_output = fs::read_to_string("output.json")?;
+        let expected_taxon_data: TaxonGenomes = serde_json::from_str(&expected_output)?;
 
-            #[test]
-            fn test_get_genomes_with_output() -> Result<()> {
-                let args = TaxonArgs {
-                    name: vec!["g__Escherichia".to_string()],
-                    output: Some("output.json".to_string()),
-                    is_whole_words_matching: false,
-                    search: false,
-                    search_all: false,
-                    genomes: true,
-                    reps_only: false,
-                    disable_certificate_verification: true,
-                };
+        let actual_output = fs::read_to_string(actual_output.unwrap())?;
+        let actual_taxon_data: TaxonGenomes = serde_json::from_str(&actual_output)?;
 
-                let actual_output = args.get_output().unwrap();
+        assert_eq!(expected_taxon_data, actual_taxon_data);
 
-                get_taxon_genomes(args)?;
+        // Clean up the output file
+        fs::remove_file("output.json")?;
 
-                let expected_output = fs::read_to_string("output.json")?;
-                let expected_taxon_data: TaxonGenomes = serde_json::from_str(&expected_output)?;
-
-                let actual_output = fs::read_to_string(actual_output)?;
-                let actual_taxon_data: TaxonGenomes = serde_json::from_str(&actual_output)?;
-
-                assert_eq!(expected_taxon_data, actual_taxon_data);
-
-                // Clean up the output file
-                fs::remove_file("output.json")?;
-
-                Ok(())
-            }*/
+        Ok(())
+    }
 }

@@ -413,111 +413,92 @@ fn print_field(name: &str, field: &Option<String>) {
 }
 
 #[cfg(test)]
-mod tests { /*
-            use super::*;
-            use std::path::Path;
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::NamedTempFile;
 
-            #[test]
-            fn test_genome_gtdb_card_1() {
-                assert!(get_genome_card(vec!["GCA_001512625.1".to_string()], true, None).is_ok());
-            }
+    #[test]
+    fn test_compare_field_changes() {
+        let mut notes = vec![];
+        compare_field(
+            &Some("A".to_string()),
+            &Some("B".to_string()),
+            "Domain",
+            &mut notes,
+        );
+        assert_eq!(notes, vec!["Domain: A -> B"]);
 
-            #[test]
-            fn test_genome_gtdb_metadata_1() {
-                assert!(get_genome_metadata(vec!["GCA_001512625.1".to_string()], true, None).is_ok());
-            }
+        let mut notes = vec![];
+        compare_field(&Some("A".to_string()), &None, "Domain", &mut notes);
+        assert_eq!(notes, vec!["Domain removed (was A)"]);
 
-            #[test]
-            fn test_genome_gtdb_metadata_out() {
-                assert!(get_genome_metadata(
-                    vec!["GCA_001512625.1".to_string()],
-                    true,
-                    Some(String::from("genome"))
-                )
-                .is_ok());
-                std::fs::remove_file(Path::new("genome")).unwrap();
-            }
+        let mut notes = vec![];
+        compare_field(&None, &Some("B".to_string()), "Domain", &mut notes);
+        assert_eq!(notes, vec!["Domain added: B"]);
 
-            #[test]
-            fn test_genome_gtdb_metadata_out_1() {
-                assert!(get_genome_metadata(
-                    vec!["GCA_001512625.1".to_string()],
-                    true,
-                    Some(String::from("genome1"))
-                )
-                .is_ok());
-                std::fs::remove_file(Path::new("genome1")).unwrap();
-            }
+        let mut notes = vec![];
+        compare_field(
+            &Some("A".to_string()),
+            &Some("A".to_string()),
+            "Domain",
+            &mut notes,
+        );
+        assert!(notes.is_empty());
+    }
 
-            #[test]
-            fn test_genome_gtdb_card_out_1() {
-                assert!(get_genome_card(
-                    vec!["GCA_001512625.1".to_string()],
-                    true,
-                    Some(String::from("genome2"))
-                )
-                .is_ok());
-                std::fs::remove_file(Path::new("genome2")).unwrap();
-            }
+    #[test]
+    fn test_compute_taxonomic_changes() {
+        let records = vec![
+            History {
+                release: Some("R1".into()),
+                d: Some("Bacteria".into()),
+                p: Some("Firmicutes".into()),
+                c: None,
+                o: None,
+                f: Some("Lactobacillaceae".into()),
+                g: None,
+                s: Some("SpeciesA".into()),
+            },
+            History {
+                release: Some("R2".into()),
+                d: Some("Bacteria".into()),
+                p: Some("Firmicutes".into()),
+                c: None,
+                o: None,
+                f: Some("Lactobacillaceae".into()),
+                g: None,
+                s: Some("SpeciesB".into()), // changed species
+            },
+        ];
 
-            #[test]
-            fn test_genome_gtdb_card_out_2() {
-                assert!(get_genome_card(
-                    vec!["GCA_001512625.1".to_string()],
-                    true,
-                    Some(String::from("genome3"))
-                )
-                .is_ok());
-                std::fs::remove_file(Path::new("genome3")).unwrap();
-            }
+        let changes = compute_taxonomic_changes(&records);
+        assert!(changes.contains_key("R1")); // from R2 to R1 (in reverse)
+        let notes = changes.get("R1").unwrap();
+        assert_eq!(notes, &vec!["Species: SpeciesB -> SpeciesA"]);
+    }
 
-            #[test]
-            fn test_genome_gtdb_tx_out_1() {
-                assert!(get_genome_taxon_history(
-                    vec!["GCA_001512625.1".to_string()],
-                    true,
-                    Some(String::from("genome4"))
-                )
-                .is_ok());
-                std::fs::remove_file(Path::new("genome4")).unwrap();
-            }
+    #[test]
+    fn test_write_csv_output() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string();
 
-            #[test]
-            fn test_genome_gtdb_tx_out_2() {
-                assert!(get_genome_taxon_history(
-                    vec!["GCA_001512625.1".to_string()],
-                    true,
-                    Some(String::from("genome5"))
-                )
-                .is_ok());
-                std::fs::remove_file(Path::new("genome5")).unwrap();
-            }
+        let records = vec![History {
+            release: Some("R1".into()),
+            d: Some("Bacteria".into()),
+            p: Some("Firmicutes".into()),
+            c: None,
+            o: None,
+            f: Some("Lactobacillaceae".into()),
+            g: None,
+            s: Some("SpeciesA".into()),
+        }];
 
-            #[test]
-            fn test_genome_gtdb_metadata_2() {
-                assert!(get_genome_metadata(vec!["GCA_001512625.1".to_string()], true, None).is_ok());
-            }
+        let changes: HashMap<String, Vec<String>> = HashMap::new();
+        write_csv_output(&path, &records, &changes).unwrap();
 
-            #[test]
-            fn test_genome_gtdb_taxon_history_1() {
-                assert!(get_genome_taxon_history(vec!["GCA_001512625.1".to_string()], true, None).is_ok());
-            }
-
-            #[test]
-            fn test_genome_gtdb_taxon_history_2() {
-                assert!(get_genome_taxon_history(vec!["GCA_001512625.1".to_string()], true, None).is_ok());
-            }
-
-            #[test]
-            fn test_genome_gtdb_4() {
-                assert!(get_genome_card(vec!["".to_string()], true, None).is_err())
-            }
-
-            #[test]
-            fn test_response_failure() {
-                assert!(
-                    get_genome_card(vec!["&&&&^^^^^||||".to_string()], true, None).is_err(),
-                    "Failed to get response from GTDB API"
-                );
-            }*/
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains("release,domain,phylum,family,species,changes"));
+        assert!(content.contains("initial classification"));
+    }
 }

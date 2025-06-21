@@ -384,7 +384,6 @@ fn whole_word_match(haystack: &str, needle: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    /*
     use super::*;
     use crate::search::SearchResult;
     use crate::utils::SearchField;
@@ -509,92 +508,115 @@ mod tests {
         };
         assert_eq!(results.rows.len(), 3);
     }
-        #[test]
-        fn test_search_id() {
-            let mut args = SearchArgs::new();
-            args.add_needle("g__Azorhizobium");
-            args.set_id(true);
-            args.set_output(Some("test3.txt".to_string()));
-            args.set_outfmt("json".to_string());
-            args.set_disable_certificate_verification(true);
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test3.txt").unwrap();
-            assert_eq!(
-                r#"GCA_002279595.1
-    GCA_002280795.1
-    GCA_002280945.1
-    GCA_002281175.1
-    GCA_002282175.1
-    GCA_023405075.1
-    GCA_023448105.1
-    GCF_000010525.1
-    GCF_000473085.1
-    GCF_004364705.1
-    GCF_014635325.1
-    GCF_036600855.1
-    GCF_036600875.1
-    GCF_036600895.1
-    GCF_036600915.1
-    GCF_943371865.1"#
-                    .to_string(),
-                expected
-            );
-            std::fs::remove_file("test3.txt").unwrap();
-        }
+    #[test]
+    fn test_search_id() {
+        let args = SearchArgs {
+            query: Some("g__Azorhizobium".to_string()),
+            word: false,
+            field: String::from("all"),
+            rep: false,
+            r#type: false,
+            id: true,
+            count: false,
+            file: None,
+            outfmt: String::from("json"),
+            out: Some("test3.txt".to_string()),
+            insecure: true,
+        };
+        let res = search(&args);
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test3.txt").unwrap();
+        assert_eq!(
+            r#"GCA_002279595.1
+GCA_002280795.1
+GCA_002280945.1
+GCA_002281175.1
+GCA_002282175.1
+GCA_023405075.1
+GCA_023448105.1
+GCF_000010525.1
+GCF_000473085.1
+GCF_004364705.1
+GCF_014635325.1
+GCF_036600855.1
+GCF_036600875.1
+GCF_036600895.1
+GCF_036600915.1
+GCF_943371865.1"#
+                .to_string(),
+            expected
+        );
+        std::fs::remove_file("test3.txt").unwrap();
+    }
 
-        #[test]
-        fn test_partial_search_count() {
-            let mut args = cli::search::SearchArgs::new();
-            args.add_needle("g__Azorhizobium");
-            args.set_count(true);
-            args.set_disable_certificate_verification(true);
-            args.set_output(Some("test.txt".to_string()));
-            args.set_outfmt("json".to_string());
-            let res = search(args.clone());
-            assert!(res.is_ok());
-            let expected = std::fs::read_to_string("test.txt").unwrap();
-            assert_eq!("16".to_string(), expected);
-            std::fs::remove_file("test.txt").unwrap();
-        }
+    #[test]
+    fn test_partial_search_count() {
+        let args = SearchArgs {
+            query: Some("g__Azorhizobium".to_string()),
+            word: false,
+            field: String::from("all"),
+            rep: false,
+            r#type: false,
+            id: false,
+            count: true,
+            file: None,
+            outfmt: String::from("json"),
+            out: Some("test.txt".to_string()),
+            insecure: true,
+        };
+        let res = search(&args);
+        assert!(res.is_ok());
+        let expected = std::fs::read_to_string("test.txt").unwrap();
+        assert_eq!("16".to_string(), expected);
+        std::fs::remove_file("test.txt").unwrap();
+    }
 
-        #[test]
-        fn test_all_match() {
-            let line = "GCA_001512625.1,Clostridiales bacterium DTU036,d__Bacteria; p__Bacillota; c__Clostridia; o__Eubacteriales; f__; g__; s__,d__Bacteria; p__Bacillota_A; c__Clostridia; o__Peptostreptococcales; f__Acidaminobacteraceae; g__DTU036; s__DTU036 sp001512625,True,False";
-            let fields: Vec<&str> = line.split(",").collect();
-            assert!(all_match(fields, "c__Clostridia"));
-        }
+    #[test]
+    fn test_all_match() {
+        let line = "GCA_001512625.1,Clostridiales bacterium DTU036,d__Bacteria; p__Bacillota; c__Clostridia; o__Eubacteriales; f__; g__; s__,d__Bacteria; p__Bacillota_A; c__Clostridia; o__Peptostreptococcales; f__Acidaminobacteraceae; g__DTU036; s__DTU036 sp001512625,True,False";
+        let fields: Vec<&str> = line.split(",").collect();
+        assert!(all_match(fields, "c__Clostridia"));
+    }
 
-        // Dummy ureq::Response-like type
-        struct MockResponse {
-            body: Vec<u8>,
-        }
+    // Dummy ureq::Response-like type
+    struct MockResponse {
+        body: Vec<u8>,
+    }
 
-        impl MockResponse {
-            fn new_from_str(s: &str) -> Self {
-                Self {
-                    body: s.as_bytes().to_vec(),
-                }
+    impl MockResponse {
+        fn new_from_str(s: &str) -> Self {
+            Self {
+                body: s.as_bytes().to_vec(),
             }
-
-            fn to_ureq_response(self) -> Response {
-                // `ureq::Response` is not mockable directly; simulate using `ureq::Response::into_reader()`
-                ureq::Response::new(200, "OK", std::str::from_utf8(&self.body).unwrap()).unwrap()
-            }
         }
 
-        #[test]
-        fn test_process_xsv_response_too_large() {
-            let big_str = "a".repeat(INTO_STRING_LIMIT + 1);
-            let response = MockResponse::new_from_str(&big_str).to_ureq_response();
+        fn to_ureq_response(self) -> Response {
+            // `ureq::Response` is not mockable directly; simulate using `ureq::Response::into_reader()`
+            ureq::Response::new(200, "OK", std::str::from_utf8(&self.body).unwrap()).unwrap()
+        }
+    }
 
-            let args = cli::search::SearchArgs {
-                is_whole_words_matching: true,
-                ..Default::default()
-            };
+    #[test]
+    fn test_process_xsv_response_too_large() {
+        let big_str = "a".repeat(INTO_STRING_LIMIT + 1);
+        let response = MockResponse::new_from_str(&big_str).to_ureq_response();
 
-            let result = process_xsv_response(response, "ACC123", &args, |_, _| {});
-            assert!(result.is_err());
-            assert!(format!("{}", result.unwrap_err()).contains("GTDB response is too big"));
-        }*/
+        let args = SearchArgs {
+            query: Some("g__Azorhizobium".to_string()),
+            word: true,
+            field: String::from("all"),
+            rep: false,
+            r#type: false,
+            id: false,
+            count: false,
+            file: None,
+            outfmt: String::from("json"),
+            out: None,
+            insecure: true,
+        };
+
+        let result = process_xsv_response(response, "ACC123", &args, |_, _| {});
+        assert!(result.is_err());
+        assert!(format!("{}", result.unwrap_err()).contains("GTDB response is too big"));
+    }
 }
