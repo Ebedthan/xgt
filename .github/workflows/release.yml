@@ -96,7 +96,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/**/*.{tar.xz,zip,sha256}
+            dist/**/*.tar.xz
+            dist/**/*.zip
+            dist/**/*.sha256
           tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
