@@ -37,10 +37,10 @@ xgt --help
 
 Download binaries for your platform from the [releases page](https://github.com/Ebedthan/xgt/releases):
 
-* macOS (Apple Silicon): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-aarch64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-aarch64-apple-darwin.tar.xz.sha256)
-* macOS (Intel): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-apple-darwin.tar.xz.sha256)
-* Linux (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-unknown-linux-gnu.tar.xz.sha256)
-* Windows (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.4.2/xgt-x86_64-pc-windows-msvc.zip.sha256)
+* macOS (Apple Silicon): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-aarch64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-aarch64-apple-darwin.tar.xz.sh256)
+* macOS (Intel): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-x86_64-apple-darwin.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-x86_64-apple-darwin.tar.xz.sha256)
+* Linux (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-x86_64-unknown-linux-gnu.tar.xz) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-x86_64-unknown-linux-gnu.tar.xz.sha256)
+* Windows (x86\_64): [Download](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-x86_64-pc-windows-msvc.zip) • [Checksum](https://github.com/Ebedthan/xgt/releases/download/v0.5.0/xgt-v0.5.0-x86_64-pc-windows-msvc.zip.sha256)
 
 
 ## 💡 Usage Examples
