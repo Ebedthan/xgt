@@ -31,11 +31,6 @@ lto = 'thin'
 panic = 'abort'
 incremental = false
 
-# The profile that 'cargo dist' will build with
-[profile.dist]
-inherits = "release"
-lto = "thin"
-
 [[bin]]
 name = "xgt"
 path = "src/main.rs"
