@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::OpenOptions,
-    io::{self, Write},
+    io::{self, Result as IoResult, Write},
 };
 use ureq::Agent;
 
@@ -189,7 +189,7 @@ pub struct GenomeMetadata {
 }
 
 // GTDB Genome history API structs
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
 pub struct History {
     release: Option<String>,
     d: Option<String>,
@@ -283,7 +283,8 @@ fn process_taxon_history(accession: &str, agent: &Agent, out: &Option<String>) -
     if let Some(path) = out {
         write_csv_output(path, &records, &changes)?;
     } else {
-        print_timeline(accession, &records, &changes);
+        let writer = std::io::stdout();
+        print_timeline(writer, accession, &records, &changes)?;
     }
 
     Ok(())
@@ -351,11 +352,21 @@ fn write_csv_output(
     Ok(())
 }
 
-fn print_timeline(accession: &str, records: &[History], changes: &HashMap<String, Vec<String>>) {
-    println!(
+fn print_field<W: Write>(out: &mut W, field: &str, value: &String) -> IoResult<()> {
+    writeln!(out, "  - **{}**: {}", field, value)
+}
+
+fn print_timeline<W: Write>(
+    mut out: W,
+    accession: &str,
+    records: &[History],
+    changes: &HashMap<String, Vec<String>>,
+) -> IoResult<()> {
+    writeln!(
+        out,
         "## Genome {} Classification Timeline (Newest → Oldest)\n",
         accession
-    );
+    )?;
 
     for (i, rec) in records.iter().enumerate() {
         let is_first = i == records.len() - 1;
@@ -363,25 +374,27 @@ fn print_timeline(accession: &str, records: &[History], changes: &HashMap<String
         let has_changes = changes.contains_key(rel);
 
         if is_first || has_changes {
-            println!("### {}", rel);
-            println!("- **Taxonomy**:");
-            print_field("Domain", &rec.d);
-            print_field("Phylum", &rec.p);
-            print_field("Family", &rec.f);
-            print_field("Species", &rec.s);
+            writeln!(out, "### {}", rel)?;
+            writeln!(out, "- **Taxonomy**:")?;
+            print_field(&mut out, "Domain", &rec.d.clone().unwrap_or_default())?;
+            print_field(&mut out, "Phylum", &rec.p.clone().unwrap_or_default())?;
+            print_field(&mut out, "Family", &rec.f.clone().unwrap_or_default())?;
+            print_field(&mut out, "Species", &rec.s.clone().unwrap_or_default())?;
 
             if has_changes {
-                println!("- **Changes**:");
+                writeln!(out, "- **Changes**:")?;
                 for note in &changes[rel] {
-                    println!("  - {}", note);
+                    writeln!(out, "  - {}", note)?;
                 }
             } else if is_first {
-                println!("- Initial classification.");
+                writeln!(out, "- Initial classification.")?;
             }
 
-            println!();
+            writeln!(out)?;
         }
     }
+
+    Ok(())
 }
 
 // Helper to compare fields
@@ -405,18 +418,64 @@ fn compare_field(
     }
 }
 
-// Helper: Print a field if it exists
-fn print_field(name: &str, field: &Option<String>) {
-    if let Some(value) = field {
-        println!("  - {}: {}", name, value);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use std::fs;
     use tempfile::NamedTempFile;
+
+    fn example_history() -> Vec<History> {
+        vec![
+            History {
+                release: Some("R07-RS207".into()),
+                d: Some("Bacteria".into()),
+                p: Some("Firmicutes".into()),
+                f: Some("Bacillaceae".into()),
+                s: Some("Bacillus licheniformis".into()),
+                ..Default::default()
+            },
+            History {
+                release: Some("R06-RS202".into()),
+                d: Some("Bacteria".into()),
+                p: Some("Firmicutes".into()),
+                f: Some("Bacillaceae".into()),
+                s: Some("Bacillus subtilis".into()),
+                ..Default::default()
+            },
+        ]
+    }
+
+    #[test]
+    fn test_print_timeline_with_changes() {
+        let records = example_history();
+        let changes = compute_taxonomic_changes(&records);
+
+        let mut buffer = Vec::new();
+        print_timeline(&mut buffer, "GCF_123456.1", &records, &changes).unwrap();
+
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("## Genome GCF_123456.1 Classification Timeline"));
+        assert!(output.contains("### R06-RS202"));
+        assert!(output.contains("- Initial classification."));
+        assert!(output.contains("### R07-RS207"));
+        assert!(output.contains("- **Changes**:"));
+        assert!(output.contains("  - Species: Bacillus subtilis -> Bacillus licheniformis"));
+    }
+
+    #[test]
+    fn test_print_timeline_no_changes() {
+        let records = example_history();
+        let changes = HashMap::new();
+
+        let mut buffer = Vec::new();
+        print_timeline(&mut buffer, "GCF_000000.0", &records, &changes).unwrap();
+
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("### R06-RS202"));
+        assert!(output.contains("- Initial classification."));
+        assert!(!output.contains("### R07-RS207")); // Only last record should be printed
+    }
 
     #[test]
     fn test_compare_field_changes() {
