@@ -12,7 +12,7 @@
 
 ## 🧭 What is `xgt`?
 
-`xgt` is a blazing-fast command-line utility written in [Rust](https://www.rust-lang.org/) for querying and parsing data from the [GTDB](https://gtdb.ecogenomic.org/) (Genome Taxonomy Database). It mirrors core GTDB API functions and adds flexible parsing, metadata retrieval, and taxonomy exploration tools—making GTDB data more accessible for researchers and developers.
+`xgt` is a blazing-fast command-line utility written in [Rust](https://www.rust-lang.org/) for querying and parsing data from the [GTDB](https://gtdb.ecogenomic.org/) (Genome Taxonomy Database). It mirrors core GTDB API functions and adds flexible parsing, metadata retrieval, and taxonomy exploration tools-making GTDB data more accessible for researchers and developers.
 
 
 ## ✨ Key Features
