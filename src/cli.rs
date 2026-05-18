@@ -56,7 +56,7 @@ pub struct SearchArgs {
     #[arg(short, long)]
     pub count: bool,
 
-    /// Only print a count of matched genomes
+    /// Read queries from FILE, one per line. Use '-' to read from stdin.
     #[arg(short, long, value_name = "FILE")]
     pub file: Option<String>,
 
@@ -79,7 +79,7 @@ pub struct GenomeArgs {
     #[arg(conflicts_with = "file")]
     pub accession: Option<String>,
 
-    /// Search from name in FILE
+    /// Read accessions from FILE, one per line. Use '-' to read from stdin.
     #[arg(short, long, value_name = "FILE")]
     pub file: Option<String>,
 
@@ -106,7 +106,7 @@ pub struct TaxonArgs {
     #[arg(value_parser = is_valid_taxon, conflicts_with = "file")]
     pub name: Option<String>,
 
-    /// Search from name in FILE
+    /// Read taxon names from FILE, one per line. Use '-' to read from stdin.
     #[arg(short, long, value_name = "FILE")]
     pub file: Option<String>,
 

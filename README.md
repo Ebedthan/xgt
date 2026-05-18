@@ -7,9 +7,6 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)](https://github.com/Ebedthan/xgt/blob/main/LICENSE-APACHE)
 
-> ⚠️ **Note**: Due to current SSL issues with the GTDB API, please use the `-k/--insecure` flag with all commands. Disabling SSL verification is not a default due to security concerns.
-
-
 ## 🧭 What is `xgt`?
 
 `xgt` is a blazing-fast command-line utility written in [Rust](https://www.rust-lang.org/) for querying and parsing data from the [GTDB](https://gtdb.ecogenomic.org/) (Genome Taxonomy Database). It mirrors core GTDB API functions and adds flexible parsing, metadata retrieval, and taxonomy exploration tools-making GTDB data more accessible for researchers and developers.

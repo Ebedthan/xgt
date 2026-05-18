@@ -151,7 +151,7 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             search_field: args.field.clone(),
             gtdb_species_rep_only: args.rep,
             ncbi_type_material_only: args.r#type,
-            output_format: args.outfmt.clone(),
+            output_format: "json".into(),
             page: 1,
             items_per_page: 1000,
             sort_by: "".into(),
@@ -166,11 +166,11 @@ pub fn search(args: &SearchArgs) -> Result<()> {
         )?;
 
         let output_result = if args.id || args.count {
-            handle_id_or_count_response(response, &query, args)
+            handle_id_or_count_response(&agent, response, &query, args)
         } else {
             match OutputFormat::from(args.outfmt.clone()) {
-                OutputFormat::Json => handle_json_response(response, &query, args),
-                _ => handle_xsv_response(response, &query, args),
+                OutputFormat::Json => handle_json_response(&agent, response, &query, args),
+                _ => handle_xsv_response(&agent, response, &query, args),
             }
         };
 
@@ -186,11 +186,12 @@ pub fn search(args: &SearchArgs) -> Result<()> {
 // when querying data related to large genus like Escherichia
 // See cli/search.rs#L166-L178
 fn handle_id_or_count_response(
+    agent: &ureq::Agent,
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
-    process_response(response, needle, args, |search_result| {
+    process_response(agent, response, needle, args, |search_result| {
         if args.count {
             Ok(search_result.get_total_rows().to_string())
         } else {
@@ -205,6 +206,7 @@ fn handle_id_or_count_response(
 }
 
 fn process_response<F>(
+    agent: &ureq::Agent,
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
@@ -213,8 +215,10 @@ fn process_response<F>(
 where
     F: FnOnce(&SearchResults) -> Result<String>,
 {
-    let mut search_result: SearchResults = response.into_body().read_json()?;
-    if args.count {
+    let first_page: SearchResults = response.into_body().read_json()?;
+    let mut search_result = fetch_all_pages(agent, first_page, args, needle)?;
+
+    if args.word {
         search_result.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
     }
     ensure!(
@@ -224,29 +228,114 @@ where
     format_fn(&search_result)
 }
 
+/// Fetch all pages for a search query and return the accumulated SearchResults.
+/// The first response has already been fetched and deserialized; subsequent pages
+/// are fetched using the agent and the same search parameters, incrementing page number.
+fn fetch_all_pages(
+    agent: &ureq::Agent,
+    first_page: SearchResults,
+    args: &SearchArgs,
+    query: &str,
+) -> Result<SearchResults> {
+    const ITEMS_PER_PAGE: u32 = 1000;
+
+    let total = first_page.total_rows;
+    let mut accumulated = first_page;
+
+    if total <= ITEMS_PER_PAGE {
+        return Ok(accumulated);
+    }
+
+    let total_pages = (total as f64 / ITEMS_PER_PAGE as f64).ceil() as u16;
+
+    for page in 2..=total_pages {
+        let search = GtdbApiRequest::Search {
+            query: query.to_string(),
+            search_field: args.field.clone(),
+            gtdb_species_rep_only: args.rep,
+            ncbi_type_material_only: args.r#type,
+            output_format: "json".into(), // always JSON for pagination
+            page,
+            items_per_page: ITEMS_PER_PAGE,
+            sort_by: "".into(),
+            sort_desc: false,
+            filter_text: "".into(),
+        };
+
+        let response = utils::fetch_data(
+            agent,
+            &search.to_url(),
+            format!("Server error fetching page {}", page),
+        )?;
+
+        let page_result: SearchResults = response.into_body().read_json()?;
+        accumulated.rows.extend(page_result.rows);
+    }
+
+    accumulated.total_rows = accumulated.rows.len() as u32;
+    Ok(accumulated)
+}
+
 fn handle_json_response(
+    agent: &ureq::Agent,
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
-    process_response(response, needle, args, |search_result| {
+    process_response(agent, response, needle, args, |search_result| {
         serde_json::to_string_pretty(&search_result.rows).map_err(Into::into)
     })
 }
 
 fn handle_xsv_response(
+    agent: &ureq::Agent,
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
-    process_xsv_response(response, needle, args, |result, needle| {
-        filter_xsv(
-            result,
-            needle,
-            SearchField::from(args.field.clone()),
-            OutputFormat::from(args.outfmt.clone()),
+    // Deserialize first page as JSON to get total rows, then paginate
+    let first_page: SearchResults = response.into_body().read_json()?;
+    let mut all_results = fetch_all_pages(agent, first_page, args, needle)?;
+
+    if args.word {
+        all_results.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
+    }
+
+    ensure!(
+        all_results.get_total_rows() != 0,
+        "No matching data found in GTDB"
+    );
+
+    // Serialize to the requested XSV format from the accumulated rows
+    let outfmt = OutputFormat::from(args.outfmt.clone());
+    let sep = if outfmt == OutputFormat::Tsv {
+        "\t"
+    } else {
+        ","
+    };
+
+    let header = format!(
+            "accession{sep}ncbi_organism_name{sep}ncbi_taxonomy{sep}gtdb_taxonomy{sep}gtdb_species_representative{sep}ncbi_type_material"
         );
-    })
+
+    let mut lines = vec![header];
+    for row in &all_results.rows {
+        lines.push(format!(
+            "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
+            row.accession.as_deref().unwrap_or(""),
+            row.ncbi_org_name.as_deref().unwrap_or(""),
+            row.ncbi_taxonomy.as_deref().unwrap_or(""),
+            row.gtdb_taxonomy.as_deref().unwrap_or(""),
+            row.is_gtdb_species_rep
+                .map(|b| if b { "True" } else { "False" })
+                .unwrap_or(""),
+            row.is_ncbi_type_material
+                .map(|b| if b { "True" } else { "False" })
+                .unwrap_or(""),
+        ));
+    }
+
+    Ok(lines.join("\r\n") + "\r\n")
 }
 
 fn process_xsv_response<F>(
