@@ -321,12 +321,6 @@ fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outf
                 if let Some(idx) = index {
                     if let Some(field) = fields.get(idx) {
                         return if is_valid_taxonomy(field) {
-                            println!(
-                                "Field: {}, Needle: {}, Result: {}",
-                                field,
-                                needle,
-                                whole_taxon_match(field, needle)
-                            );
                             whole_taxon_match(field, needle)
                         } else {
                             whole_word_match(field, needle)
