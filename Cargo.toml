@@ -7,7 +7,7 @@ description = "xgt enables efficient querying and parsing of GTDB data"
 homepage = "https://github.com/Ebedthan/xgt"
 categories = ["command-line-utilities"]
 keywords = ["bioinformatics"]
-rust-version = "1.70.0"
+rust-version = "1.85"
 repository = "https://github.com/Ebedthan/xgt"
 
 [dependencies]
@@ -16,8 +16,7 @@ clap = { version = "4.5.35", features = ["derive"] }
 regex = { version = "1.11" }
 serde = { version = "1.0.153", features = ["derive"] }
 serde_json = "1.0.94"
-ureq = { version = "2.6.2", features = ["json", "native-tls"] }
-native-tls = "0.2"
+ureq = { version = "3.3.0", features = ["json"] }
 
 [dev-dependencies]
 mockito = "1.7"

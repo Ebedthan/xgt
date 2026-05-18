@@ -186,7 +186,7 @@ pub fn search(args: &SearchArgs) -> Result<()> {
 // when querying data related to large genus like Escherichia
 // See cli/search.rs#L166-L178
 fn handle_id_or_count_response(
-    response: ureq::Response,
+    response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
@@ -205,7 +205,7 @@ fn handle_id_or_count_response(
 }
 
 fn process_response<F>(
-    response: ureq::Response,
+    response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
     format_fn: F,
@@ -213,7 +213,7 @@ fn process_response<F>(
 where
     F: FnOnce(&SearchResults) -> Result<String>,
 {
-    let mut search_result: SearchResults = response.into_json()?;
+    let mut search_result: SearchResults = response.into_body().read_json()?;
     if args.count {
         search_result.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
     }
@@ -225,7 +225,7 @@ where
 }
 
 fn handle_json_response(
-    response: ureq::Response,
+    response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
@@ -235,7 +235,7 @@ fn handle_json_response(
 }
 
 fn handle_xsv_response(
-    response: ureq::Response,
+    response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
@@ -250,7 +250,7 @@ fn handle_xsv_response(
 }
 
 fn process_xsv_response<F>(
-    response: ureq::Response,
+    response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
     process_fn: F,
@@ -260,6 +260,7 @@ where
 {
     let mut buf: Vec<u8> = vec![];
     response
+        .into_body()
         .into_reader()
         .take((INTO_STRING_LIMIT + 1) as u64)
         .read_to_end(&mut buf)?;
@@ -387,7 +388,7 @@ mod tests {
     use super::*;
     use crate::search::SearchResult;
     use crate::utils::SearchField;
-    use ureq::Response;
+    use ureq::Agent;
     use SearchArgs;
 
     #[test]
@@ -578,28 +579,18 @@ GCF_943371865.1"#
         assert!(all_match(fields, "c__Clostridia"));
     }
 
-    // Dummy ureq::Response-like type
-    struct MockResponse {
-        body: Vec<u8>,
-    }
-
-    impl MockResponse {
-        fn new_from_str(s: &str) -> Self {
-            Self {
-                body: s.as_bytes().to_vec(),
-            }
-        }
-
-        fn to_ureq_response(self) -> Response {
-            // `ureq::Response` is not mockable directly; simulate using `ureq::Response::into_reader()`
-            ureq::Response::new(200, "OK", std::str::from_utf8(&self.body).unwrap()).unwrap()
-        }
-    }
-
     #[test]
     fn test_process_xsv_response_too_large() {
+        let mut server = mockito::Server::new();
         let big_str = "a".repeat(INTO_STRING_LIMIT + 1);
-        let response = MockResponse::new_from_str(&big_str).to_ureq_response();
+        let _m = server
+            .mock("GET", "/big")
+            .with_status(200)
+            .with_body(big_str)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let response = agent.get(&format!("{}/big", server.url())).call().unwrap();
 
         let args = SearchArgs {
             query: Some("g__Azorhizobium".to_string()),

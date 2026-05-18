@@ -231,7 +231,7 @@ fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>
             &request_url,
             "The server returned an unexpected status code (400)".into(),
         )?;
-        let genome_data: T = response.into_json()?;
+        let genome_data: T = response.into_body().read_json()?;
         let genome_string = serde_json::to_string_pretty(&genome_data)?;
         if let Some(path) = &args.out {
             let mut file = OpenOptions::new()
@@ -277,7 +277,7 @@ fn process_taxon_history(accession: &str, agent: &Agent, out: &Option<String>) -
         "The server returned unexpected response (400)".to_string(),
     )?;
 
-    let records: Vec<History> = response.into_json()?;
+    let records: Vec<History> = response.into_body().read_json()?;
     let changes = compute_taxonomic_changes(&records);
 
     if let Some(path) = out {

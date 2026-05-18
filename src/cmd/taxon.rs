@@ -62,7 +62,7 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize>(
 ) -> Result<T> {
     let url = request.to_url();
     let response = utils::fetch_data(agent, &url, err_msg)?;
-    let data: T = response.into_json()?;
+    let data: T = response.into_body().read_json()?;
     let json = serde_json::to_string_pretty(&data)?;
     utils::write_to_output(json.as_bytes(), out_path)?;
     Ok(data)

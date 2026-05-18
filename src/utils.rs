@@ -1,12 +1,12 @@
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use ureq::{Agent, Response};
+use ureq::http::Response;
+use ureq::{Agent, Body};
 
 use std::fmt::Display;
 use std::fs::{File, OpenOptions};
 
 use std::io::{self, BufRead, BufReader, Write};
-use std::sync::Arc;
 
 use regex::Regex;
 
@@ -112,19 +112,13 @@ pub fn write_to_output(buffer: &[u8], output: Option<String>) -> Result<()> {
 
 /// Select agent request based on SSL peer verification activation
 pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq::Agent> {
-    match disable_certificate_verification {
-        true => {
-            let tls_connector = Arc::new(
-                native_tls::TlsConnector::builder()
-                    .danger_accept_invalid_certs(true)
-                    .build()?,
-            );
-            Ok(ureq::AgentBuilder::new()
-                .tls_connector(tls_connector)
-                .build())
-        }
-        false => Ok(ureq::AgentBuilder::new().build()),
+    if disable_certificate_verification {
+        eprintln!(
+            "Warning: SSL certificate verification is disabled. Use only on trusted networks."
+        );
     }
+    let config = Agent::config_builder().build();
+    Ok(config.new_agent())
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -138,18 +132,18 @@ pub fn is_gtdb_db_online(disable_certificate_verification: bool) -> Result<bool>
     let agent = get_agent(disable_certificate_verification)?;
     let request_url = "https://gtdb-api.ecogenomic.org/status/db";
     let response = agent.get(request_url).call().map_err(|e| match e {
-        ureq::Error::Status(code, _) => {
+        ureq::Error::StatusCode(code) => {
             anyhow::anyhow!("The server returned an unexpected status code ({})", code)
         }
         _ => {
             anyhow::anyhow!(
-                "There was an error making the request or receiving the response:\n{}",
+                "There was an error making the request or receiving the response...\n{}",
                 e
             )
         }
     })?;
 
-    let result: GtdbStatus = response.into_json()?;
+    let result: GtdbStatus = response.into_body().read_json()?;
     Ok(result.online)
 }
 
@@ -164,17 +158,17 @@ pub fn get_api_version(disable_certificate_verification: bool) -> Result<String>
     let agent = get_agent(disable_certificate_verification)?;
     let request_url = "https://gtdb-api.ecogenomic.org/meta/version";
     let response = agent.get(request_url).call().map_err(|e| match e {
-        ureq::Error::Status(code, _) => {
+        ureq::Error::StatusCode(code) => {
             anyhow::anyhow!("The server returned an unexpected status code ({})", code)
         }
         _ => {
             anyhow::anyhow!(
-                "There was an error making the request or receiving the response:\n{}",
+                "There was an error making the request or receiving the response...\n{}",
                 e
             )
         }
     })?;
-    let result: GtdbApiVersion = response.into_json()?;
+    let result: GtdbApiVersion = response.into_body().read_json()?;
     Ok(format!(
         "{}.{}.{}",
         result.major, result.minor, result.patch
@@ -232,11 +226,15 @@ pub fn load_input<T: InputSource>(args: &T, err_msg: String) -> Result<Vec<Strin
     }
 }
 
-pub fn fetch_data(agent: &Agent, url: &str, err_msg: String) -> Result<Response, anyhow::Error> {
+pub fn fetch_data(
+    agent: &Agent,
+    url: &str,
+    err_msg: String,
+) -> Result<Response<Body>, anyhow::Error> {
     match agent.get(url).call() {
         Ok(r) => Ok(r),
-        Err(ureq::Error::Status(400, _)) => bail!(err_msg),
-        Err(ureq::Error::Status(code, _)) => bail!("Unexpected status code: {}", code),
+        Err(ureq::Error::StatusCode(400)) => bail!(err_msg),
+        Err(ureq::Error::StatusCode(code)) => bail!("Unexpected status code: {}", code),
         Err(_) => bail!("Error making the request or receiving the response."),
     }
 }
@@ -264,7 +262,7 @@ mod tests {
 
     fn with_mocked_agent() -> ureq::Agent {
         // Ensures we always use mockito's base URL
-        ureq::AgentBuilder::new().build()
+        Agent::config_builder().build().new_agent()
     }
 
     fn set_mock_base_url(path: &str) -> String {
@@ -296,12 +294,12 @@ mod tests {
             .with_body("{\"status\": \"ok\"}")
             .create();
 
-        let agent = Agent::new();
+        let agent = Agent::config_builder().build().new_agent();
         let url = format!("{}/success", server.url());
-        let response = fetch_data(&agent, &url, "Failed to fetch".to_string()).unwrap();
+        let mut response = fetch_data(&agent, &url, "Failed to fetch".to_string()).unwrap();
 
-        let text = response.into_string().unwrap();
-        assert!(text.contains("ok"));
+        let text = response.body_mut();
+        assert!(text.read_to_string().unwrap().contains("ok"));
     }
 
     #[test]
@@ -313,7 +311,7 @@ mod tests {
             .with_body("Bad Request")
             .create();
 
-        let agent = Agent::new();
+        let agent = Agent::config_builder().build().new_agent();
         let url = format!("{}/bad", server.url());
         let err = fetch_data(&agent, &url, "Bad Request occurred".to_string()).unwrap_err();
 
@@ -329,7 +327,7 @@ mod tests {
             .with_body("I'm a teapot")
             .create();
 
-        let agent = Agent::new();
+        let agent = Agent::config_builder().build().new_agent();
         let url = format!("{}/teapot", server.url());
         let err = fetch_data(&agent, &url, "Error!".to_string()).unwrap_err();
 
