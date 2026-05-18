@@ -10,7 +10,26 @@ use std::io::{self, BufRead, BufReader, Write};
 
 use regex::Regex;
 
+use std::thread;
+use std::time::Duration;
+
 use crate::cli::{GenomeArgs, SearchArgs, TaxonArgs};
+
+/// Returns true for errors that are worth retrying (transient server/network issues).
+fn is_retryable(err: &ureq::Error) -> bool {
+    match err {
+        // 5xx server errors and 429 rate limiting are transient
+        ureq::Error::StatusCode(500)
+        | ureq::Error::StatusCode(502)
+        | ureq::Error::StatusCode(503)
+        | ureq::Error::StatusCode(504)
+        | ureq::Error::StatusCode(429) => true,
+        // Network/IO errors (timeout, connection reset, DNS failure) are transient
+        ureq::Error::Io(_) => true,
+        // All other status codes (4xx etc.) are deterministic — don't retry
+        _ => false,
+    }
+}
 
 /// Search field as provided by GTDB API
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
@@ -242,16 +261,43 @@ pub fn load_input<T: InputSource>(args: &T, err_msg: String) -> Result<Vec<Strin
     }
 }
 
-pub fn fetch_data(
-    agent: &Agent,
-    url: &str,
-    err_msg: String,
-) -> Result<Response<Body>, anyhow::Error> {
-    match agent.get(url).call() {
-        Ok(r) => Ok(r),
-        Err(ureq::Error::StatusCode(400)) => bail!(err_msg),
-        Err(ureq::Error::StatusCode(code)) => bail!("Unexpected status code: {}", code),
-        Err(_) => bail!("Error making the request or receiving the response."),
+pub fn fetch_data(agent: &Agent, url: &str, err_msg: String) -> Result<Response<Body>> {
+    const MAX_RETRIES: u32 = 3;
+    const BASE_DELAY: Duration = Duration::from_secs(1);
+    const MAX_DELAY: Duration = Duration::from_secs(10);
+
+    let mut attempt = 0;
+
+    loop {
+        match agent.get(url).call() {
+            Ok(response) => return Ok(response),
+
+            Err(ureq::Error::StatusCode(400)) => bail!(err_msg),
+
+            Err(ureq::Error::StatusCode(code)) if !is_retryable(&ureq::Error::StatusCode(code)) => {
+                bail!("Unexpected status code: {}", code)
+            }
+
+            Err(e) => {
+                attempt += 1;
+                if attempt >= MAX_RETRIES {
+                    bail!("Request failed after {} attempts: {}", MAX_RETRIES, e);
+                }
+
+                // Exponential backoff: 1s, 2s, 4s... capped at MAX_DELAY
+                let delay = (BASE_DELAY * 2u32.pow(attempt - 1)).min(MAX_DELAY);
+
+                eprintln!(
+                    "Request failed (attempt {}/{}): {}. Retrying in {}s...",
+                    attempt,
+                    MAX_RETRIES,
+                    e,
+                    delay.as_secs()
+                );
+
+                thread::sleep(delay);
+            }
+        }
     }
 }
 
@@ -263,6 +309,80 @@ mod tests {
     use std::io::Write;
     use tempfile::NamedTempFile;
     use ureq::Agent;
+
+    #[test]
+    fn test_fetch_data_retries_on_503() {
+        let mut server = Server::new();
+
+        // First two attempts return 503, third succeeds
+        let _m1 = server
+            .mock("GET", "/flaky")
+            .with_status(503)
+            .expect(2)
+            .create();
+        let _m2 = server
+            .mock("GET", "/flaky")
+            .with_status(200)
+            .with_body("{\"status\": \"ok\"}")
+            .expect(1)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/flaky", server.url());
+        let result = fetch_data(&agent, &url, "error".to_string());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_fetch_data_fails_after_max_retries() {
+        let mut server = Server::new();
+
+        // Always returns 503
+        let _m = server
+            .mock("GET", "/always-down")
+            .with_status(503)
+            .expect(3) // exactly MAX_RETRIES calls expected
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/always-down", server.url());
+        let result = fetch_data(&agent, &url, "error".to_string());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("failed after 3 attempts"));
+    }
+
+    #[test]
+    fn test_fetch_data_does_not_retry_400() {
+        let mut server = Server::new();
+
+        // Returns 400 — should not be retried
+        let _m = server
+            .mock("GET", "/bad")
+            .with_status(400)
+            .expect(1) // only 1 call, no retry
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/bad", server.url());
+        let result = fetch_data(&agent, &url, "Bad Request occurred".to_string());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Bad Request occurred");
+    }
+
+    #[test]
+    fn test_is_retryable() {
+        assert!(is_retryable(&ureq::Error::StatusCode(500)));
+        assert!(is_retryable(&ureq::Error::StatusCode(502)));
+        assert!(is_retryable(&ureq::Error::StatusCode(503)));
+        assert!(is_retryable(&ureq::Error::StatusCode(504)));
+        assert!(is_retryable(&ureq::Error::StatusCode(429)));
+        assert!(!is_retryable(&ureq::Error::StatusCode(400)));
+        assert!(!is_retryable(&ureq::Error::StatusCode(404)));
+        assert!(!is_retryable(&ureq::Error::StatusCode(401)));
+    }
 
     #[test]
     fn test_load_input_stdin_marker_is_recognized() {
