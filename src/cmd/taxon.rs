@@ -128,7 +128,8 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     request: GtdbApiRequest,
     err_msg: String,
     outfmt: &utils::OutputFormat,
-    out_path: Option<String>,
+    key: &str, // query/name used for split filename
+    dest: &utils::OutputDestination,
 ) -> Result<T> {
     let data: T = fetch_json(agent, request, err_msg)?;
     let sep = if *outfmt == utils::OutputFormat::Tsv {
@@ -140,30 +141,27 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
         utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
         _ => data.to_flat_row(sep),
     };
-    utils::write_to_output(output.as_bytes(), out_path, false)?;
+    utils::write_to_output(output.as_bytes(), dest.resolve(key), false)?;
     Ok(data)
 }
-
 pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
     if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
+        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+        let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
         let request = GtdbApiRequest::Taxon {
             name: name.clone(),
             kind: TaxonEndPoint::Name,
             limit: None,
             is_reps_only: None,
         };
-        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
         fetch_and_write_json::<TaxonResult>(
             &agent,
             request,
-            format!(
-                "Taxon '{}' was not found in GTDB. \
-                 Check the spelling and rank prefix (e.g. g__Escherichia, not Escherichia).",
-                name
-            ),
+            format!("Taxon '{}' was not found in GTDB...", name),
             &outfmt,
-            args.out.clone(),
+            name,
+            &dest,
         )?;
     }
     Ok(())
@@ -172,27 +170,25 @@ pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
 pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
     if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
+        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+        let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
         let request = GtdbApiRequest::Taxon {
             name: name.clone(),
             kind: TaxonEndPoint::Genomes,
             limit: None,
             is_reps_only: Some(args.reps),
         };
-        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
         let data = fetch_and_write_json::<TaxonGenomes>(
             &agent,
             request,
-            format!(
-                "No genomes found for taxon '{}' in GTDB (HTTP 400). \
-                 Verify the taxon name and rank prefix.",
-                name
-            ),
+            format!("No genomes found for taxon '{}'...", name),
             &outfmt,
-            args.out.clone(),
+            name,
+            &dest,
         )?;
         ensure!(
             !data.data.is_empty(),
-            "Taxon '{}' exists in GTDB but has no associated genomes.",
+            "Taxon '{}' exists but has no associated genomes.",
             name
         );
     }
@@ -202,6 +198,8 @@ pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
 pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
     if let Some(name) = args.name.as_deref() {
         let agent = utils::get_agent(args.insecure)?;
+        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+        let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
 
         let kind = if args.all {
             TaxonEndPoint::SearchAll
@@ -215,19 +213,15 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
             is_reps_only: None,
         };
 
-        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
-
-        // Fetch only, no write yet, because --word may change the data
         let mut data: TaxonSearchResult = fetch_json(
             &agent,
             request,
-            format!("No taxa matching '{}' found in GTDB (HTTP 400).", name),
+            format!("No taxa matching '{}' found in GTDB.", name),
         )?;
 
         if args.word {
             data.matches.retain(|x| x == name);
         }
-
         ensure!(
             !data.matches.is_empty(),
             "No taxa matching '{}' found in GTDB{}.",
@@ -239,7 +233,6 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
             }
         );
 
-        // Single write after all post-processing is done
         let sep = if outfmt == utils::OutputFormat::Tsv {
             "\t"
         } else {
@@ -249,9 +242,8 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
             utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
             _ => data.to_flat_row(sep),
         };
-        utils::write_to_output(output.as_bytes(), args.out.clone(), false)?;
+        utils::write_to_output(output.as_bytes(), dest.resolve(name), false)?;
     }
-
     Ok(())
 }
 
@@ -274,6 +266,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let actual_output = args.out.clone();
         get_taxon_name(&args)?;
@@ -305,6 +299,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
 
         get_taxon_name(&args)?;
@@ -325,6 +321,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let result = get_taxon_name(&args);
         assert!(result.is_err());
@@ -349,6 +347,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let result = get_taxon_name(&args);
         assert!(result.is_err());
@@ -367,6 +367,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_err());
@@ -389,6 +391,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_ok());
@@ -407,6 +411,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_ok());
@@ -425,6 +431,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_ok());
@@ -448,6 +456,8 @@ mod tests {
             insecure: true,
             file: None,
             outfmt: "json".to_string(),
+            split: false,
+            split_dir: None,
         };
 
         let actual_output = args.out.clone();

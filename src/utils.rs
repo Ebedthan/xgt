@@ -342,6 +342,64 @@ pub fn make_progress_bar(total: usize) -> Option<ProgressBar> {
     Some(bar)
 }
 
+/// Where output should be written.
+#[derive(Debug, Clone)]
+pub enum OutputDestination {
+    /// Write everything to stdout
+    Stdout,
+    /// Write everything to a single file
+    File(String),
+    /// Write each item to its own file, derived from the item key
+    Split {
+        dir: Option<String>,
+        extension: String,
+    },
+}
+
+impl OutputDestination {
+    /// Resolve the concrete file path for a given item key (accession or query).
+    /// Returns `None` for stdout, `Some(path)` for file output.
+    pub fn resolve(&self, key: &str) -> Option<String> {
+        match self {
+            Self::Stdout => None,
+            Self::File(path) => Some(path.clone()),
+            Self::Split { dir, extension } => {
+                let safe_key = key.replace(' ', "_").replace('/', "_");
+                let filename = format!("{}.{}", safe_key, extension);
+                Some(match dir {
+                    Some(d) => format!("{}/{}", d, filename),
+                    None => filename,
+                })
+            }
+        }
+    }
+
+    /// Returns true if each item goes to its own file.
+    pub fn is_split(&self) -> bool {
+        matches!(self, Self::Split { .. })
+    }
+}
+
+/// Build an OutputDestination from the common --out / --split / --outfmt combination.
+pub fn output_destination(
+    out: &Option<String>,
+    split: bool,
+    outfmt: &OutputFormat,
+    split_dir: &Option<String>,
+) -> OutputDestination {
+    if split {
+        OutputDestination::Split {
+            dir: split_dir.clone(),
+            extension: outfmt.to_string(),
+        }
+    } else {
+        match out {
+            Some(path) => OutputDestination::File(path.clone()),
+            None => OutputDestination::Stdout,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

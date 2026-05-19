@@ -141,7 +141,8 @@ impl SearchResults {
 pub fn search(args: &SearchArgs) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
     let queries = utils::load_input(args, "No search query provided...".to_string())?;
-
+    let outfmt = OutputFormat::from(args.outfmt.clone());
+    let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(queries.len());
 
     for query in &queries {
@@ -149,7 +150,7 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             bar.set_message(query.clone());
         }
 
-        let search = GtdbApiRequest::Search {
+        let search_req = GtdbApiRequest::Search {
             query: query.clone(),
             search_field: args.field.clone(),
             gtdb_species_rep_only: args.rep,
@@ -164,20 +165,22 @@ pub fn search(args: &SearchArgs) -> Result<()> {
 
         let response = utils::fetch_data(
             &agent,
-            &search.to_url(),
+            &search_req.to_url(),
             "The server returned an unexpected status code (400).".into(),
         )?;
 
         let output_result = if args.id || args.count {
             handle_id_or_count_response(&agent, response, query, args)
         } else {
-            match OutputFormat::from(args.outfmt.clone()) {
+            match &outfmt {
                 OutputFormat::Json => handle_json_response(&agent, response, query, args),
                 _ => handle_xsv_response(&agent, response, query, args),
             }
         };
 
-        utils::write_to_output(output_result?.as_bytes(), args.out.clone(), true)?;
+        // split mode: new file per query (truncate); single mode: append
+        let append = !dest.is_split();
+        utils::write_to_output(output_result?.as_bytes(), dest.resolve(query), append)?;
 
         if let Some(ref bar) = bar {
             bar.inc(1);
@@ -185,7 +188,7 @@ pub fn search(args: &SearchArgs) -> Result<()> {
     }
 
     if let Some(bar) = bar {
-        bar.finish_with_message(format!("done — {} queries processed", queries.len()));
+        bar.finish_with_message(format!("done, {} queries processed", queries.len()));
     }
 
     Ok(())
@@ -478,6 +481,8 @@ mod tests {
             outfmt: String::from("json"),
             out: Some("test3.txt".to_string()),
             insecure: true,
+            split: false,
+            split_dir: None,
         };
         let res = search(&args);
         assert!(res.is_ok());
@@ -519,6 +524,8 @@ GCF_943371865.1"#
             outfmt: String::from("json"),
             out: Some("test.txt".to_string()),
             insecure: true,
+            split: false,
+            split_dir: None,
         };
         let res = search(&args);
         assert!(res.is_ok());

@@ -79,6 +79,15 @@ pub struct SearchArgs {
     #[arg(short = 'O', long, value_name = "STR", default_value = "csv", value_parser = ["csv", "json", "tsv"])]
     pub outfmt: String,
 
+    /// Write each result to a separate file named after the query/accession.
+    /// Mutually exclusive with --out.
+    #[arg(short = 's', long, conflicts_with = "out")]
+    pub split: bool,
+
+    /// Directory for per-item files when using --split (default: current directory)
+    #[arg(long, value_name = "DIR", requires = "split")]
+    pub split_dir: Option<String>,
+
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
     pub insecure: bool,
@@ -109,6 +118,15 @@ pub struct GenomeArgs {
     /// Output raw JSON
     #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
     pub out: Option<String>,
+
+    /// Write each result to a separate file named after the query/accession.
+    /// Mutually exclusive with --out.
+    #[arg(short = 's', long, conflicts_with = "out")]
+    pub split: bool,
+
+    /// Directory for per-item files when using --split (default: current directory)
+    #[arg(long, value_name = "DIR", requires = "split")]
+    pub split_dir: Option<String>,
 
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
@@ -152,6 +170,15 @@ pub struct TaxonArgs {
     /// Output format
     #[arg(short = 'O', long, value_name = "STR", default_value = "json", value_parser = ["csv", "json", "tsv"])]
     pub outfmt: String,
+
+    /// Write each result to a separate file named after the query/accession.
+    /// Mutually exclusive with --out.
+    #[arg(short = 's', long, conflicts_with = "out")]
+    pub split: bool,
+
+    /// Directory for per-item files when using --split (default: current directory)
+    #[arg(long, value_name = "DIR", requires = "split")]
+    pub split_dir: Option<String>,
 
     /// Disable SSL certificate verification
     #[arg(short = 'k')]

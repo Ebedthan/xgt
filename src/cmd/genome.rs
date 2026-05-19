@@ -338,15 +338,16 @@ where
         _ => ",",
     };
 
-    // Progress bar only shown for batch input
+    let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
 
-    if outfmt != utils::OutputFormat::Json {
+    // Write a single header once — only for non-split, non-JSON batch output
+    if !dest.is_split() && outfmt != utils::OutputFormat::Json {
         let header = T::csv_header(sep);
-        utils::write_to_output(format!("{}\n", header).as_bytes(), args.out.clone(), false)?;
+        utils::write_to_output(format!("{}\n", header).as_bytes(), dest.resolve(""), false)?;
     }
 
-    let mut first_write = outfmt == utils::OutputFormat::Json;
+    let mut first_write = !dest.is_split() && outfmt == utils::OutputFormat::Json;
 
     for accession in &accessions {
         if let Some(ref bar) = bar {
@@ -358,6 +359,7 @@ where
         } else {
             GenomeRequestType::Card
         };
+
         let url = GtdbApiRequest::Genome {
             accession: accession.clone(),
             request_type,
@@ -376,13 +378,26 @@ where
 
         let genome_data: T = response.into_body().read_json()?;
 
+        // In split mode: write header + row to each individual file
+        if dest.is_split() && outfmt != utils::OutputFormat::Json {
+            let header = T::csv_header(sep);
+            utils::write_to_output(
+                format!("{}\n", header).as_bytes(),
+                dest.resolve(accession),
+                false,
+            )?;
+        }
+
         let out = match outfmt {
             utils::OutputFormat::Json => serde_json::to_string_pretty(&genome_data)? + "\n",
             _ => genome_data.to_flat_row(sep) + "\n",
         };
 
-        let append = !first_write;
-        utils::write_to_output(out.as_bytes(), args.out.clone(), append)?;
+        // split mode always truncates (new file per item)
+        // non-split JSON truncates only on first write
+        let append = if dest.is_split() { false } else { !first_write };
+
+        utils::write_to_output(out.as_bytes(), dest.resolve(accession), append)?;
         first_write = false;
 
         if let Some(ref bar) = bar {
@@ -391,7 +406,7 @@ where
     }
 
     if let Some(bar) = bar {
-        bar.finish_with_message(format!("done — {} genomes processed", accessions.len()));
+        bar.finish_with_message(format!("done, {} genomes processed", accessions.len()));
     }
 
     Ok(())
@@ -422,7 +437,7 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
     let accessions = utils::load_input(args, "No genome accession provided...".into())?;
     let agent = utils::get_agent(args.insecure)?;
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
-
+    let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
 
     for acc in &accessions {
@@ -430,7 +445,7 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
             bar.set_message(acc.clone());
         }
 
-        process_taxon_history(acc, &agent, &outfmt, &args.out)?;
+        process_taxon_history(acc, &agent, &outfmt, &dest.resolve(acc))?;
 
         if let Some(ref bar) = bar {
             bar.inc(1);
