@@ -330,7 +330,12 @@ fn fetch_and_save_genome_data<T>(args: &GenomeArgs) -> Result<()>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow,
 {
-    let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
+    let accessions = utils::load_input(
+        args,
+        "No genome accession provided. Pass an accession directly \
+     (e.g. xgt genome GCA_000010525.1) or use -f FILE to read accessions from a file."
+            .to_string(),
+    )?;
     let agent = utils::get_agent(args.insecure)?;
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
     let sep = match outfmt {
@@ -363,7 +368,11 @@ where
         let response = utils::fetch_data(
             &agent,
             &url,
-            "The server returned an unexpected status code (400)".into(),
+            format!(
+                "Accession '{}' was not found in GTDB (HTTP 400). \
+                 Verify the accession format (e.g. GCA_000010525.1 or GCF_000010525.1).",
+                accession
+            ),
         )?;
 
         let genome_data: T = response.into_body().read_json()?;
@@ -428,7 +437,11 @@ fn process_taxon_history(
     let response = utils::fetch_data(
         agent,
         &url,
-        "The server returned unexpected response (400)".to_string(),
+        format!(
+            "No taxonomic history found for accession '{}' (HTTP 400). \
+             Verify the accession exists in GTDB.",
+            accession
+        ),
     )?;
 
     let records: Vec<History> = response.into_body().read_json()?;

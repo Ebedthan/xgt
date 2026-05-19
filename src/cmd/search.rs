@@ -140,7 +140,12 @@ impl SearchResults {
 /// Search GTDB data from `SearchArgs`
 pub fn search(args: &SearchArgs) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
-    let queries = utils::load_input(args, "No query or file provided".to_string())?;
+    let queries = utils::load_input(
+        args,
+        "No search query provided. Pass a query directly (e.g. xgt search g__Escherichia) \
+     or use -f FILE to read queries from a file."
+            .to_string(),
+    )?;
 
     for query in queries {
         let search = GtdbApiRequest::Search {
@@ -250,7 +255,10 @@ fn fetch_all_pages(
         let response = utils::fetch_data(
             agent,
             &search.to_url(),
-            format!("Server error fetching page {}", page),
+            format!(
+                "Failed to fetch page {}/{} for query '{}'. The GTDB API may be under load.",
+                page, total_pages, query
+            ),
         )?;
 
         let page_result: SearchResults = response.into_body().read_json()?;
@@ -273,7 +281,9 @@ fn filter_and_validate(
     }
     ensure!(
         results.get_total_rows() != 0,
-        "No matching data found in GTDB"
+        "No results found in GTDB for '{}'. \
+         Try broadening your search or removing --word for partial matches.",
+        needle
     );
     Ok(())
 }

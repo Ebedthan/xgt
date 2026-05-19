@@ -163,11 +163,16 @@ pub fn is_gtdb_db_online(disable_certificate_verification: bool) -> Result<bool>
     let request_url = "https://gtdb-api.ecogenomic.org/status/db";
     let response = agent.get(request_url).call().map_err(|e| match e {
         ureq::Error::StatusCode(code) => {
-            anyhow::anyhow!("The server returned an unexpected status code ({})", code)
+            anyhow::anyhow!(
+                "GTDB API returned status {} while checking database status. \
+                 The service may be temporarily unavailable.",
+                code
+            )
         }
         _ => {
             anyhow::anyhow!(
-                "There was an error making the request or receiving the response...\n{}",
+                "Could not reach the GTDB API ({}). \
+                 Check your internet connection or try again later.",
                 e
             )
         }
@@ -189,11 +194,16 @@ pub fn get_api_version(disable_certificate_verification: bool) -> Result<String>
     let request_url = "https://gtdb-api.ecogenomic.org/meta/version";
     let response = agent.get(request_url).call().map_err(|e| match e {
         ureq::Error::StatusCode(code) => {
-            anyhow::anyhow!("The server returned an unexpected status code ({})", code)
+            anyhow::anyhow!(
+                "GTDB API returned status {} while fetching API version. \
+                 The service may be temporarily unavailable.",
+                code
+            )
         }
         _ => {
             anyhow::anyhow!(
-                "There was an error making the request or receiving the response...\n{}",
+                "Could not reach the GTDB API ({}). \
+                 Check your internet connection or try again later.",
                 e
             )
         }
@@ -275,23 +285,32 @@ pub fn fetch_data(agent: &Agent, url: &str, err_msg: String) -> Result<Response<
         match agent.get(url).call() {
             Ok(response) => return Ok(response),
 
-            Err(ureq::Error::StatusCode(400)) => bail!(err_msg),
+            Err(ureq::Error::StatusCode(400)) => bail!(err_msg), // caller-supplied, addressed per call site below
 
             Err(ureq::Error::StatusCode(code)) if !is_retryable(&ureq::Error::StatusCode(code)) => {
-                bail!("Unexpected status code: {}", code)
+                bail!(
+                    "GTDB API returned an unexpected status code {}. \
+                     If this persists, check https://gtdb.ecogenomic.org for service status.",
+                    code
+                )
             }
 
             Err(e) => {
                 attempt += 1;
                 if attempt >= MAX_RETRIES {
-                    bail!("Request failed after {} attempts: {}", MAX_RETRIES, e);
+                    bail!(
+                        "Request to GTDB API failed after {} attempts. Last error: {}. \
+                             Check your internet connection or try again later.",
+                        MAX_RETRIES,
+                        e
+                    );
                 }
 
                 // Exponential backoff: 1s, 2s, 4s... capped at MAX_DELAY
                 let delay = (BASE_DELAY * 2u32.pow(attempt - 1)).min(MAX_DELAY);
 
                 eprintln!(
-                    "Request failed (attempt {}/{}): {}. Retrying in {}s...",
+                    "Warning: request failed (attempt {}/{}): {}. Retrying in {}s...",
                     attempt,
                     MAX_RETRIES,
                     e,

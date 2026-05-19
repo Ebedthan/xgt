@@ -157,7 +157,11 @@ pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
         fetch_and_write_json::<TaxonResult>(
             &agent,
             request,
-            format!("Taxon {} not found", name),
+            format!(
+                "Taxon '{}' was not found in GTDB. \
+                 Check the spelling and rank prefix (e.g. g__Escherichia, not Escherichia).",
+                name
+            ),
             &outfmt,
             args.out.clone(),
         )?;
@@ -178,11 +182,19 @@ pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
         let data = fetch_and_write_json::<TaxonGenomes>(
             &agent,
             request,
-            format!("No match found for {}", name),
+            format!(
+                "No genomes found for taxon '{}' in GTDB (HTTP 400). \
+                 Verify the taxon name and rank prefix.",
+                name
+            ),
             &outfmt,
             args.out.clone(),
         )?;
-        ensure!(!data.data.is_empty(), "No data found for {}", name);
+        ensure!(
+            !data.data.is_empty(),
+            "Taxon '{}' exists in GTDB but has no associated genomes.",
+            name
+        );
     }
     Ok(())
 }
@@ -206,13 +218,26 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
 
         // Fetch only, no write yet, because --word may change the data
-        let mut data: TaxonSearchResult =
-            fetch_json(&agent, request, format!("No match found for {}", name))?;
+        let mut data: TaxonSearchResult = fetch_json(
+            &agent,
+            request,
+            format!("No taxa matching '{}' found in GTDB (HTTP 400).", name),
+        )?;
 
         if args.word {
             data.matches.retain(|x| x == name);
         }
-        ensure!(!data.matches.is_empty(), "No match found for {}", name);
+
+        ensure!(
+            !data.matches.is_empty(),
+            "No taxa matching '{}' found in GTDB{}.",
+            name,
+            if args.word {
+                " (exact match with --word)"
+            } else {
+                ""
+            }
+        );
 
         // Single write after all post-processing is done
         let sep = if outfmt == utils::OutputFormat::Tsv {

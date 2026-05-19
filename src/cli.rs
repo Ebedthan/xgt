@@ -154,14 +154,22 @@ fn is_valid_taxon(s: &str) -> Result<String, String> {
             return Ok(s.to_string());
         }
     }
-    Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
+    Err(format!(
+        "'{}' is not a valid taxon name. Use a rank prefix followed by the name \
+         (e.g. g__Escherichia, s__Escherichia coli). \
+         Valid prefixes: d__, p__, c__, o__, f__, g__, s__",
+        s
+    ))
 }
 
 fn is_existing(s: &str) -> Result<String, String> {
     if !Path::new(s).exists() {
         Ok(s.to_string())
     } else {
-        Err("file should not already exists".to_string())
+        Err(format!(
+            "Output file '{}' already exists. Choose a different path or remove the existing file.",
+            s
+        ))
     }
 }
 
