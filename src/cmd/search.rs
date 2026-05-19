@@ -140,14 +140,15 @@ impl SearchResults {
 /// Search GTDB data from `SearchArgs`
 pub fn search(args: &SearchArgs) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
-    let queries = utils::load_input(
-        args,
-        "No search query provided. Pass a query directly (e.g. xgt search g__Escherichia) \
-     or use -f FILE to read queries from a file."
-            .to_string(),
-    )?;
+    let queries = utils::load_input(args, "No search query provided...".to_string())?;
 
-    for query in queries {
+    let bar = utils::make_progress_bar(queries.len());
+
+    for query in &queries {
+        if let Some(ref bar) = bar {
+            bar.set_message(query.clone());
+        }
+
         let search = GtdbApiRequest::Search {
             query: query.clone(),
             search_field: args.field.clone(),
@@ -160,23 +161,31 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             sort_desc: false,
             filter_text: "".into(),
         };
-        let request_url = search.to_url();
+
         let response = utils::fetch_data(
             &agent,
-            &request_url,
-            "The server returned an unexpected status code (400)".into(),
+            &search.to_url(),
+            "The server returned an unexpected status code (400).".into(),
         )?;
 
         let output_result = if args.id || args.count {
-            handle_id_or_count_response(&agent, response, &query, args)
+            handle_id_or_count_response(&agent, response, query, args)
         } else {
             match OutputFormat::from(args.outfmt.clone()) {
-                OutputFormat::Json => handle_json_response(&agent, response, &query, args),
-                _ => handle_xsv_response(&agent, response, &query, args),
+                OutputFormat::Json => handle_json_response(&agent, response, query, args),
+                _ => handle_xsv_response(&agent, response, query, args),
             }
         };
 
         utils::write_to_output(output_result?.as_bytes(), args.out.clone(), true)?;
+
+        if let Some(ref bar) = bar {
+            bar.inc(1);
+        }
+    }
+
+    if let Some(bar) = bar {
+        bar.finish_with_message(format!("done — {} queries processed", queries.len()));
     }
 
     Ok(())

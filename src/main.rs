@@ -5,8 +5,11 @@ mod utils;
 
 use crate::cli::{Cli, Commands};
 use anyhow::Result;
+use clap::CommandFactory;
 use clap::Parser;
+use clap_complete::generate;
 use cmd::{genome, search, taxon};
+use std::io;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -46,6 +49,11 @@ fn main() -> Result<()> {
             } else {
                 taxon::get_taxon_name(&args)?;
             }
+        }
+        Commands::Completions(args) => {
+            let mut cmd = Cli::command();
+            let bin_name = cmd.get_name().to_string();
+            generate(args.shell, &mut cmd, bin_name, &mut io::stdout());
         }
     };
 

@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
 use ureq::http::Response;
 use ureq::{Agent, Body};
@@ -321,6 +322,24 @@ pub fn fetch_data(agent: &Agent, url: &str, err_msg: String) -> Result<Response<
             }
         }
     }
+}
+
+/// Create a styled progress bar for batch operations.
+/// Returns `None` when there is only one item (no bar needed).
+pub fn make_progress_bar(total: usize) -> Option<ProgressBar> {
+    if total <= 1 {
+        return None;
+    }
+    let bar = ProgressBar::new(total as u64);
+    bar.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}",
+        )
+        .unwrap()
+        .progress_chars("=>-"),
+    );
+    bar.set_message("processing...");
+    Some(bar)
 }
 
 #[cfg(test)]

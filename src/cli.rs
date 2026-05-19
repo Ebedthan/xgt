@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand};
+use clap_complete::Shell;
 use std::path::Path;
 
 #[derive(Parser)]
@@ -24,6 +25,16 @@ pub enum Commands {
 
     /// Information about a specific taxon
     Taxon(TaxonArgs),
+
+    /// Generate shell completion scripts
+    Completions(CompletionsArgs),
+}
+
+#[derive(Args)]
+pub struct CompletionsArgs {
+    /// Shell to generate completions for
+    #[arg(value_enum)]
+    pub shell: Shell,
 }
 
 #[derive(Args)]

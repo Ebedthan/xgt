@@ -330,12 +330,7 @@ fn fetch_and_save_genome_data<T>(args: &GenomeArgs) -> Result<()>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow,
 {
-    let accessions = utils::load_input(
-        args,
-        "No genome accession provided. Pass an accession directly \
-     (e.g. xgt genome GCA_000010525.1) or use -f FILE to read accessions from a file."
-            .to_string(),
-    )?;
+    let accessions = utils::load_input(args, "No genome accession provided...".to_string())?;
     let agent = utils::get_agent(args.insecure)?;
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
     let sep = match outfmt {
@@ -343,9 +338,9 @@ where
         _ => ",",
     };
 
-    // Write header once, truncating any existing file content.
-    // For JSON there is no header, but we still need to truncate on the first
-    // data write. Handled via `first_write` below.
+    // Progress bar only shown for batch input
+    let bar = utils::make_progress_bar(accessions.len());
+
     if outfmt != utils::OutputFormat::Json {
         let header = T::csv_header(sep);
         utils::write_to_output(format!("{}\n", header).as_bytes(), args.out.clone(), false)?;
@@ -353,7 +348,11 @@ where
 
     let mut first_write = outfmt == utils::OutputFormat::Json;
 
-    for accession in accessions {
+    for accession in &accessions {
+        if let Some(ref bar) = bar {
+            bar.set_message(accession.clone());
+        }
+
         let request_type = if args.metadata {
             GenomeRequestType::Metadata
         } else {
@@ -382,10 +381,17 @@ where
             _ => genome_data.to_flat_row(sep) + "\n",
         };
 
-        // Truncate only on the first JSON write; all subsequent writes append.
         let append = !first_write;
         utils::write_to_output(out.as_bytes(), args.out.clone(), append)?;
         first_write = false;
+
+        if let Some(ref bar) = bar {
+            bar.inc(1);
+        }
+    }
+
+    if let Some(bar) = bar {
+        bar.finish_with_message(format!("done — {} genomes processed", accessions.len()));
     }
 
     Ok(())
@@ -413,12 +419,28 @@ pub fn get_genome_card(args: &GenomeArgs) -> Result<()> {
 }
 
 pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
-    let accessions = utils::load_input(args, "No accession or file provided".into())?;
+    let accessions = utils::load_input(args, "No genome accession provided...".into())?;
     let agent = utils::get_agent(args.insecure)?;
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
-    for acc in accessions {
-        process_taxon_history(&acc, &agent, &outfmt, &args.out)?;
+
+    let bar = utils::make_progress_bar(accessions.len());
+
+    for acc in &accessions {
+        if let Some(ref bar) = bar {
+            bar.set_message(acc.clone());
+        }
+
+        process_taxon_history(acc, &agent, &outfmt, &args.out)?;
+
+        if let Some(ref bar) = bar {
+            bar.inc(1);
+        }
     }
+
+    if let Some(bar) = bar {
+        bar.finish_with_message(format!("done, {} accessions processed", accessions.len()));
+    }
+
     Ok(())
 }
 
