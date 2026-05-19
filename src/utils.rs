@@ -373,7 +373,7 @@ impl OutputDestination {
             Self::Stdout => None,
             Self::File(path) => Some(path.clone()),
             Self::Split { dir, extension } => {
-                let safe_key = key.replace(' ', "_").replace('/', "_");
+                let safe_key = key.replace([' ', '/'], "_");
                 let filename = format!("{}.{}", safe_key, extension);
                 Some(match dir {
                     Some(d) => format!("{}/{}", d, filename),

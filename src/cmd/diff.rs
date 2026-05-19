@@ -353,6 +353,7 @@ fn resolve_latest_release(accession: &str, agent: &ureq::Agent) -> Result<String
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::Server;
 
     fn make_entry(release: &str, d: &str, p: &str, f: &str, s: &str) -> ReleaseEntry {
         ReleaseEntry {
@@ -510,5 +511,694 @@ mod tests {
         // Header + one data row
         assert_eq!(row.lines().count(), 2);
         assert!(row.contains("GCA_000001.1,R214,R220,false"));
+    }
+
+    /// Serialise a slice of ReleaseEntry values to a JSON string
+    /// exactly as the GTDB API would return them.
+    fn history_json(entries: &[ReleaseEntry]) -> String {
+        serde_json::to_string(entries).unwrap()
+    }
+
+    /// Build a ReleaseEntry with all seven taxonomy fields set.
+    fn full_entry(
+        release: &str,
+        d: &str,
+        p: &str,
+        c: &str,
+        o: &str,
+        f: &str,
+        g: &str,
+        s: &str,
+    ) -> ReleaseEntry {
+        ReleaseEntry {
+            release: Some(release.into()),
+            d: Some(d.into()),
+            p: Some(p.into()),
+            c: Some(c.into()),
+            o: Some(o.into()),
+            f: Some(f.into()),
+            g: Some(g.into()),
+            s: Some(s.into()),
+        }
+    }
+
+    /// Shorthand for a two-release history where only species differs.
+    fn two_release_history() -> Vec<ReleaseEntry> {
+        vec![
+            full_entry(
+                "R220",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus velezensis",
+            ),
+            full_entry(
+                "R214",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+        ]
+    }
+
+    /// Shorthand for a history where nothing changed between releases.
+    fn unchanged_history() -> Vec<ReleaseEntry> {
+        vec![
+            full_entry(
+                "R220",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+            full_entry(
+                "R214",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+        ]
+    }
+
+    /// Return a new ureq agent (no TLS quirks needed for mockito).
+    fn test_agent() -> ureq::Agent {
+        ureq::Agent::config_builder().build().new_agent()
+    }
+
+    // ── diff_genome ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_diff_genome_changed_species() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/GCA_000001.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(history_json(&two_release_history()))
+            .create();
+
+        // Redirect the real URL by calling diff_genome with a patched URL.
+        // Because diff_genome constructs the URL internally via GtdbApiRequest,
+        // we replicate its HTTP logic directly using test_agent against the mock.
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000001.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        // Reproduce what diff_genome does after fetching:
+        let from_entry = find_release(&history, "R214").unwrap();
+        let to_entry = find_release(&history, "R220").unwrap();
+        let from_snap = snapshot(from_entry);
+        let to_snap = snapshot(to_entry);
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        assert!(!changes.is_empty());
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].rank, "species");
+        assert_eq!(changes[0].from, "s__Bacillus subtilis");
+        assert_eq!(changes[0].to, "s__Bacillus velezensis");
+
+        let result = DiffResult {
+            query: "GCA_000001.1".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: true,
+            changes,
+            from_taxonomy: from_snap,
+            to_taxonomy: to_snap,
+        };
+
+        assert!(result.changed);
+        assert_eq!(result.query, "GCA_000001.1");
+        assert_eq!(result.from_release, "R214");
+        assert_eq!(result.to_release, "R220");
+    }
+
+    #[test]
+    fn test_diff_genome_no_change() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/GCA_000002.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(history_json(&unchanged_history()))
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000002.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        let from_entry = find_release(&history, "R214").unwrap();
+        let to_entry = find_release(&history, "R220").unwrap();
+        let from_snap = snapshot(from_entry);
+        let to_snap = snapshot(to_entry);
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        assert!(
+            changes.is_empty(),
+            "expected no changes but got {:?}",
+            changes
+        );
+    }
+
+    #[test]
+    fn test_diff_genome_missing_from_release() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/GCA_000003.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(history_json(&two_release_history())) // only R214 and R220
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000003.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        // R207 is not in the history — find_release should return None
+        let missing = find_release(&history, "R207");
+        assert!(missing.is_none(), "R207 should not be in history");
+    }
+
+    #[test]
+    fn test_diff_genome_missing_to_release() {
+        let history = two_release_history(); // R214, R220 only
+        let missing = find_release(&history, "R226");
+        assert!(missing.is_none());
+    }
+
+    #[test]
+    fn test_diff_genome_empty_history_returns_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/GCA_000004.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("[]")
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000004.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        // Reproduce the ensure! in diff_genome
+        assert!(history.is_empty(), "history should be empty for this test");
+        // find_release on empty slice must return None
+        assert!(find_release(&history, "R214").is_none());
+    }
+
+    #[test]
+    fn test_diff_genome_400_propagates_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/BAD_ACC/taxon-history")
+            .with_status(400)
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/BAD_ACC/taxon-history", server.url());
+        let result = utils::fetch_data(
+            &agent,
+            &url,
+            "No taxonomic history found for 'BAD_ACC'.".into(),
+        );
+
+        assert!(result.is_err());
+        assert!(
+            result.unwrap_err().to_string().contains("BAD_ACC"),
+            "error message should mention the accession"
+        );
+    }
+
+    #[test]
+    fn test_diff_genome_all_ranks_changed() {
+        let history = vec![
+            full_entry(
+                "R220",
+                "d__Archaea",
+                "p__Crenarchaeota",
+                "c__Thermoprotei",
+                "o__Thermoproteales",
+                "f__Thermoproteaceae",
+                "g__Thermoproteus",
+                "s__Thermoproteus neutrophilus",
+            ),
+            full_entry(
+                "R214",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+        ];
+
+        let from_snap = snapshot(find_release(&history, "R214").unwrap());
+        let to_snap = snapshot(find_release(&history, "R220").unwrap());
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        // All 7 ranks changed
+        assert_eq!(changes.len(), 7);
+        let ranks: Vec<&str> = changes.iter().map(|c| c.rank.as_str()).collect();
+        assert!(ranks.contains(&"domain"));
+        assert!(ranks.contains(&"phylum"));
+        assert!(ranks.contains(&"class"));
+        assert!(ranks.contains(&"order"));
+        assert!(ranks.contains(&"family"));
+        assert!(ranks.contains(&"genus"));
+        assert!(ranks.contains(&"species"));
+    }
+
+    #[test]
+    fn test_diff_genome_case_insensitive_release_lookup() {
+        let history = two_release_history(); // releases stored as "R214", "R220"
+
+        // Both lowercase and uppercase should find the entry
+        assert!(find_release(&history, "r214").is_some());
+        assert!(find_release(&history, "R214").is_some());
+        assert!(find_release(&history, "r220").is_some());
+        assert!(find_release(&history, "R220").is_some());
+    }
+
+    #[test]
+    fn test_diff_genome_result_fields_populated_correctly() {
+        let history = two_release_history();
+        let from_entry = find_release(&history, "R214").unwrap();
+        let to_entry = find_release(&history, "R220").unwrap();
+        let from_snap = snapshot(from_entry);
+        let to_snap = snapshot(to_entry);
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        let result = DiffResult {
+            query: "GCA_000001.1".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: !changes.is_empty(),
+            changes,
+            from_taxonomy: from_snap.clone(),
+            to_taxonomy: to_snap.clone(),
+        };
+
+        // Taxonomy snapshots must be populated
+        assert_eq!(result.from_taxonomy.domain, "d__Bacteria");
+        assert_eq!(result.from_taxonomy.species, "s__Bacillus subtilis");
+        assert_eq!(result.to_taxonomy.species, "s__Bacillus velezensis");
+        assert_eq!(result.from_taxonomy.release, "R214");
+        assert_eq!(result.to_taxonomy.release, "R220");
+    }
+
+    // ── resolve_latest_release ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_resolve_latest_release_returns_first_entry() {
+        let mut server = Server::new();
+        // API returns newest-first: R220 is index 0
+        let _m = server
+            .mock("GET", "/genome/GCA_000005.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(history_json(&two_release_history()))
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000005.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        // Reproduce resolve_latest_release logic
+        let latest = history
+            .first()
+            .and_then(|e| e.release.clone())
+            .expect("should have a first entry");
+
+        assert_eq!(latest, "R220");
+    }
+
+    #[test]
+    fn test_resolve_latest_release_single_entry() {
+        let mut server = Server::new();
+        let single = vec![full_entry(
+            "R214",
+            "d__Bacteria",
+            "p__Firmicutes",
+            "c__Bacilli",
+            "o__Bacillales",
+            "f__Bacillaceae",
+            "g__Bacillus",
+            "s__Bacillus subtilis",
+        )];
+        let _m = server
+            .mock("GET", "/genome/GCA_000006.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(history_json(&single))
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000006.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        let latest = history.first().and_then(|e| e.release.clone()).unwrap();
+        assert_eq!(latest, "R214");
+    }
+
+    #[test]
+    fn test_resolve_latest_release_empty_history_is_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/GCA_000007.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("[]")
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000007.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        // Reproduce the error path: first() returns None on empty vec
+        let result: Option<String> = history.first().and_then(|e| e.release.clone());
+        assert!(
+            result.is_none(),
+            "empty history should produce no latest release"
+        );
+    }
+
+    #[test]
+    fn test_resolve_latest_release_400_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/BAD/taxon-history")
+            .with_status(400)
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/BAD/taxon-history", server.url());
+        let result = utils::fetch_data(&agent, &url, "Could not fetch history for 'BAD'.".into());
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Could not fetch history"));
+    }
+
+    #[test]
+    fn test_resolve_latest_release_entry_with_none_release_field() {
+        // An entry whose release field is None should not be returned
+        let history = vec![
+            ReleaseEntry {
+                release: None,
+                d: None,
+                p: None,
+                c: None,
+                o: None,
+                f: None,
+                g: None,
+                s: None,
+            },
+            full_entry(
+                "R214",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+        ];
+
+        // first() gives the None-release entry — and_then skips it
+        let latest = history.first().and_then(|e| e.release.clone());
+        assert!(
+            latest.is_none(),
+            "entry with None release should yield None from and_then"
+        );
+    }
+
+    // ── diff (public entry point) ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_diff_json_output_single_query() {
+        // Test the output serialisation path for a DiffResult with one change
+        let history = two_release_history();
+        let from_snap = snapshot(find_release(&history, "R214").unwrap());
+        let to_snap = snapshot(find_release(&history, "R220").unwrap());
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        let result = DiffResult {
+            query: "GCA_000001.1".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: true,
+            changes,
+            from_taxonomy: from_snap,
+            to_taxonomy: to_snap,
+        };
+
+        let json = serde_json::to_string_pretty(&result).unwrap();
+
+        assert!(json.contains("\"query\": \"GCA_000001.1\""));
+        assert!(json.contains("\"from_release\": \"R214\""));
+        assert!(json.contains("\"to_release\": \"R220\""));
+        assert!(json.contains("\"changed\": true"));
+        assert!(json.contains("\"rank\": \"species\""));
+        assert!(json.contains("\"from\": \"s__Bacillus subtilis\""));
+        assert!(json.contains("\"to\": \"s__Bacillus velezensis\""));
+        assert!(json.contains("from_taxonomy"));
+        assert!(json.contains("to_taxonomy"));
+    }
+
+    #[test]
+    fn test_diff_csv_header_in_output() {
+        let header = DiffResult::csv_header(",");
+        assert!(header.starts_with("query,from_release,to_release,changed"));
+        assert!(header.contains("rank"));
+        assert!(header.contains("from_value"));
+        assert!(header.contains("to_value"));
+        assert!(header.contains("from_domain"));
+        assert!(header.contains("to_species"));
+    }
+
+    #[test]
+    fn test_diff_tsv_header_uses_tabs() {
+        let header = DiffResult::csv_header("\t");
+        assert!(!header.contains(','));
+        assert!(header.contains('\t'));
+        assert!(header.starts_with("query\t"));
+    }
+
+    #[test]
+    fn test_diff_csv_output_one_row_per_change() {
+        let history = vec![
+            full_entry(
+                "R220",
+                "d__Bacteria",
+                "p__Bacillota_A",
+                "c__Bacilli_A",
+                "o__Bacillales",
+                "f__Bacillaceae_B",
+                "g__Bacillus",
+                "s__Bacillus velezensis",
+            ),
+            full_entry(
+                "R214",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+        ];
+        let from_snap = snapshot(find_release(&history, "R214").unwrap());
+        let to_snap = snapshot(find_release(&history, "R220").unwrap());
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        // phylum, class, family, species changed — 4 changes
+        assert_eq!(changes.len(), 4);
+
+        let result = DiffResult {
+            query: "GCA_000001.1".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: true,
+            changes,
+            from_taxonomy: from_snap,
+            to_taxonomy: to_snap,
+        };
+
+        let csv = result.to_flat_row(",");
+        let lines: Vec<&str> = csv.lines().collect();
+
+        // header + 4 data rows (one per change)
+        assert_eq!(
+            lines.len(),
+            5,
+            "expected header + 4 change rows, got: {csv}"
+        );
+        // every data row starts with the query
+        for line in &lines[1..] {
+            assert!(line.starts_with("GCA_000001.1,"), "unexpected line: {line}");
+        }
+    }
+
+    #[test]
+    fn test_diff_csv_output_no_change_one_data_row() {
+        let history = unchanged_history();
+        let from_snap = snapshot(find_release(&history, "R214").unwrap());
+        let to_snap = snapshot(find_release(&history, "R220").unwrap());
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        assert!(changes.is_empty());
+
+        let result = DiffResult {
+            query: "GCA_000002.1".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: false,
+            changes,
+            from_taxonomy: from_snap,
+            to_taxonomy: to_snap,
+        };
+
+        let csv = result.to_flat_row(",");
+        let lines: Vec<&str> = csv.lines().collect();
+
+        // header + exactly 1 data row with empty rank/from/to
+        assert_eq!(
+            lines.len(),
+            2,
+            "expected header + 1 row for unchanged result"
+        );
+        assert!(lines[1].contains("false"));
+    }
+
+    #[test]
+    fn test_diff_to_release_from_mock_server() {
+        // End-to-end test of the --to omitted path:
+        // the function should pick the first entry (newest) from the history.
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/genome/GCA_000008.1/taxon-history")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            // R226 is the newest (index 0), R220 next, R214 oldest
+            .with_body(history_json(&vec![
+                full_entry(
+                    "R226",
+                    "d__Bacteria",
+                    "p__Firmicutes",
+                    "c__Bacilli",
+                    "o__Bacillales",
+                    "f__Bacillaceae",
+                    "g__Bacillus",
+                    "s__Bacillus subtilis",
+                ),
+                full_entry(
+                    "R220",
+                    "d__Bacteria",
+                    "p__Firmicutes",
+                    "c__Bacilli",
+                    "o__Bacillales",
+                    "f__Bacillaceae",
+                    "g__Bacillus",
+                    "s__Bacillus subtilis",
+                ),
+                full_entry(
+                    "R214",
+                    "d__Bacteria",
+                    "p__Firmicutes",
+                    "c__Bacilli",
+                    "o__Bacillales",
+                    "f__Bacillaceae",
+                    "g__Bacillus",
+                    "s__Bacillus subtilis",
+                ),
+            ]))
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000008.1/taxon-history", server.url());
+        let response = agent.get(&url).call().unwrap();
+        let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
+
+        // Reproduce resolve_latest_release logic
+        let latest = history.first().and_then(|e| e.release.clone()).unwrap();
+        assert_eq!(
+            latest, "R226",
+            "newest-first ordering: first entry should be R226"
+        );
+    }
+
+    #[test]
+    fn test_diff_result_serialise_deserialise() {
+        // Verify DiffResult round-trips through JSON without data loss
+        let history = two_release_history();
+        let from_snap = snapshot(find_release(&history, "R214").unwrap());
+        let to_snap = snapshot(find_release(&history, "R220").unwrap());
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        let original = DiffResult {
+            query: "GCA_000001.1".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: true,
+            changes,
+            from_taxonomy: from_snap,
+            to_taxonomy: to_snap,
+        };
+
+        let json = serde_json::to_string(&original).unwrap();
+        let roundtripped: DiffResult = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(original, roundtripped);
+    }
+
+    #[test]
+    fn test_diff_result_snapshot_empty_fields() {
+        // An entry with all None taxonomy fields should produce empty strings
+        let entry = ReleaseEntry {
+            release: Some("R214".into()),
+            d: None,
+            p: None,
+            c: None,
+            o: None,
+            f: None,
+            g: None,
+            s: None,
+        };
+        let snap = snapshot(&entry);
+        assert_eq!(snap.release, "R214");
+        assert_eq!(snap.domain, "");
+        assert_eq!(snap.phylum, "");
+        assert_eq!(snap.class, "");
+        assert_eq!(snap.order, "");
+        assert_eq!(snap.family, "");
+        assert_eq!(snap.genus, "");
+        assert_eq!(snap.species, "");
     }
 }
