@@ -40,11 +40,11 @@ fn main() -> Result<()> {
         }
         Commands::Taxon(args) => {
             if args.search || args.all {
-                taxon::search_taxon(args)?;
+                taxon::search_taxon(&args)?;
             } else if args.genomes {
-                taxon::get_taxon_genomes(args)?;
+                taxon::get_taxon_genomes(&args)?;
             } else {
-                taxon::get_taxon_name(args)?;
+                taxon::get_taxon_name(&args)?;
             }
         }
     };

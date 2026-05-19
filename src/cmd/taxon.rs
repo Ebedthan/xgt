@@ -110,7 +110,19 @@ impl ToFlatRow for TaxonGenomes {
 // - Write using utils::write_to_output
 // To avoid code duplication, we can create a helper function that encapsulates this logic.
 
-// Helper function to fetch and write JSON
+// Pure fetch: deserializes and returns data, no writing
+fn fetch_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
+    agent: &Agent,
+    request: GtdbApiRequest,
+    err_msg: String,
+) -> Result<T> {
+    let url = request.to_url();
+    let response = utils::fetch_data(agent, &url, err_msg)?;
+    let data: T = response.into_body().read_json()?;
+    Ok(data)
+}
+
+// Fetch and immediately write: used by callers with no post-processing
 fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     agent: &Agent,
     request: GtdbApiRequest,
@@ -118,10 +130,7 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     outfmt: &utils::OutputFormat,
     out_path: Option<String>,
 ) -> Result<T> {
-    let url = request.to_url();
-    let response = utils::fetch_data(agent, &url, err_msg)?;
-    let data: T = response.into_body().read_json()?;
-
+    let data: T = fetch_json(agent, request, err_msg)?;
     let sep = if *outfmt == utils::OutputFormat::Tsv {
         "\t"
     } else {
@@ -131,13 +140,12 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
         utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
         _ => data.to_flat_row(sep),
     };
-
-    utils::write_to_output(output.as_bytes(), out_path, true)?;
+    utils::write_to_output(output.as_bytes(), out_path, false)?;
     Ok(data)
 }
 
-pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
-    if let Some(name) = args.name {
+pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
+    if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
         let request = GtdbApiRequest::Taxon {
             name: name.clone(),
@@ -145,23 +153,20 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
             limit: None,
             is_reps_only: None,
         };
-
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
-
         fetch_and_write_json::<TaxonResult>(
             &agent,
             request,
             format!("Taxon {} not found", name),
             &outfmt,
-            args.out,
+            args.out.clone(),
         )?;
     }
-
     Ok(())
 }
 
-pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
-    if let Some(name) = args.name {
+pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
+    if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
         let request = GtdbApiRequest::Taxon {
             name: name.clone(),
@@ -170,22 +175,19 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
             is_reps_only: Some(args.reps),
         };
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
-
         let data = fetch_and_write_json::<TaxonGenomes>(
             &agent,
             request,
             format!("No match found for {}", name),
             &outfmt,
-            args.out,
+            args.out.clone(),
         )?;
-
         ensure!(!data.data.is_empty(), "No data found for {}", name);
     }
-
     Ok(())
 }
 
-pub fn search_taxon(args: TaxonArgs) -> Result<()> {
+pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
     if let Some(name) = args.name.as_deref() {
         let agent = utils::get_agent(args.insecure)?;
 
@@ -203,21 +205,26 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
 
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
 
-        let mut data = fetch_and_write_json::<TaxonSearchResult>(
-            &agent,
-            request,
-            format!("No match found for {}", name),
-            &outfmt,
-            None,
-        )?;
+        // Fetch only, no write yet, because --word may change the data
+        let mut data: TaxonSearchResult =
+            fetch_json(&agent, request, format!("No match found for {}", name))?;
 
         if args.word {
             data.matches.retain(|x| x == name);
         }
         ensure!(!data.matches.is_empty(), "No match found for {}", name);
 
-        let json = serde_json::to_string_pretty(&data)?;
-        utils::write_to_output(json.as_bytes(), args.out, true)?;
+        // Single write after all post-processing is done
+        let sep = if outfmt == utils::OutputFormat::Tsv {
+            "\t"
+        } else {
+            ","
+        };
+        let output = match outfmt {
+            utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
+            _ => data.to_flat_row(sep),
+        };
+        utils::write_to_output(output.as_bytes(), args.out.clone(), false)?;
     }
 
     Ok(())
@@ -244,7 +251,7 @@ mod tests {
             outfmt: "json".to_string(),
         };
         let actual_output = args.out.clone();
-        get_taxon_name(args)?;
+        get_taxon_name(&args)?;
 
         let expected_output = fs::read_to_string("output.json")?;
         let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)?;
@@ -275,7 +282,7 @@ mod tests {
             outfmt: "json".to_string(),
         };
 
-        get_taxon_name(args)?;
+        get_taxon_name(&args)?;
 
         Ok(())
     }
@@ -294,7 +301,7 @@ mod tests {
             file: None,
             outfmt: "json".to_string(),
         };
-        let result = get_taxon_name(args);
+        let result = get_taxon_name(&args);
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("Taxon UnknownTaxonName not found"));
@@ -318,7 +325,7 @@ mod tests {
             file: None,
             outfmt: "json".to_string(),
         };
-        let result = get_taxon_name(args);
+        let result = get_taxon_name(&args);
         assert!(result.is_err());
     }
 
@@ -336,7 +343,7 @@ mod tests {
             file: None,
             outfmt: "json".to_string(),
         };
-        let result = search_taxon(args);
+        let result = search_taxon(&args);
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
@@ -358,7 +365,7 @@ mod tests {
             file: None,
             outfmt: "json".to_string(),
         };
-        let result = search_taxon(args);
+        let result = search_taxon(&args);
         assert!(result.is_ok());
     }
 
@@ -376,7 +383,7 @@ mod tests {
             file: None,
             outfmt: "json".to_string(),
         };
-        let result = search_taxon(args);
+        let result = search_taxon(&args);
         assert!(result.is_ok());
     }
 
@@ -394,7 +401,7 @@ mod tests {
             file: None,
             outfmt: "json".to_string(),
         };
-        let result = search_taxon(args);
+        let result = search_taxon(&args);
         assert!(result.is_ok());
 
         // Check that the output file was created and contains the taxon name
@@ -420,7 +427,7 @@ mod tests {
 
         let actual_output = args.out.clone();
 
-        get_taxon_genomes(args)?;
+        get_taxon_genomes(&args)?;
 
         let expected_output = fs::read_to_string("output.json")?;
         let expected_taxon_data: TaxonGenomes = serde_json::from_str(&expected_output)?;
