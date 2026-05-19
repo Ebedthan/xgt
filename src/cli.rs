@@ -88,6 +88,12 @@ pub struct SearchArgs {
     #[arg(long, value_name = "DIR", requires = "split")]
     pub split_dir: Option<String>,
 
+    /// Target a specific GTDB release (e.g. R214, R220, R226).
+    /// Defaults to the latest release. Note: not all endpoints support
+    /// historical releases; unsupported endpoints will use the latest.
+    #[arg(long, value_name = "RELEASE", value_parser = parse_release)]
+    pub release: Option<String>,
+
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
     pub insecure: bool,
@@ -127,6 +133,12 @@ pub struct GenomeArgs {
     /// Directory for per-item files when using --split (default: current directory)
     #[arg(long, value_name = "DIR", requires = "split")]
     pub split_dir: Option<String>,
+
+    /// Target a specific GTDB release (e.g. R214, R220, R226).
+    /// Defaults to the latest release. Note: not all endpoints support
+    /// historical releases; unsupported endpoints will use the latest.
+    #[arg(long, value_name = "RELEASE", value_parser = parse_release)]
+    pub release: Option<String>,
 
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
@@ -180,9 +192,29 @@ pub struct TaxonArgs {
     #[arg(long, value_name = "DIR", requires = "split")]
     pub split_dir: Option<String>,
 
+    /// Target a specific GTDB release (e.g. R214, R220, R226).
+    /// Defaults to the latest release. Note: not all endpoints support
+    /// historical releases; unsupported endpoints will use the latest.
+    #[arg(long, value_name = "RELEASE", value_parser = parse_release)]
+    pub release: Option<String>,
+
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
     pub insecure: bool,
+}
+
+fn parse_release(s: &str) -> Result<String, String> {
+    // Accept R<number> or r<number>, normalize to uppercase
+    let upper = s.to_uppercase();
+    if upper.starts_with('R') && upper[1..].parse::<u32>().is_ok() {
+        Ok(upper)
+    } else {
+        Err(format!(
+            "'{}' is not a valid release identifier. \
+             Use the format R<number>, e.g. R214, R220, R226.",
+            s
+        ))
+    }
 }
 
 fn is_valid_taxon(s: &str) -> Result<String, String> {
@@ -262,5 +294,21 @@ mod tests {
             is_valid_taxon("d_Actinobacteria"),
             Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
         );
+    }
+
+    #[test]
+    fn test_parse_release_valid() {
+        // tested via cli validator
+        assert!(parse_release("R214").is_ok());
+        assert!(parse_release("r220").is_ok()); // lowercase accepted, normalized
+        assert_eq!(parse_release("r220").unwrap(), "R220");
+    }
+
+    #[test]
+    fn test_parse_release_invalid() {
+        assert!(parse_release("214").is_err());
+        assert!(parse_release("release214").is_err());
+        assert!(parse_release("R").is_err());
+        assert!(parse_release("Rabc").is_err());
     }
 }

@@ -7,6 +7,7 @@ pub enum GtdbApiRequest {
         kind: TaxonEndPoint,
         limit: Option<u32>,
         is_reps_only: Option<bool>,
+        release: Option<String>,
     },
     Search {
         query: String,
@@ -19,10 +20,12 @@ pub enum GtdbApiRequest {
         gtdb_species_rep_only: bool,
         ncbi_type_material_only: bool,
         output_format: String,
+        release: Option<String>,
     },
     Genome {
         accession: String,
         request_type: GenomeRequestType,
+        release: Option<String>,
     },
 }
 
@@ -73,24 +76,30 @@ impl GtdbApiRequest {
                 kind,
                 limit,
                 is_reps_only,
-            } => match kind {
-                TaxonEndPoint::Name => format!("https://api.gtdb.ecogenomic.org/taxon/{}", name),
-                TaxonEndPoint::Search => format!(
-                    "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit={}",
-                    name,
-                    limit.unwrap_or(1000)
-                ),
-                TaxonEndPoint::SearchAll => format!(
-                    "https://api.gtdb.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
-                    name,
-                    limit.unwrap_or(1000)
-                ),
-                TaxonEndPoint::Genomes => format!(
-                    "https://api.gtdb.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
-                    name,
-                    is_reps_only.unwrap_or(false)
-                ),
-            },
+                release: _,
+            } => {
+                // Taxon endpoints do not support ?release= — always serves latest
+                match kind {
+                    TaxonEndPoint::Name => {
+                        format!("https://api.gtdb.ecogenomic.org/taxon/{}", name)
+                    }
+                    TaxonEndPoint::Search => format!(
+                        "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit={}",
+                        name,
+                        limit.unwrap_or(1000)
+                    ),
+                    TaxonEndPoint::SearchAll => format!(
+                        "https://api.gtdb.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
+                        name,
+                        limit.unwrap_or(1000)
+                    ),
+                    TaxonEndPoint::Genomes => format!(
+                        "https://api.gtdb.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
+                        name,
+                        is_reps_only.unwrap_or(false)
+                    ),
+                }
+            }
 
             GtdbApiRequest::Search {
                 query,
@@ -103,6 +112,8 @@ impl GtdbApiRequest {
                 gtdb_species_rep_only,
                 ncbi_type_material_only,
                 output_format,
+                release: _,
+                // Search endpoint does not support ?release= — always latest
             } => {
                 let mut url = format!(
                     "https://api.gtdb.ecogenomic.org/search/gtdb{}?",
@@ -146,10 +157,22 @@ impl GtdbApiRequest {
             GtdbApiRequest::Genome {
                 accession,
                 request_type,
-            } => format!(
-                "https://api.gtdb.ecogenomic.org/genome/{}/{}",
-                accession, request_type
-            ),
+                release,
+            } => {
+                let base = format!(
+                    "https://api.gtdb.ecogenomic.org/genome/{}/{}",
+                    accession, request_type
+                );
+                // Append release only for card and metadata; taxon-history
+                // is inherently cross-release
+                match request_type {
+                    GenomeRequestType::Card | GenomeRequestType::Metadata => match release {
+                        Some(r) => format!("{}?release={}", base, r),
+                        None => base,
+                    },
+                    GenomeRequestType::TaxonHistory => base,
+                }
+            }
         }
     }
 }
@@ -196,6 +219,7 @@ mod tests {
             kind: TaxonEndPoint::Name,
             limit: None,
             is_reps_only: None,
+            release: None,
         };
         assert_eq!(
             req.to_url(),
@@ -210,6 +234,7 @@ mod tests {
             kind: TaxonEndPoint::Search,
             limit: Some(500),
             is_reps_only: None,
+            release: None,
         };
         assert_eq!(
             req.to_url(),
@@ -224,6 +249,7 @@ mod tests {
             kind: TaxonEndPoint::Genomes,
             limit: None,
             is_reps_only: Some(true),
+            release: None,
         };
         assert_eq!(
             req.to_url(),
@@ -243,6 +269,7 @@ mod tests {
             filter_text: "species".into(),
             gtdb_species_rep_only: true,
             ncbi_type_material_only: true,
+            release: None,
             output_format: "csv".into(),
         };
 
@@ -261,11 +288,52 @@ mod tests {
         let req = GtdbApiRequest::Genome {
             accession: "GCF_000005845.2".into(),
             request_type: GenomeRequestType::Card,
+            release: None,
         };
 
         assert_eq!(
             req.to_url(),
             "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card"
+        );
+    }
+
+    #[test]
+    fn test_genome_card_with_release() {
+        let req = GtdbApiRequest::Genome {
+            accession: "GCF_000005845.2".into(),
+            request_type: GenomeRequestType::Card,
+            release: Some("R214".into()),
+        };
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card?release=R214"
+        );
+    }
+
+    #[test]
+    fn test_genome_card_without_release() {
+        let req = GtdbApiRequest::Genome {
+            accession: "GCF_000005845.2".into(),
+            request_type: GenomeRequestType::Card,
+            release: None,
+        };
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card"
+        );
+    }
+
+    #[test]
+    fn test_genome_taxon_history_ignores_release() {
+        // taxon-history is always cross-release; release param is never appended
+        let req = GtdbApiRequest::Genome {
+            accession: "GCF_000005845.2".into(),
+            request_type: GenomeRequestType::TaxonHistory,
+            release: Some("R214".into()),
+        };
+        assert_eq!(
+            req.to_url(),
+            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/taxon-history"
         );
     }
 }

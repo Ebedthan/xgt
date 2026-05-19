@@ -363,6 +363,7 @@ where
         let url = GtdbApiRequest::Genome {
             accession: accession.clone(),
             request_type,
+            release: args.release.clone(),
         }
         .to_url();
 
@@ -468,6 +469,7 @@ fn process_taxon_history(
     let url = GtdbApiRequest::Genome {
         accession: accession.into(),
         request_type: GenomeRequestType::TaxonHistory,
+        release: None,
     }
     .to_url();
 

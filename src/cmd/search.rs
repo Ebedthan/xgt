@@ -161,6 +161,7 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             sort_by: "".into(),
             sort_desc: false,
             filter_text: "".into(),
+            release: args.release.clone(),
         };
 
         let response = utils::fetch_data(
@@ -262,6 +263,7 @@ fn fetch_all_pages(
             sort_by: "".into(),
             sort_desc: false,
             filter_text: "".into(),
+            release: args.release.clone(),
         };
 
         let response = utils::fetch_data(
@@ -483,6 +485,7 @@ mod tests {
             insecure: true,
             split: false,
             split_dir: None,
+            release: None,
         };
         let res = search(&args);
         assert!(res.is_ok());
@@ -526,6 +529,7 @@ GCF_943371865.1"#
             insecure: true,
             split: false,
             split_dir: None,
+            release: None,
         };
         let res = search(&args);
         assert!(res.is_ok());

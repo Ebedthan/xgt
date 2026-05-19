@@ -154,6 +154,7 @@ pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
             kind: TaxonEndPoint::Name,
             limit: None,
             is_reps_only: None,
+            release: args.release.clone(),
         };
         fetch_and_write_json::<TaxonResult>(
             &agent,
@@ -177,7 +178,9 @@ pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
             kind: TaxonEndPoint::Genomes,
             limit: None,
             is_reps_only: Some(args.reps),
+            release: args.release.clone(),
         };
+
         let data = fetch_and_write_json::<TaxonGenomes>(
             &agent,
             request,
@@ -211,6 +214,7 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
             kind,
             limit: None,
             is_reps_only: None,
+            release: args.release.clone(),
         };
 
         let mut data: TaxonSearchResult = fetch_json(
@@ -268,6 +272,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let actual_output = args.out.clone();
         get_taxon_name(&args)?;
@@ -301,6 +306,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
 
         get_taxon_name(&args)?;
@@ -323,6 +329,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let result = get_taxon_name(&args);
         assert!(result.is_err());
@@ -349,6 +356,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let result = get_taxon_name(&args);
         assert!(result.is_err());
@@ -369,6 +377,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_err());
@@ -393,6 +402,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_ok());
@@ -413,6 +423,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_ok());
@@ -433,6 +444,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
         let result = search_taxon(&args);
         assert!(result.is_ok());
@@ -458,6 +470,7 @@ mod tests {
             outfmt: "json".to_string(),
             split: false,
             split_dir: None,
+            release: None,
         };
 
         let actual_output = args.out.clone();
