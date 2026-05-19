@@ -6,6 +6,8 @@ use crate::api::{GtdbApiRequest, TaxonEndPoint};
 use crate::cli::TaxonArgs;
 use crate::utils;
 
+use crate::utils::ToFlatRow;
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Taxon {
     taxon: String,
@@ -34,15 +36,70 @@ pub struct TaxonResult {
     data: Vec<Taxon>,
 }
 
+impl ToFlatRow for TaxonResult {
+    fn csv_header(sep: &str) -> String {
+        format!(
+            "taxon{sep}total{sep}n_desc_children{sep}is_genome{sep}is_rep\
+             {sep}type_material{sep}bergeys_url{sep}seq_code_url{sep}lpsn_url{sep}ncbi_tax_id"
+        )
+    }
+
+    fn to_flat_row(&self, sep: &str) -> String {
+        let mut lines = vec![Self::csv_header(sep)];
+
+        for t in &self.data {
+            lines.push(format!(
+                "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
+                t.taxon,
+                t.total.map(|v| v.to_string()).unwrap_or_default(),
+                t.n_desc_children.as_deref().unwrap_or(""),
+                t.is_genome.map(|v| v.to_string()).unwrap_or_default(),
+                t.is_rep.map(|v| v.to_string()).unwrap_or_default(),
+                t.type_material.as_deref().unwrap_or(""),
+                t.bergeys_url.as_deref().unwrap_or(""),
+                t.seq_code_url.as_deref().unwrap_or(""),
+                t.lpsn_url.as_deref().unwrap_or(""),
+                t.ncbi_tax_id.map(|v| v.to_string()).unwrap_or_default(),
+            ));
+        }
+
+        lines.join("\n") + "\n"
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TaxonSearchResult {
     matches: Vec<String>,
+}
+
+impl ToFlatRow for TaxonSearchResult {
+    fn csv_header(_sep: &str) -> String {
+        "taxon".to_string()
+    }
+
+    fn to_flat_row(&self, _sep: &str) -> String {
+        let mut lines = vec![Self::csv_header(_sep)];
+        lines.extend(self.matches.iter().cloned());
+        lines.join("\n") + "\n"
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(transparent)]
 pub struct TaxonGenomes {
     data: Vec<String>,
+}
+
+impl ToFlatRow for TaxonGenomes {
+    fn csv_header(_sep: &str) -> String {
+        "accession".to_string()
+    }
+
+    fn to_flat_row(&self, _sep: &str) -> String {
+        let mut lines = vec![Self::csv_header(_sep)];
+        lines.extend(self.data.iter().cloned());
+        lines.join("\n") + "\n"
+    }
 }
 
 // The Taxon command actually repeats a certain logic:
@@ -54,17 +111,28 @@ pub struct TaxonGenomes {
 // To avoid code duplication, we can create a helper function that encapsulates this logic.
 
 // Helper function to fetch and write JSON
-fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize>(
+fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     agent: &Agent,
     request: GtdbApiRequest,
     err_msg: String,
+    outfmt: &utils::OutputFormat,
     out_path: Option<String>,
 ) -> Result<T> {
     let url = request.to_url();
     let response = utils::fetch_data(agent, &url, err_msg)?;
     let data: T = response.into_body().read_json()?;
-    let json = serde_json::to_string_pretty(&data)?;
-    utils::write_to_output(json.as_bytes(), out_path)?;
+
+    let sep = if *outfmt == utils::OutputFormat::Tsv {
+        "\t"
+    } else {
+        ","
+    };
+    let output = match outfmt {
+        utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
+        _ => data.to_flat_row(sep),
+    };
+
+    utils::write_to_output(output.as_bytes(), out_path, true)?;
     Ok(data)
 }
 
@@ -78,10 +146,13 @@ pub fn get_taxon_name(args: TaxonArgs) -> Result<()> {
             is_reps_only: None,
         };
 
+        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+
         fetch_and_write_json::<TaxonResult>(
             &agent,
             request,
             format!("Taxon {} not found", name),
+            &outfmt,
             args.out,
         )?;
     }
@@ -98,10 +169,13 @@ pub fn get_taxon_genomes(args: TaxonArgs) -> Result<()> {
             limit: None,
             is_reps_only: Some(args.reps),
         };
+        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+
         let data = fetch_and_write_json::<TaxonGenomes>(
             &agent,
             request,
             format!("No match found for {}", name),
+            &outfmt,
             args.out,
         )?;
 
@@ -127,10 +201,13 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
             is_reps_only: None,
         };
 
+        let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+
         let mut data = fetch_and_write_json::<TaxonSearchResult>(
             &agent,
             request,
             format!("No match found for {}", name),
+            &outfmt,
             None,
         )?;
 
@@ -140,7 +217,7 @@ pub fn search_taxon(args: TaxonArgs) -> Result<()> {
         ensure!(!data.matches.is_empty(), "No match found for {}", name);
 
         let json = serde_json::to_string_pretty(&data)?;
-        utils::write_to_output(json.as_bytes(), args.out)?;
+        utils::write_to_output(json.as_bytes(), args.out, true)?;
     }
 
     Ok(())
@@ -164,6 +241,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let actual_output = args.out.clone();
         get_taxon_name(args)?;
@@ -194,6 +272,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
 
         get_taxon_name(args)?;
@@ -213,6 +292,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let result = get_taxon_name(args);
         assert!(result.is_err());
@@ -236,6 +316,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let result = get_taxon_name(args);
         assert!(result.is_err());
@@ -253,6 +334,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let result = search_taxon(args);
         assert!(result.is_err());
@@ -274,6 +356,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -291,6 +374,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -308,6 +392,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
         let result = search_taxon(args);
         assert!(result.is_ok());
@@ -330,6 +415,7 @@ mod tests {
             reps: false,
             insecure: true,
             file: None,
+            outfmt: "json".to_string(),
         };
 
         let actual_output = args.out.clone();

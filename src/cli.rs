@@ -60,7 +60,7 @@ pub struct SearchArgs {
     #[arg(short, long, value_name = "FILE")]
     pub file: Option<String>,
 
-    /// Output to FILE
+    /// Output to FILE (format set by --outfmt)
     #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
     pub out: Option<String>,
 
@@ -91,6 +91,10 @@ pub struct GenomeArgs {
     #[arg(short, long, conflicts_with = "history")]
     pub metadata: bool,
 
+    /// Output format
+    #[arg(short = 'O', long, value_name = "STR", default_value = "json", value_parser = ["csv", "json", "tsv"])]
+    pub outfmt: String,
+
     /// Output raw JSON
     #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
     pub out: Option<String>,
@@ -110,7 +114,7 @@ pub struct TaxonArgs {
     #[arg(short, long, value_name = "FILE")]
     pub file: Option<String>,
 
-    /// Redirect output to FILE
+    /// Output to FILE (format set by --outfmt)
     #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
     pub out: Option<String>,
 
@@ -133,6 +137,10 @@ pub struct TaxonArgs {
     /// Set taxon V genomes search to lookup reps seqs only
     #[arg(short, long)]
     pub reps: bool,
+
+    /// Output format
+    #[arg(short = 'O', long, value_name = "STR", default_value = "json", value_parser = ["csv", "json", "tsv"])]
+    pub outfmt: String,
 
     /// Disable SSL certificate verification
     #[arg(short = 'k')]

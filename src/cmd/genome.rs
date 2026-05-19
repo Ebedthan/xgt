@@ -3,14 +3,12 @@ use crate::cli::GenomeArgs;
 use crate::utils;
 
 use crate::api::GenomeRequestType;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    fs::OpenOptions,
-    io::{self, Result as IoResult, Write},
-};
+use std::collections::HashMap;
 use ureq::Agent;
+
+use crate::utils::ToFlatRow;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 /// GenomeCard API query result struct
@@ -69,6 +67,130 @@ pub struct GenomeCard {
     // Raw NCBI Taxonomy as a Vec of Taxon struct
     #[serde(alias = "ncbiTaxonomyUnfiltered")]
     ncbi_taxonomy_unfiltered: Vec<Taxon>,
+}
+
+impl ToFlatRow for GenomeCard {
+    fn csv_header(sep: &str) -> String {
+        format!(
+            "accession{sep}name\
+             {sep}genome_size{sep}gc_percentage{sep}contig_count{sep}n50_contigs\
+             {sep}scaffold_count{sep}n50_scaffolds{sep}ambiguous_bases\
+             {sep}checkm_completeness{sep}checkm_contamination{sep}checkm_strain_heterogeneity\
+             {sep}protein_count{sep}coding_density\
+             {sep}ssu_count{sep}lsu_5s_count{sep}lsu_23s_count\
+             {sep}ncbi_assembly_level{sep}ncbi_assembly_name{sep}ncbi_assembly_type\
+             {sep}ncbi_bioproject{sep}ncbi_biosample\
+             {sep}ncbi_country{sep}ncbi_date{sep}ncbi_genome_category\
+             {sep}ncbi_isolate{sep}ncbi_isolation_source{sep}ncbi_lat_lon\
+             {sep}ncbi_refseq_category{sep}ncbi_seq_rel_date\
+             {sep}ncbi_strain_identifiers{sep}ncbi_submitter\
+             {sep}ncbi_taxid{sep}ncbi_species_taxid\
+             {sep}ncbi_translation_table{sep}ncbi_version_status\
+             {sep}gtdb_representative{sep}gtdb_genome_representative\
+             {sep}gtdb_domain{sep}gtdb_phylum{sep}gtdb_class\
+             {sep}gtdb_order{sep}gtdb_family{sep}gtdb_genus{sep}gtdb_species\
+             {sep}ncbi_taxonomy{sep}ncbi_type_material_designation\
+             {sep}gtdb_type_designation{sep}gtdb_type_species_of_genus\
+             {sep}lpsn_priority_year{sep}species_rep_name{sep}species_cluster_count\
+             {sep}subunit_summary{sep}lpsn_url"
+        )
+    }
+
+    fn to_flat_row(&self, sep: &str) -> String {
+        let n = &self.metadata_nucleotide;
+        let g = &self.metadata_gene;
+        let ncbi = &self.metadata_ncbi;
+        let tax = &self.metadata_taxonomy;
+        let tm = &self.metadata_type_material;
+
+        format!(
+            "{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}\
+             {sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}\
+             {sep}{}{sep}{}{sep}{}{sep}{}",
+            // genome
+            self.genome.accession,
+            self.genome.name,
+            // metadata_nucleotide
+            n.genome_size.map(|v| v.to_string()).unwrap_or_default(),
+            n.gc_percentage.map(|v| v.to_string()).unwrap_or_default(),
+            n.contig_count.map(|v| v.to_string()).unwrap_or_default(),
+            n.n50_contigs.map(|v| v.to_string()).unwrap_or_default(),
+            n.scaffold_count.map(|v| v.to_string()).unwrap_or_default(),
+            n.n50_scaffolds.map(|v| v.to_string()).unwrap_or_default(),
+            n.ambiguous_bases.map(|v| v.to_string()).unwrap_or_default(),
+            // metadata_gene
+            g.checkm_completeness.as_deref().unwrap_or(""),
+            g.checkm_contamination.as_deref().unwrap_or(""),
+            g.checkm_strain_heterogeneity.as_deref().unwrap_or(""),
+            g.protein_count.as_deref().unwrap_or(""),
+            g.coding_density.as_deref().unwrap_or(""),
+            g.ssu_count.as_deref().unwrap_or(""),
+            g.lsu_5s_count.as_deref().unwrap_or(""),
+            g.lsu_23s_count.as_deref().unwrap_or(""),
+            // metadata_ncbi
+            ncbi.ncbi_assembly_level.as_deref().unwrap_or(""),
+            ncbi.ncbi_assembly_name.as_deref().unwrap_or(""),
+            ncbi.ncbi_assembly_type.as_deref().unwrap_or(""),
+            ncbi.ncbi_bioproject.as_deref().unwrap_or(""),
+            ncbi.ncbi_biosample.as_deref().unwrap_or(""),
+            ncbi.ncbi_country.as_deref().unwrap_or(""),
+            ncbi.ncbi_date.as_deref().unwrap_or(""),
+            ncbi.ncbi_genome_category.as_deref().unwrap_or(""),
+            ncbi.ncbi_isolate.as_deref().unwrap_or(""),
+            ncbi.ncbi_isolation_source.as_deref().unwrap_or(""),
+            ncbi.ncbi_lat_lon.as_deref().unwrap_or(""),
+            ncbi.ncbi_refseq_category.as_deref().unwrap_or(""),
+            ncbi.ncbi_seq_rel_date.as_deref().unwrap_or(""),
+            ncbi.ncbi_strain_identifiers.as_deref().unwrap_or(""),
+            ncbi.ncbi_submitter.as_deref().unwrap_or(""),
+            ncbi.ncbi_taxid.as_deref().unwrap_or(""),
+            ncbi.ncbi_species_taxid.as_deref().unwrap_or(""),
+            ncbi.ncbi_translation_table.as_deref().unwrap_or(""),
+            ncbi.ncbi_version_status.as_deref().unwrap_or(""),
+            // metadata_taxonomy
+            tax.gtdb_representative.to_string(),
+            tax.gtdb_genome_representative.as_deref().unwrap_or(""),
+            tax.gtdb_domain.as_deref().unwrap_or(""),
+            tax.gtdb_phylum.as_deref().unwrap_or(""),
+            tax.gtdb_class.as_deref().unwrap_or(""),
+            tax.gtdb_order.as_deref().unwrap_or(""),
+            tax.gtdb_family.as_deref().unwrap_or(""),
+            tax.gtdb_genus.as_deref().unwrap_or(""),
+            tax.gtdb_species.as_deref().unwrap_or(""),
+            tax.ncbi_taxonomy.as_deref().unwrap_or(""),
+            tax.ncbi_type_material_designation.as_deref().unwrap_or(""),
+            // metadata_type_material
+            tm.gtdb_type_designation.as_deref().unwrap_or(""),
+            tm.gtdb_type_species_of_genus
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            tm.lpsn_priority_year
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            // top-level GenomeCard fields
+            self.species_rep_name.as_deref().unwrap_or(""),
+            self.species_cluster_count
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            self.subunit_summary.as_deref().unwrap_or(""),
+            self.lpsn_url.as_deref().unwrap_or(""),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -188,6 +310,78 @@ pub struct GenomeMetadata {
     is_ncbi_surveillance: Option<bool>,
 }
 
+impl ToFlatRow for GenomeMetadata {
+    fn csv_header(sep: &str) -> String {
+        format!("accession{sep}is_ncbi_surveillance")
+    }
+
+    fn to_flat_row(&self, sep: &str) -> String {
+        format!(
+            "{}{sep}{}",
+            self.accession.as_deref().unwrap_or(""),
+            self.is_ncbi_surveillance
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+        )
+    }
+}
+
+fn fetch_and_save_genome_data<T>(args: &GenomeArgs) -> Result<()>
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow,
+{
+    let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
+    let agent = utils::get_agent(args.insecure)?;
+    let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+    let sep = match outfmt {
+        utils::OutputFormat::Tsv => "\t",
+        _ => ",",
+    };
+
+    // Write header once, truncating any existing file content.
+    // For JSON there is no header, but we still need to truncate on the first
+    // data write. Handled via `first_write` below.
+    if outfmt != utils::OutputFormat::Json {
+        let header = T::csv_header(sep);
+        utils::write_to_output(format!("{}\n", header).as_bytes(), args.out.clone(), false)?;
+    }
+
+    let mut first_write = outfmt == utils::OutputFormat::Json;
+
+    for accession in accessions {
+        let request_type = if args.metadata {
+            GenomeRequestType::Metadata
+        } else {
+            GenomeRequestType::Card
+        };
+        let url = GtdbApiRequest::Genome {
+            accession: accession.clone(),
+            request_type,
+        }
+        .to_url();
+
+        let response = utils::fetch_data(
+            &agent,
+            &url,
+            "The server returned an unexpected status code (400)".into(),
+        )?;
+
+        let genome_data: T = response.into_body().read_json()?;
+
+        let out = match outfmt {
+            utils::OutputFormat::Json => serde_json::to_string_pretty(&genome_data)? + "\n",
+            _ => genome_data.to_flat_row(sep) + "\n",
+        };
+
+        // Truncate only on the first JSON write; all subsequent writes append.
+        let append = !first_write;
+        utils::write_to_output(out.as_bytes(), args.out.clone(), append)?;
+        first_write = false;
+    }
+
+    Ok(())
+}
+
 // GTDB Genome history API structs
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
 pub struct History {
@@ -201,53 +395,6 @@ pub struct History {
     s: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(transparent)]
-pub struct GenomeTaxonHistory {
-    data: Vec<History>,
-}
-
-fn fetch_and_save_genome_data<T: serde::de::DeserializeOwned + serde::Serialize>(
-    args: &GenomeArgs,
-) -> Result<()> {
-    let accessions = utils::load_input(args, "No accession or file provided".to_string())?;
-    let agent: Agent = utils::get_agent(args.insecure)?;
-    for accession in accessions {
-        let request_url = if args.metadata {
-            let genome = GtdbApiRequest::Genome {
-                accession: accession.to_string(),
-                request_type: crate::api::GenomeRequestType::Metadata,
-            };
-            genome.to_url()
-        } else {
-            let genome = GtdbApiRequest::Genome {
-                accession: accession.to_string(),
-                request_type: crate::api::GenomeRequestType::Card,
-            };
-            genome.to_url()
-        };
-        let response = utils::fetch_data(
-            &agent,
-            &request_url,
-            "The server returned an unexpected status code (400)".into(),
-        )?;
-        let genome_data: T = response.into_body().read_json()?;
-        let genome_string = serde_json::to_string_pretty(&genome_data)?;
-        if let Some(path) = &args.out {
-            let mut file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(path)
-                .with_context(|| format!("Failed to create file {}", path))?;
-            writeln!(file, "{}", genome_string)
-                .with_context(|| format!("Failed to write to {}", path))?;
-        } else {
-            writeln!(io::stdout(), "{}", genome_string)?;
-        }
-    }
-    Ok(())
-}
-
 pub fn get_genome_metadata(args: &GenomeArgs) -> Result<()> {
     fetch_and_save_genome_data::<GenomeMetadata>(args)
 }
@@ -259,18 +406,25 @@ pub fn get_genome_card(args: &GenomeArgs) -> Result<()> {
 pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
     let accessions = utils::load_input(args, "No accession or file provided".into())?;
     let agent = utils::get_agent(args.insecure)?;
+    let outfmt = utils::OutputFormat::from(args.outfmt.clone());
     for acc in accessions {
-        process_taxon_history(&acc, &agent, &args.out)?;
+        process_taxon_history(&acc, &agent, &outfmt, &args.out)?;
     }
     Ok(())
 }
 
-fn process_taxon_history(accession: &str, agent: &Agent, out: &Option<String>) -> Result<()> {
-    let genome_api = GtdbApiRequest::Genome {
+fn process_taxon_history(
+    accession: &str,
+    agent: &Agent,
+    outfmt: &utils::OutputFormat,
+    out: &Option<String>,
+) -> Result<()> {
+    let url = GtdbApiRequest::Genome {
         accession: accession.into(),
         request_type: GenomeRequestType::TaxonHistory,
-    };
-    let url = genome_api.to_url();
+    }
+    .to_url();
+
     let response = utils::fetch_data(
         agent,
         &url,
@@ -280,14 +434,13 @@ fn process_taxon_history(accession: &str, agent: &Agent, out: &Option<String>) -
     let records: Vec<History> = response.into_body().read_json()?;
     let changes = compute_taxonomic_changes(&records);
 
-    if let Some(path) = out {
-        write_csv_output(path, &records, &changes)?;
-    } else {
-        let writer = std::io::stdout();
-        print_timeline(writer, accession, &records, &changes)?;
-    }
+    let content = match outfmt {
+        utils::OutputFormat::Json => serde_json::to_string_pretty(&records)?,
+        utils::OutputFormat::Tsv => build_csv_string(&records, &changes, "\t"),
+        utils::OutputFormat::Csv => build_csv_string(&records, &changes, ","),
+    };
 
-    Ok(())
+    utils::write_to_output(content.as_bytes(), out.clone(), true)
 }
 
 fn compute_taxonomic_changes(records: &[History]) -> HashMap<String, Vec<String>> {
@@ -314,17 +467,14 @@ fn compute_taxonomic_changes(records: &[History]) -> HashMap<String, Vec<String>
     changes
 }
 
-fn write_csv_output(
-    path: &str,
+fn build_csv_string(
     records: &[History],
     changes: &HashMap<String, Vec<String>>,
-) -> Result<()> {
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(path)
-        .with_context(|| format!("Failed to open output file: {}", path))?;
-    writeln!(file, "release,domain,phylum,family,species,changes")?;
+    sep: &str,
+) -> String {
+    let mut lines = vec![format!(
+        "release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes"
+    )];
 
     for (i, rec) in records.iter().enumerate() {
         let is_first = i == records.len() - 1;
@@ -337,64 +487,18 @@ fn write_csv_output(
             String::new()
         };
 
-        writeln!(
-            file,
-            "{},{},{},{},{},{}",
+        lines.push(format!(
+            "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
             rel,
             rec.d.as_deref().unwrap_or(""),
             rec.p.as_deref().unwrap_or(""),
             rec.f.as_deref().unwrap_or(""),
             rec.s.as_deref().unwrap_or(""),
-            change_notes
-        )?;
+            change_notes,
+        ));
     }
 
-    Ok(())
-}
-
-fn print_field<W: Write>(out: &mut W, field: &str, value: &String) -> IoResult<()> {
-    writeln!(out, "  - **{}**: {}", field, value)
-}
-
-fn print_timeline<W: Write>(
-    mut out: W,
-    accession: &str,
-    records: &[History],
-    changes: &HashMap<String, Vec<String>>,
-) -> IoResult<()> {
-    writeln!(
-        out,
-        "## Genome {} Classification Timeline (Newest → Oldest)\n",
-        accession
-    )?;
-
-    for (i, rec) in records.iter().enumerate() {
-        let is_first = i == records.len() - 1;
-        let rel = rec.release.as_deref().unwrap_or("");
-        let has_changes = changes.contains_key(rel);
-
-        if is_first || has_changes {
-            writeln!(out, "### {}", rel)?;
-            writeln!(out, "- **Taxonomy**:")?;
-            print_field(&mut out, "Domain", &rec.d.clone().unwrap_or_default())?;
-            print_field(&mut out, "Phylum", &rec.p.clone().unwrap_or_default())?;
-            print_field(&mut out, "Family", &rec.f.clone().unwrap_or_default())?;
-            print_field(&mut out, "Species", &rec.s.clone().unwrap_or_default())?;
-
-            if has_changes {
-                writeln!(out, "- **Changes**:")?;
-                for note in &changes[rel] {
-                    writeln!(out, "  - {}", note)?;
-                }
-            } else if is_first {
-                writeln!(out, "- Initial classification.")?;
-            }
-
-            writeln!(out)?;
-        }
-    }
-
-    Ok(())
+    lines.join("\n") + "\n"
 }
 
 // Helper to compare fields
@@ -421,61 +525,6 @@ fn compare_field(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::fs;
-    use tempfile::NamedTempFile;
-
-    fn example_history() -> Vec<History> {
-        vec![
-            History {
-                release: Some("R07-RS207".into()),
-                d: Some("Bacteria".into()),
-                p: Some("Firmicutes".into()),
-                f: Some("Bacillaceae".into()),
-                s: Some("Bacillus licheniformis".into()),
-                ..Default::default()
-            },
-            History {
-                release: Some("R06-RS202".into()),
-                d: Some("Bacteria".into()),
-                p: Some("Firmicutes".into()),
-                f: Some("Bacillaceae".into()),
-                s: Some("Bacillus subtilis".into()),
-                ..Default::default()
-            },
-        ]
-    }
-
-    #[test]
-    fn test_print_timeline_with_changes() {
-        let records = example_history();
-        let changes = compute_taxonomic_changes(&records);
-
-        let mut buffer = Vec::new();
-        print_timeline(&mut buffer, "GCF_123456.1", &records, &changes).unwrap();
-
-        let output = String::from_utf8(buffer).unwrap();
-        assert!(output.contains("## Genome GCF_123456.1 Classification Timeline"));
-        assert!(output.contains("### R06-RS202"));
-        assert!(output.contains("- Initial classification."));
-        assert!(output.contains("### R07-RS207"));
-        assert!(output.contains("- **Changes**:"));
-        assert!(output.contains("  - Species: Bacillus subtilis -> Bacillus licheniformis"));
-    }
-
-    #[test]
-    fn test_print_timeline_no_changes() {
-        let records = example_history();
-        let changes = HashMap::new();
-
-        let mut buffer = Vec::new();
-        print_timeline(&mut buffer, "GCF_000000.0", &records, &changes).unwrap();
-
-        let output = String::from_utf8(buffer).unwrap();
-        assert!(output.contains("### R06-RS202"));
-        assert!(output.contains("- Initial classification."));
-        assert!(!output.contains("### R07-RS207")); // Only last record should be printed
-    }
 
     #[test]
     fn test_compare_field_changes() {
@@ -535,29 +584,5 @@ mod tests {
         assert!(changes.contains_key("R1")); // from R2 to R1 (in reverse)
         let notes = changes.get("R1").unwrap();
         assert_eq!(notes, &vec!["Species: SpeciesB -> SpeciesA"]);
-    }
-
-    #[test]
-    fn test_write_csv_output() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().to_str().unwrap().to_string();
-
-        let records = vec![History {
-            release: Some("R1".into()),
-            d: Some("Bacteria".into()),
-            p: Some("Firmicutes".into()),
-            c: None,
-            o: None,
-            f: Some("Lactobacillaceae".into()),
-            g: None,
-            s: Some("SpeciesA".into()),
-        }];
-
-        let changes: HashMap<String, Vec<String>> = HashMap::new();
-        write_csv_output(&path, &records, &changes).unwrap();
-
-        let content = fs::read_to_string(&path).unwrap();
-        assert!(content.contains("release,domain,phylum,family,species,changes"));
-        assert!(content.contains("initial classification"));
     }
 }

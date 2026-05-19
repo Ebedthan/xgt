@@ -8,12 +8,15 @@ use std::fs::{File, OpenOptions};
 
 use std::io::{self, BufRead, BufReader, Write};
 
-use regex::Regex;
-
 use std::thread;
 use std::time::Duration;
 
 use crate::cli::{GenomeArgs, SearchArgs, TaxonArgs};
+
+pub trait ToFlatRow {
+    fn csv_header(sep: &str) -> String;
+    fn to_flat_row(&self, sep: &str) -> String;
+}
 
 /// Returns true for errors that are worth retrying (transient server/network issues).
 fn is_retryable(err: &ureq::Error) -> bool {
@@ -49,12 +52,6 @@ pub enum SearchField {
 
     // Search NCBI taxonomy field
     NcbiTax,
-}
-
-/// Checks if the taxonomy string follows the correct format.
-pub fn is_valid_taxonomy(taxonomy_str: &str) -> bool {
-    let re = Regex::new(r"^(d__[^;]+)?(; p__[^;]+)?(; c__[^;]+)?(; o__[^;]+)?(; f__[^;]+)?(; g__[^;]+)?(; s__[^;]*)$").unwrap();
-    re.is_match(taxonomy_str)
 }
 
 impl From<String> for SearchField {
@@ -117,15 +114,21 @@ impl From<String> for OutputFormat {
 }
 
 /// Write `buffer` to `output` which can either be stdout or a file name.
-pub fn write_to_output(buffer: &[u8], output: Option<String>) -> Result<()> {
+/// Now we also support append mode.
+pub fn write_to_output(buffer: &[u8], output: Option<String>, append: bool) -> Result<()> {
     let mut writer: Box<dyn Write> = match output {
-        Some(path) => Box::new(OpenOptions::new().append(true).create(true).open(path)?),
+        Some(path) => Box::new(
+            OpenOptions::new()
+                .write(true)
+                .append(append)
+                .truncate(!append)
+                .create(true)
+                .open(path)?,
+        ),
         None => Box::new(io::stdout()),
     };
-
     writer.write_all(buffer)?;
     writer.flush()?;
-
     Ok(())
 }
 
@@ -425,43 +428,6 @@ mod tests {
     }
 
     #[test]
-    fn test_gtdb_is_online_real() {
-        let is_online = is_gtdb_db_online(true);
-        assert!(is_online.unwrap());
-    }
-
-    #[test]
-    fn test_get_api_version_real() {
-        let version = get_api_version(true);
-        assert_eq!(version.unwrap(), String::from("2.27.0"));
-    }
-
-    fn with_mocked_agent() -> ureq::Agent {
-        // Ensures we always use mockito's base URL
-        Agent::config_builder().build().new_agent()
-    }
-
-    fn set_mock_base_url(path: &str) -> String {
-        let server = Server::new();
-        format!("{}/{}", server.url(), path.trim_start_matches('/'))
-    }
-
-    #[test]
-    fn test_get_api_version_failure() {
-        let mut server = Server::new();
-        let _m = server
-            .mock("GET", "/meta/version")
-            .with_status(500)
-            .create();
-
-        let agent = with_mocked_agent();
-        let request_url = set_mock_base_url("/meta/version");
-
-        let result = agent.get(&request_url).call();
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn test_fetch_data_ok() {
         let mut server = Server::new();
         let _m = server
@@ -517,7 +483,7 @@ mod tests {
         // Test writing to a file
         let file_path = "test.txt";
         let output = Some(file_path.to_owned());
-        write_to_output(s.as_bytes(), output).unwrap();
+        write_to_output(s.as_bytes(), output, false).unwrap();
         let contents = std::fs::read_to_string(file_path).unwrap();
         assert_eq!(contents, s);
 

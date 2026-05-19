@@ -1,12 +1,9 @@
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
 
 use crate::api::GtdbApiRequest;
 use crate::cli::SearchArgs;
-use crate::utils::{self, is_valid_taxonomy, OutputFormat, SearchField};
-
-const INTO_STRING_LIMIT: usize = 20 * 1_024 * 1_024;
+use crate::utils::{self, OutputFormat, SearchField};
 
 /*----- GTDB API Search Result(s) structures and their methods -----*/
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
@@ -174,17 +171,12 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             }
         };
 
-        utils::write_to_output(output_result?.as_bytes(), args.out.clone())?;
+        utils::write_to_output(output_result?.as_bytes(), args.out.clone(), true)?;
     }
 
     Ok(())
 }
 
-// If -c or -i just use JSON output format to count entries or
-// return ids list as converting using into_string can
-// throw an error of too big to convert to string especially
-// when querying data related to large genus like Escherichia
-// See cli/search.rs#L166-L178
 fn handle_id_or_count_response(
     agent: &ureq::Agent,
     response: ureq::http::Response<ureq::Body>,
@@ -217,14 +209,7 @@ where
 {
     let first_page: SearchResults = response.into_body().read_json()?;
     let mut search_result = fetch_all_pages(agent, first_page, args, needle)?;
-
-    if args.word {
-        search_result.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
-    }
-    ensure!(
-        search_result.get_total_rows() != 0,
-        "No matching data found in GTDB"
-    );
+    filter_and_validate(&mut search_result, needle, args)?;
     format_fn(&search_result)
 }
 
@@ -276,6 +261,23 @@ fn fetch_all_pages(
     Ok(accumulated)
 }
 
+/// Apply optional whole-word filtering and verify the result is non-empty.
+/// This is the shared post-pagination step for all output paths.
+fn filter_and_validate(
+    results: &mut SearchResults,
+    needle: &str,
+    args: &SearchArgs,
+) -> anyhow::Result<()> {
+    if args.word {
+        results.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
+    }
+    ensure!(
+        results.get_total_rows() != 0,
+        "No matching data found in GTDB"
+    );
+    Ok(())
+}
+
 fn handle_json_response(
     agent: &ureq::Agent,
     response: ureq::http::Response<ureq::Body>,
@@ -293,20 +295,10 @@ fn handle_xsv_response(
     needle: &str,
     args: &SearchArgs,
 ) -> Result<String> {
-    // Deserialize first page as JSON to get total rows, then paginate
     let first_page: SearchResults = response.into_body().read_json()?;
     let mut all_results = fetch_all_pages(agent, first_page, args, needle)?;
+    filter_and_validate(&mut all_results, needle, args)?;
 
-    if args.word {
-        all_results.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
-    }
-
-    ensure!(
-        all_results.get_total_rows() != 0,
-        "No matching data found in GTDB"
-    );
-
-    // Serialize to the requested XSV format from the accumulated rows
     let outfmt = OutputFormat::from(args.outfmt.clone());
     let sep = if outfmt == OutputFormat::Tsv {
         "\t"
@@ -315,8 +307,9 @@ fn handle_xsv_response(
     };
 
     let header = format!(
-            "accession{sep}ncbi_organism_name{sep}ncbi_taxonomy{sep}gtdb_taxonomy{sep}gtdb_species_representative{sep}ncbi_type_material"
-        );
+        "accession{sep}ncbi_organism_name{sep}ncbi_taxonomy{sep}\
+         gtdb_taxonomy{sep}gtdb_species_representative{sep}ncbi_type_material"
+    );
 
     let mut lines = vec![header];
     for row in &all_results.rows {
@@ -335,115 +328,7 @@ fn handle_xsv_response(
         ));
     }
 
-    Ok(lines.join("\r\n") + "\r\n")
-}
-
-fn process_xsv_response<F>(
-    response: ureq::http::Response<ureq::Body>,
-    needle: &str,
-    args: &SearchArgs,
-    process_fn: F,
-) -> Result<String>
-where
-    F: FnOnce(&mut String, &str),
-{
-    let mut buf: Vec<u8> = vec![];
-    response
-        .into_body()
-        .into_reader()
-        .take((INTO_STRING_LIMIT + 1) as u64)
-        .read_to_end(&mut buf)?;
-    if buf.len() > INTO_STRING_LIMIT {
-        return Err(anyhow!("GTDB response is too big (> 20 MB) to convert to string. Please use JSON output format (-O json)"));
-    }
-    let mut result = String::from_utf8_lossy(&buf).to_string();
-
-    if args.word {
-        process_fn(&mut result, needle);
-    }
-    Ok(result)
-}
-
-/// Filter CSV/TSV API query result by search field value
-fn filter_xsv(result: &mut String, needle: &str, search_field: SearchField, outfmt: OutputFormat) {
-    // Move content out of `result` to avoid borrowing issues
-    let content = std::mem::take(result);
-
-    // Split the content into lines and parse the header
-    let mut lines = content.lines();
-
-    // Check presence of CSV/TSV header
-    let header = lines.next().expect("Input should have a header");
-
-    let split_pat = if outfmt == OutputFormat::Csv {
-        ","
-    } else {
-        "\t"
-    };
-
-    // Filter lines based on the determined matcher
-    let filtered_lines: Vec<&str> = if search_field == SearchField::All {
-        lines
-            .filter(|line| {
-                let fields: Vec<&str> = line.split(split_pat).collect();
-                all_match(fields, needle)
-            })
-            .collect()
-    } else {
-        // Get the CSV/TSV column which will be subjected to filtering
-        let sfield = match search_field {
-            SearchField::NcbiId => "accession".to_string(),
-            SearchField::NcbiOrg => "ncbi_organism_name".to_string(),
-            SearchField::NcbiTax => "ncbi_taxonomy".to_string(),
-            _ => "gtdb_taxonomy".to_string(),
-        };
-        let headers: Vec<&str> = header.split(split_pat).collect();
-        let index = headers.iter().position(|&field| field == sfield);
-        if index.is_none() {
-            std::io::stdout()
-                .write_all(b"Warning: missing header in the output")
-                .unwrap();
-        }
-        lines
-            .filter(|line| {
-                let fields: Vec<&str> = line.split(split_pat).collect();
-                if let Some(idx) = index {
-                    if let Some(field) = fields.get(idx) {
-                        return if is_valid_taxonomy(field) {
-                            whole_taxon_match(field, needle)
-                        } else {
-                            whole_word_match(field, needle)
-                        };
-                    }
-                }
-                false
-            })
-            .collect()
-    };
-
-    // Modify the original result string
-    result.clear();
-    result.push_str(header);
-    result.push_str("\r\n");
-    for line in filtered_lines {
-        result.push_str(line);
-        result.push_str("\r\n");
-    }
-}
-
-/// Perform a match on all `SearchResult` fields
-/// # Example
-/// ```
-/// let input = ["GCA00000.1", "org name", "d__d1; p__p1; c__c1; o__o1; f__f1; g__g1; s__s1", "d__d2; p__p2; c__c2; o__o2; f__f2; g__g2; s__s2"];
-/// assert!(all_match(input, "d__d1"));
-/// assert!(all_match(input, "org name"));
-/// assert!(!all_match(input, "xgt"));
-/// ```
-fn all_match(haystack: Vec<&str>, needle: &str) -> bool {
-    haystack
-        .iter()
-        .take(4)
-        .any(|field| whole_word_match(field, needle) || whole_taxon_match(field, needle))
+    Ok(lines.join("\n") + "\n")
 }
 
 /// Perform whole taxon exact matching
@@ -469,10 +354,8 @@ fn whole_word_match(haystack: &str, needle: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search::SearchResult;
+    use crate::cli::SearchArgs;
     use crate::utils::SearchField;
-    use ureq::Agent;
-    use SearchArgs;
 
     #[test]
     fn test_search_result_getters() {
@@ -539,36 +422,6 @@ mod tests {
         assert!(whole_word_match("bar bir ber bor", "bor"));
         assert!(!whole_word_match("bar bir ber bor", "xgt"));
         assert!(!whole_word_match("Geobacillus", "bacillus"));
-    }
-
-    #[test]
-    fn test_filter_xsv_csv_accession_field() {
-        let mut input =
-                "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\nGCA_000020265.1,Rhizobium etli CIAT 652,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium etli,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium phaseoli,False,True".to_string();
-        let needle = "GCA_000016265.1";
-        let search_field = SearchField::NcbiId;
-        let outfmt = OutputFormat::Csv;
-
-        let expected_output =
-                "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\n".to_string();
-        filter_xsv(&mut input, needle, search_field, outfmt);
-
-        assert_eq!(input, expected_output);
-    }
-
-    #[test]
-    fn test_filter_xsv_csv_all_fields() {
-        let mut input =
-                "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\nGCA_000020265.1,Rhizobium etli CIAT 652,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium etli,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium phaseoli,False,True".to_string();
-        let needle = "Agrobacterium";
-        let search_field = SearchField::All;
-        let outfmt = OutputFormat::Csv;
-
-        let expected_output =
-                "accession,ncbi_organism_name,ncbi_taxonomy,gtdb_taxonomy,gtdb_species_representative,ncbi_type_material\r\nGCA_000016265.1,Agrobacterium radiobacter K84,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Hyphomicrobiales; f__Rhizobiaceae; g__Agrobacterium; s__Agrobacterium tumefaciens,d__Bacteria; p__Pseudomonadota; c__Alphaproteobacteria; o__Rhizobiales; f__Rhizobiaceae; g__Rhizobium; s__Rhizobium rhizogenes,False,True\r\n".to_string();
-        filter_xsv(&mut input, needle, search_field, outfmt);
-
-        assert_eq!(input, expected_output);
     }
 
     #[test]
@@ -653,44 +506,5 @@ GCF_943371865.1"#
         let expected = std::fs::read_to_string("test.txt").unwrap();
         assert_eq!("16".to_string(), expected);
         std::fs::remove_file("test.txt").unwrap();
-    }
-
-    #[test]
-    fn test_all_match() {
-        let line = "GCA_001512625.1,Clostridiales bacterium DTU036,d__Bacteria; p__Bacillota; c__Clostridia; o__Eubacteriales; f__; g__; s__,d__Bacteria; p__Bacillota_A; c__Clostridia; o__Peptostreptococcales; f__Acidaminobacteraceae; g__DTU036; s__DTU036 sp001512625,True,False";
-        let fields: Vec<&str> = line.split(",").collect();
-        assert!(all_match(fields, "c__Clostridia"));
-    }
-
-    #[test]
-    fn test_process_xsv_response_too_large() {
-        let mut server = mockito::Server::new();
-        let big_str = "a".repeat(INTO_STRING_LIMIT + 1);
-        let _m = server
-            .mock("GET", "/big")
-            .with_status(200)
-            .with_body(big_str)
-            .create();
-
-        let agent = Agent::config_builder().build().new_agent();
-        let response = agent.get(&format!("{}/big", server.url())).call().unwrap();
-
-        let args = SearchArgs {
-            query: Some("g__Azorhizobium".to_string()),
-            word: true,
-            field: String::from("all"),
-            rep: false,
-            r#type: false,
-            id: false,
-            count: false,
-            file: None,
-            outfmt: String::from("json"),
-            out: None,
-            insecure: true,
-        };
-
-        let result = process_xsv_response(response, "ACC123", &args, |_, _| {});
-        assert!(result.is_err());
-        assert!(format!("{}", result.unwrap_err()).contains("GTDB response is too big"));
     }
 }
