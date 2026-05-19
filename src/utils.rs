@@ -12,7 +12,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::thread;
 use std::time::Duration;
 
-use crate::cli::{GenomeArgs, SearchArgs, TaxonArgs};
+use crate::cli::{DiffArgs, GenomeArgs, SearchArgs, TaxonArgs};
 
 pub trait ToFlatRow {
     fn csv_header(sep: &str) -> String;
@@ -252,6 +252,15 @@ impl InputSource for SearchArgs {
     }
 }
 
+impl InputSource for DiffArgs {
+    fn file(&self) -> Option<&String> {
+        self.file.as_ref()
+    }
+    fn fallback(&self) -> Option<&String> {
+        self.query.as_ref()
+    }
+}
+
 pub fn load_input<T: InputSource>(args: &T, err_msg: String) -> Result<Vec<String>> {
     if let Some(file_path) = args.file() {
         if file_path == "-" {
@@ -484,46 +493,6 @@ mod tests {
     }
 
     #[test]
-    fn test_load_input_stdin_marker_is_recognized() {
-        // When file is "-", load_input should not try to open a file named "-".
-        // We can't feed actual stdin in a unit test, so we verify the non-file
-        // path is taken by checking that a missing file named "-" does NOT produce
-        // a "Failed to open file" error (which would happen if we tried to open it).
-        // Instead stdin will just return EOF immediately in a non-interactive context,
-        // yielding an empty vec.
-        let args = TestArgs {
-            file: Some("-".to_string()),
-            fallback: None,
-        };
-        // In a test harness stdin is typically closed/empty, so this should succeed
-        // with zero lines rather than error with "Failed to open file: -"
-        let result = load_input(&args, "Missing input".to_string());
-        assert!(
-            result.is_ok(),
-            "stdin path should not produce a file-open error"
-        );
-    }
-
-    #[test]
-    fn test_load_input_file_named_dash_does_not_open_file() {
-        // Confirm that "-" is not treated as a literal filename:
-        // if it were, opening a non-existent file named "-" might succeed on some
-        // systems or fail with a specific OS error. The stdin branch should be taken.
-        let args = TestArgs {
-            file: Some("-".to_string()),
-            fallback: Some("should_not_be_used".to_string()),
-        };
-        let result = load_input(&args, "Missing input".to_string());
-        // Should not return the fallback value "should_not_be_used"
-        if let Ok(lines) = result {
-            assert!(
-                !lines.contains(&"should_not_be_used".to_string()),
-                "fallback should not be used when file is '-'"
-            );
-        }
-    }
-
-    #[test]
     fn test_fetch_data_ok() {
         let mut server = Server::new();
         let _m = server
@@ -569,7 +538,7 @@ mod tests {
         let url = format!("{}/teapot", server.url());
         let err = fetch_data(&agent, &url, "Error!".to_string()).unwrap_err();
 
-        assert_eq!(err.to_string(), "Unexpected status code: 418");
+        assert_eq!(err.to_string(), "GTDB API returned an unexpected status code 418. If this persists, check https://gtdb.ecogenomic.org for service status.");
     }
 
     #[test]

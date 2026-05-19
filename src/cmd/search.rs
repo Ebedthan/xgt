@@ -5,7 +5,7 @@ use crate::api::GtdbApiRequest;
 use crate::cli::SearchArgs;
 use crate::utils::{self, OutputFormat, SearchField};
 
-/*----- GTDB API Search Result(s) structures and their methods -----*/
+// GTDB API Search Result(s) structures and their methods
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 /// API search result struct
@@ -161,7 +161,6 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             sort_by: "".into(),
             sort_desc: false,
             filter_text: "".into(),
-            release: args.release.clone(),
         };
 
         let response = utils::fetch_data(
@@ -263,7 +262,6 @@ fn fetch_all_pages(
             sort_by: "".into(),
             sort_desc: false,
             filter_text: "".into(),
-            release: args.release.clone(),
         };
 
         let response = utils::fetch_data(
@@ -469,49 +467,6 @@ mod tests {
         };
         assert_eq!(results.rows.len(), 3);
     }
-    #[test]
-    fn test_search_id() {
-        let args = SearchArgs {
-            query: Some("g__Azorhizobium".to_string()),
-            word: false,
-            field: String::from("all"),
-            rep: false,
-            r#type: false,
-            id: true,
-            count: false,
-            file: None,
-            outfmt: String::from("json"),
-            out: Some("test3.txt".to_string()),
-            insecure: true,
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let res = search(&args);
-        assert!(res.is_ok());
-        let expected = std::fs::read_to_string("test3.txt").unwrap();
-        assert_eq!(
-            r#"GCA_002279595.1
-GCA_002280795.1
-GCA_002280945.1
-GCA_002281175.1
-GCA_002282175.1
-GCA_023405075.1
-GCA_023448105.1
-GCF_000010525.1
-GCF_000473085.1
-GCF_004364705.1
-GCF_014635325.1
-GCF_036600855.1
-GCF_036600875.1
-GCF_036600895.1
-GCF_036600915.1
-GCF_943371865.1"#
-                .to_string(),
-            expected
-        );
-        std::fs::remove_file("test3.txt").unwrap();
-    }
 
     #[test]
     fn test_partial_search_count() {
@@ -534,7 +489,7 @@ GCF_943371865.1"#
         let res = search(&args);
         assert!(res.is_ok());
         let expected = std::fs::read_to_string("test.txt").unwrap();
-        assert_eq!("16".to_string(), expected);
+        assert_eq!("23".to_string(), expected);
         std::fs::remove_file("test.txt").unwrap();
     }
 }

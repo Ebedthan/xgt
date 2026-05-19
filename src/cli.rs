@@ -26,6 +26,9 @@ pub enum Commands {
     /// Information about a specific taxon
     Taxon(TaxonArgs),
 
+    /// Show taxonomic differences between two GTDB releases
+    Diff(DiffArgs),
+
     /// Generate shell completion scripts
     Completions(CompletionsArgs),
 }
@@ -203,6 +206,46 @@ pub struct TaxonArgs {
     pub insecure: bool,
 }
 
+#[derive(Args)]
+pub struct DiffArgs {
+    /// Genome accession or taxon name to compare
+    #[arg(conflicts_with = "file")]
+    pub query: Option<String>,
+
+    /// Read queries from FILE, one per line. Use '-' to read from stdin.
+    #[arg(short, long, value_name = "FILE")]
+    pub file: Option<String>,
+
+    /// Source release to compare from (e.g. R214)
+    #[arg(long, value_name = "RELEASE", value_parser = parse_release)]
+    pub from: String,
+
+    /// Target release to compare to (e.g. R220). Defaults to latest.
+    #[arg(long, value_name = "RELEASE", value_parser = parse_release)]
+    pub to: Option<String>,
+
+    /// Output format
+    #[arg(short = 'O', long, value_name = "STR", default_value = "json",
+          value_parser = ["csv", "tsv", "json"])]
+    pub outfmt: String,
+
+    /// Output to FILE (format set by --outfmt)
+    #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
+    pub out: Option<String>,
+
+    /// Write each result to a separate file named after the query
+    #[arg(short = 's', long, conflicts_with = "out")]
+    pub split: bool,
+
+    /// Directory for per-item files when using --split
+    #[arg(long, value_name = "DIR", requires = "split")]
+    pub split_dir: Option<String>,
+
+    /// Disable SSL certificate verification
+    #[arg(short = 'k')]
+    pub insecure: bool,
+}
+
 fn parse_release(s: &str) -> Result<String, String> {
     // Accept R<number> or r<number>, normalize to uppercase
     let upper = s.to_uppercase();
@@ -252,7 +295,7 @@ mod tests {
         // Test with a non-existing file
         let result = is_existing("test/acc.txt");
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "file should not already exists");
+        assert_eq!(result.err().unwrap(), "Output file 'test/acc.txt' already exists. Choose a different path or remove the existing file.");
 
         // Test with an existing file
         let result = is_existing("non_existing_file.txt");
@@ -276,23 +319,23 @@ mod tests {
         // Negative test cases
         assert_eq!(
             is_valid_taxon("Bacteria"),
-            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
+            Err("'Bacteria' is not a valid taxon name. Use a rank prefix followed by the name (e.g. g__Escherichia, s__Escherichia coli). Valid prefixes: d__, p__, c__, o__, f__, g__, s__".to_string())
         );
         assert_eq!(
             is_valid_taxon("d_"),
-            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
+            Err("'d_' is not a valid taxon name. Use a rank prefix followed by the name (e.g. g__Escherichia, s__Escherichia coli). Valid prefixes: d__, p__, c__, o__, f__, g__, s__".to_string())
         );
         assert_eq!(
             is_valid_taxon("Actinobacteria"),
-            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
+            Err("'Actinobacteria' is not a valid taxon name. Use a rank prefix followed by the name (e.g. g__Escherichia, s__Escherichia coli). Valid prefixes: d__, p__, c__, o__, f__, g__, s__".to_string())
         );
         assert_eq!(
             is_valid_taxon("__Actinobacteria"),
-            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
+            Err("'__Actinobacteria' is not a valid taxon name. Use a rank prefix followed by the name (e.g. g__Escherichia, s__Escherichia coli). Valid prefixes: d__, p__, c__, o__, f__, g__, s__".to_string())
         );
         assert_eq!(
             is_valid_taxon("d_Actinobacteria"),
-            Err("Taxon name must be in greengenes format, e.g. g__Foo".to_string())
+            Err("'d_Actinobacteria' is not a valid taxon name. Use a rank prefix followed by the name (e.g. g__Escherichia, s__Escherichia coli). Valid prefixes: d__, p__, c__, o__, f__, g__, s__".to_string())
         );
     }
 

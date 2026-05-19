@@ -7,7 +7,7 @@ pub enum GtdbApiRequest {
         kind: TaxonEndPoint,
         limit: Option<u32>,
         is_reps_only: Option<bool>,
-        release: Option<String>,
+        // release: not supported by the API, added when/if support is confirmed
     },
     Search {
         query: String,
@@ -20,7 +20,7 @@ pub enum GtdbApiRequest {
         gtdb_species_rep_only: bool,
         ncbi_type_material_only: bool,
         output_format: String,
-        release: Option<String>,
+        // release: not supported by the API, added when/if support is confirmed
     },
     Genome {
         accession: String,
@@ -76,7 +76,6 @@ impl GtdbApiRequest {
                 kind,
                 limit,
                 is_reps_only,
-                release: _,
             } => {
                 // Taxon endpoints do not support ?release= — always serves latest
                 match kind {
@@ -112,8 +111,6 @@ impl GtdbApiRequest {
                 gtdb_species_rep_only,
                 ncbi_type_material_only,
                 output_format,
-                release: _,
-                // Search endpoint does not support ?release= — always latest
             } => {
                 let mut url = format!(
                     "https://api.gtdb.ecogenomic.org/search/gtdb{}?",
@@ -219,7 +216,6 @@ mod tests {
             kind: TaxonEndPoint::Name,
             limit: None,
             is_reps_only: None,
-            release: None,
         };
         assert_eq!(
             req.to_url(),
@@ -234,7 +230,6 @@ mod tests {
             kind: TaxonEndPoint::Search,
             limit: Some(500),
             is_reps_only: None,
-            release: None,
         };
         assert_eq!(
             req.to_url(),
@@ -249,7 +244,6 @@ mod tests {
             kind: TaxonEndPoint::Genomes,
             limit: None,
             is_reps_only: Some(true),
-            release: None,
         };
         assert_eq!(
             req.to_url(),
@@ -269,7 +263,6 @@ mod tests {
             filter_text: "species".into(),
             gtdb_species_rep_only: true,
             ncbi_type_material_only: true,
-            release: None,
             output_format: "csv".into(),
         };
 

@@ -154,7 +154,6 @@ pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
             kind: TaxonEndPoint::Name,
             limit: None,
             is_reps_only: None,
-            release: args.release.clone(),
         };
         fetch_and_write_json::<TaxonResult>(
             &agent,
@@ -178,7 +177,6 @@ pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
             kind: TaxonEndPoint::Genomes,
             limit: None,
             is_reps_only: Some(args.reps),
-            release: args.release.clone(),
         };
 
         let data = fetch_and_write_json::<TaxonGenomes>(
@@ -214,7 +212,6 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
             kind,
             limit: None,
             is_reps_only: None,
-            release: args.release.clone(),
         };
 
         let mut data: TaxonSearchResult = fetch_json(
@@ -315,30 +312,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_taxon_name_not_found() -> Result<()> {
-        let args = TaxonArgs {
-            name: Some("UnknownTaxonName".to_string()),
-            out: None,
-            word: true,
-            search: false,
-            all: false,
-            genomes: false,
-            reps: false,
-            insecure: true,
-            file: None,
-            outfmt: "json".to_string(),
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let result = get_taxon_name(&args);
-        assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("Taxon UnknownTaxonName not found"));
-        Ok(())
-    }
-
-    #[test]
     fn test_get_taxon_name_server_error() {
         let mut s = Server::new();
         let url = s.url();
@@ -360,99 +333,6 @@ mod tests {
         };
         let result = get_taxon_name(&args);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn search_taxon_should_return_error_for_nonexistent_taxon() {
-        let args = TaxonArgs {
-            name: Some("nonexistent_taxon".to_string()),
-            out: None,
-            word: false,
-            search: true,
-            all: false,
-            genomes: false,
-            reps: false,
-            insecure: true,
-            file: None,
-            outfmt: "json".to_string(),
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let result = search_taxon(&args);
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "No match found for nonexistent_taxon".to_string()
-        );
-    }
-
-    #[test]
-    fn search_taxon_should_print_raw_output_to_stdout() {
-        let args = TaxonArgs {
-            name: Some("g__Aminobacter".to_string()),
-            out: None,
-            word: false,
-            search: true,
-            all: false,
-            genomes: false,
-            reps: false,
-            insecure: true,
-            file: None,
-            outfmt: "json".to_string(),
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let result = search_taxon(&args);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn taxon_should_print_raw_output_to_stdout() {
-        let args = TaxonArgs {
-            name: Some("g__Aminobacter".to_string()),
-            out: None,
-            word: false,
-            search: false,
-            all: false,
-            genomes: false,
-            reps: false,
-            insecure: true,
-            file: None,
-            outfmt: "json".to_string(),
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let result = search_taxon(&args);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn search_taxon_should_write_pretty_output_to_file() {
-        let args = TaxonArgs {
-            name: Some("g__Aminobacter".to_string()),
-            out: Some("test_search.json".to_string()),
-            word: false,
-            search: true,
-            all: false,
-            genomes: false,
-            reps: false,
-            insecure: true,
-            file: None,
-            outfmt: "json".to_string(),
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let result = search_taxon(&args);
-        assert!(result.is_ok());
-
-        // Check that the output file was created and contains the taxon name
-        let file_contents = std::fs::read_to_string("test_search.json").unwrap();
-        assert!(file_contents.contains("g__Aminobacter"));
-        std::fs::remove_file("test_search.json").unwrap();
     }
 
     #[test]

@@ -8,7 +8,7 @@ use anyhow::Result;
 use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
-use cmd::{genome, search, taxon};
+use cmd::{diff, genome, search, taxon};
 use std::io;
 
 fn main() -> Result<()> {
@@ -49,6 +49,9 @@ fn main() -> Result<()> {
             } else {
                 taxon::get_taxon_name(&args)?;
             }
+        }
+        Commands::Diff(args) => {
+            diff::diff(&args)?;
         }
         Commands::Completions(args) => {
             let mut cmd = Cli::command();
