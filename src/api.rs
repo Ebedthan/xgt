@@ -77,7 +77,7 @@ impl GtdbApiRequest {
                 limit,
                 is_reps_only,
             } => {
-                // Taxon endpoints do not support ?release= — always serves latest
+                // Taxon endpoints do not support ?release=, always serves latest
                 match kind {
                     TaxonEndPoint::Name => {
                         format!("https://gtdb-api.ecogenomic.org/taxon/{}", name)

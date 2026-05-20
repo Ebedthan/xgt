@@ -21,7 +21,7 @@ ureq = { version = "3.3.0", features = ["json", "native-tls"] }
 
 [dev-dependencies]
 mockito = "1.7"
-tempfile = "3.8"
+tempfile = "3.27"
 
 [profile.release]
 opt-level = 3

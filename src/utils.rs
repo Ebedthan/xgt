@@ -425,6 +425,414 @@ mod tests {
     use ureq::Agent;
 
     #[test]
+    fn test_make_progress_bar_returns_none_for_zero() {
+        let bar = make_progress_bar(0);
+        assert!(bar.is_none(), "0 items should return None");
+    }
+
+    #[test]
+    fn test_make_progress_bar_returns_none_for_one() {
+        let bar = make_progress_bar(1);
+        assert!(bar.is_none(), "1 item should return None - no bar needed");
+    }
+
+    #[test]
+    fn test_make_progress_bar_returns_some_for_two() {
+        // The bar-construction branch (lines 348–357) is only reached when total > 1
+        let bar = make_progress_bar(2);
+        assert!(bar.is_some(), "2 items should return Some(ProgressBar)");
+    }
+
+    #[test]
+    fn test_make_progress_bar_returns_some_for_large_count() {
+        let bar = make_progress_bar(500);
+        assert!(bar.is_some());
+    }
+
+    #[test]
+    fn test_make_progress_bar_length_matches_total() {
+        let total = 42_usize;
+        let bar = make_progress_bar(total).unwrap();
+        assert_eq!(bar.length(), Some(total as u64));
+    }
+
+    #[test]
+    fn test_resolve_stdout_returns_none() {
+        let dest = OutputDestination::Stdout;
+        assert_eq!(dest.resolve("any_key"), None);
+    }
+
+    #[test]
+    fn test_resolve_file_returns_path_unchanged() {
+        let dest = OutputDestination::File("results.json".into());
+        assert_eq!(dest.resolve("ignored_key"), Some("results.json".into()));
+    }
+
+    #[test]
+    fn test_resolve_split_without_dir_returns_filename_only() {
+        // None directory → filename only, no path separator
+        let dest = OutputDestination::Split {
+            dir: None,
+            extension: "json".into(),
+        };
+        assert_eq!(
+            dest.resolve("GCA_000005845.2"),
+            Some("GCA_000005845.2.json".into())
+        );
+    }
+
+    #[test]
+    fn test_resolve_split_with_dir_returns_dir_slash_filename() {
+        // Some(dir) → "dir/key.ext"
+        let dest = OutputDestination::Split {
+            dir: Some("results".into()),
+            extension: "csv".into(),
+        };
+        assert_eq!(
+            dest.resolve("GCA_000005845.2"),
+            Some("results/GCA_000005845.2.csv".into())
+        );
+    }
+
+    #[test]
+    fn test_resolve_split_replaces_spaces_in_key() {
+        // Taxon names with spaces must be sanitised
+        let dest = OutputDestination::Split {
+            dir: None,
+            extension: "json".into(),
+        };
+        assert_eq!(
+            dest.resolve("s__Escherichia coli"),
+            Some("s__Escherichia_coli.json".into())
+        );
+    }
+
+    #[test]
+    fn test_resolve_split_replaces_slashes_in_key() {
+        let dest = OutputDestination::Split {
+            dir: None,
+            extension: "tsv".into(),
+        };
+        assert_eq!(
+            dest.resolve("path/with/slashes"),
+            Some("path_with_slashes.tsv".into())
+        );
+    }
+
+    #[test]
+    fn test_resolve_split_replaces_spaces_and_slashes() {
+        // Both replacements must apply to the same key
+        let dest = OutputDestination::Split {
+            dir: Some("out".into()),
+            extension: "json".into(),
+        };
+        assert_eq!(
+            dest.resolve("s__Some species/subspecies"),
+            Some("out/s__Some_species_subspecies.json".into())
+        );
+    }
+
+    #[test]
+    fn test_resolve_split_empty_key_produces_just_extension() {
+        let dest = OutputDestination::Split {
+            dir: None,
+            extension: "json".into(),
+        };
+        assert_eq!(dest.resolve(""), Some(".json".into()));
+    }
+
+    #[test]
+    fn test_is_split_true_for_split_variant() {
+        let dest = OutputDestination::Split {
+            dir: None,
+            extension: "json".into(),
+        };
+        assert!(dest.is_split());
+    }
+
+    #[test]
+    fn test_is_split_false_for_stdout() {
+        assert!(!OutputDestination::Stdout.is_split());
+    }
+
+    #[test]
+    fn test_is_split_false_for_file() {
+        assert!(!OutputDestination::File("out.json".into()).is_split());
+    }
+
+    #[test]
+    fn test_output_destination_split_flag_takes_priority_over_out() {
+        // --split and --out together: split wins, out is ignored
+        let dest = output_destination(
+            &Some("ignored.json".into()),
+            true,
+            &OutputFormat::Json,
+            &Some("results/".into()),
+        );
+        assert!(dest.is_split());
+    }
+
+    #[test]
+    fn test_output_destination_no_split_with_out_gives_file() {
+        let dest = output_destination(&Some("output.csv".into()), false, &OutputFormat::Csv, &None);
+        assert!(matches!(dest, OutputDestination::File(p) if p == "output.csv"));
+    }
+
+    #[test]
+    fn test_output_destination_no_split_no_out_gives_stdout() {
+        let dest = output_destination(&None, false, &OutputFormat::Json, &None);
+        assert!(matches!(dest, OutputDestination::Stdout));
+    }
+
+    #[test]
+    fn test_output_destination_split_extension_matches_outfmt() {
+        let dest = output_destination(&None, true, &OutputFormat::Tsv, &None);
+        // Extension should be "tsv" matching the OutputFormat
+        if let OutputDestination::Split { extension, .. } = dest {
+            assert_eq!(extension, "tsv");
+        } else {
+            panic!("expected Split variant");
+        }
+    }
+
+    #[test]
+    fn test_output_destination_split_dir_is_propagated() {
+        let dest = output_destination(&None, true, &OutputFormat::Json, &Some("my_dir".into()));
+        if let OutputDestination::Split { dir, .. } = dest {
+            assert_eq!(dir, Some("my_dir".into()));
+        } else {
+            panic!("expected Split variant");
+        }
+    }
+
+    #[test]
+    fn test_gtdb_status_deserialises_online_true() {
+        let json = r#"{"timeMs": 1.23, "online": true}"#;
+        let status: GtdbStatus = serde_json::from_str(json).unwrap();
+        assert!(status.online);
+        assert!((status.time_ms - 1.23_f32).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_gtdb_status_deserialises_online_false() {
+        let json = r#"{"timeMs": 5.0, "online": false}"#;
+        let status: GtdbStatus = serde_json::from_str(json).unwrap();
+        assert!(!status.online);
+    }
+
+    #[test]
+    fn test_gtdb_status_alias_time_ms() {
+        // API may send "timeMs" (camelCase) — the alias must handle it
+        let json = r#"{"timeMs": 2.5, "online": true}"#;
+        let status: GtdbStatus = serde_json::from_str(json).unwrap();
+        assert!((status.time_ms - 2.5_f32).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_api_version_deserialises_correctly() {
+        let json = r#"{"major": 2, "minor": 27, "patch": 0}"#;
+        let version: GtdbApiVersion = serde_json::from_str(json).unwrap();
+        assert_eq!(version.major, 2);
+        assert_eq!(version.minor, 27);
+        assert_eq!(version.patch, 0);
+    }
+
+    #[test]
+    fn test_api_version_formats_as_dotted_string() {
+        let version = GtdbApiVersion {
+            major: 2,
+            minor: 27,
+            patch: 0,
+        };
+        let formatted = format!("{}.{}.{}", version.major, version.minor, version.patch);
+        assert_eq!(formatted, "2.27.0");
+    }
+
+    #[test]
+    fn test_api_version_formats_non_zero_patch() {
+        let version = GtdbApiVersion {
+            major: 3,
+            minor: 0,
+            patch: 14,
+        };
+        let formatted = format!("{}.{}.{}", version.major, version.minor, version.patch);
+        assert_eq!(formatted, "3.0.14");
+    }
+
+    // The public function hardcodes the URL, so we test the response-handling
+    // logic by replicating the function's internal steps against a mock server.
+
+    #[test]
+    fn test_is_gtdb_db_online_returns_true_when_online() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/status/db")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"timeMs": 1.5, "online": true}"#)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/status/db", server.url());
+
+        // Replicate what is_gtdb_db_online does after building the agent
+        let response = fetch_data(&agent, &url, "status check failed".into()).unwrap();
+        let status: GtdbStatus = response.into_body().read_json().unwrap();
+        assert!(status.online);
+    }
+
+    #[test]
+    fn test_is_gtdb_db_online_returns_false_when_offline() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/status/db")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"timeMs": 0.0, "online": false}"#)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/status/db", server.url());
+
+        let response = fetch_data(&agent, &url, "status check failed".into()).unwrap();
+        let status: GtdbStatus = response.into_body().read_json().unwrap();
+        assert!(!status.online);
+    }
+
+    #[test]
+    fn test_is_gtdb_db_online_500_produces_error() {
+        let mut server = Server::new();
+        let _m = server.mock("GET", "/status/db").with_status(500).create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/status/db", server.url());
+
+        // 500 is retryable — fetch_data will retry MAX_RETRIES times then error
+        let result = fetch_data(&agent, &url, "status check failed".into());
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("failed after 3 attempts"),
+            "unexpected error message: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_is_gtdb_db_online_400_produces_caller_message() {
+        let mut server = Server::new();
+        let _m = server.mock("GET", "/status/db").with_status(400).create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/status/db", server.url());
+
+        let result = fetch_data(&agent, &url, "status check failed".into());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "status check failed");
+    }
+
+    #[test]
+    fn test_is_gtdb_db_online_malformed_json_produces_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/status/db")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"not valid json"#)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/status/db", server.url());
+
+        let response = fetch_data(&agent, &url, "status check failed".into()).unwrap();
+        let result: Result<GtdbStatus, _> = response.into_body().read_json();
+        assert!(
+            result.is_err(),
+            "malformed JSON should produce a parse error"
+        );
+    }
+
+    #[test]
+    fn test_get_api_version_returns_dotted_version_string() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/meta/version")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"major": 2, "minor": 27, "patch": 0}"#)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/meta/version", server.url());
+
+        let response = fetch_data(&agent, &url, "version fetch failed".into()).unwrap();
+        let version: GtdbApiVersion = response.into_body().read_json().unwrap();
+        let formatted = format!("{}.{}.{}", version.major, version.minor, version.patch);
+        assert_eq!(formatted, "2.27.0");
+    }
+
+    #[test]
+    fn test_get_api_version_non_zero_patch() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/meta/version")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"major": 3, "minor": 1, "patch": 4}"#)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/meta/version", server.url());
+
+        let response = fetch_data(&agent, &url, "version fetch failed".into()).unwrap();
+        let version: GtdbApiVersion = response.into_body().read_json().unwrap();
+        assert_eq!(
+            format!("{}.{}.{}", version.major, version.minor, version.patch),
+            "3.1.4"
+        );
+    }
+
+    #[test]
+    fn test_get_api_version_500_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/meta/version")
+            .with_status(500)
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/meta/version", server.url());
+
+        let result = fetch_data(&agent, &url, "version fetch failed".into());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("failed after 3 attempts"));
+    }
+
+    #[test]
+    fn test_get_api_version_malformed_json_produces_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/meta/version")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"version": "2.27.0"}"#) // wrong shape, no major/minor/patch
+            .create();
+
+        let agent = Agent::config_builder().build().new_agent();
+        let url = format!("{}/meta/version", server.url());
+
+        let response = fetch_data(&agent, &url, "version fetch failed".into()).unwrap();
+        let result: Result<GtdbApiVersion, _> = response.into_body().read_json();
+        // major/minor/patch are u8 with no default - missing fields cause an error
+        assert!(
+            result.is_err(),
+            "wrong JSON shape should fail to deserialise"
+        );
+    }
+
+    #[test]
     fn test_fetch_data_retries_on_503() {
         let mut server = Server::new();
 

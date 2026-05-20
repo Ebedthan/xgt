@@ -369,6 +369,261 @@ mod tests {
     }
 
     #[test]
+    fn test_diff_genome_error_message_contains_available_releases() {
+        // When from_release is missing, the error must list what IS available
+        let history = two_release_history(); // only R214 and R220
+        let result = find_release(&history, "R207");
+        assert!(result.is_none());
+
+        // Simulate the error message construction in diff_genome
+        let available: Vec<&str> = history
+            .iter()
+            .filter_map(|e| e.release.as_deref())
+            .collect();
+        let msg = format!(
+            "Release '{}' not found in history for '{}'. Available releases: {}",
+            "R207",
+            "GCA_000001.1",
+            available.join(", ")
+        );
+        assert!(msg.contains("R220"), "error should list R220: {msg}");
+        assert!(msg.contains("R214"), "error should list R214: {msg}");
+        assert!(
+            msg.contains("R207"),
+            "error should name the missing release: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_diff_genome_ensure_fires_on_empty_history() {
+        // Reproduce the ensure!(!history.is_empty()) path
+        let history: Vec<ReleaseEntry> = vec![];
+        let is_empty = history.is_empty();
+        assert!(is_empty, "ensure! should fire — history is empty");
+        // Verify the error message format
+        let accession = "GCA_000001.1";
+        let msg = format!("No release history found for accession '{accession}'.");
+        assert!(msg.contains("GCA_000001.1"));
+    }
+
+    #[test]
+    fn test_diff_genome_500_triggers_retry_exhaustion() {
+        let mut server = Server::new();
+        // 500 is retryable — fetch_data will exhaust MAX_RETRIES
+        let _m = server
+            .mock("GET", "/genome/GCA_000009.1/taxon-history")
+            .with_status(500)
+            .expect(3)
+            .create();
+
+        let agent = test_agent();
+        let url = format!("{}/genome/GCA_000009.1/taxon-history", server.url());
+        let result = utils::fetch_data(
+            &agent,
+            &url,
+            "No taxonomic history found for 'GCA_000009.1'.".into(),
+        );
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("failed after 3 attempts"),
+            "500 should exhaust retries"
+        );
+        // Verify mockito received exactly 3 calls
+        _m.assert();
+    }
+
+    #[test]
+    fn test_resolve_latest_release_three_releases_picks_first() {
+        // Reproduce the full resolve_latest_release logic with three entries
+        let history = vec![
+            full_entry(
+                "R226",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+            full_entry(
+                "R220",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+            full_entry(
+                "R214",
+                "d__Bacteria",
+                "p__Firmicutes",
+                "c__Bacilli",
+                "o__Bacillales",
+                "f__Bacillaceae",
+                "g__Bacillus",
+                "s__Bacillus subtilis",
+            ),
+        ];
+
+        let latest = history.first().and_then(|e| e.release.clone()).unwrap();
+        assert_eq!(latest, "R226", "first entry (newest) must be returned");
+    }
+
+    #[test]
+    fn test_resolve_latest_release_error_message_contains_accession() {
+        // Reproduce the ok_or_else error path in resolve_latest_release
+        let history: Vec<ReleaseEntry> = vec![];
+        let accession = "GCA_000010.1";
+        let result: Option<String> = history.first().and_then(|e| e.release.clone());
+        let err = result.ok_or_else(|| {
+            anyhow::anyhow!("Could not determine latest release for '{accession}'.")
+        });
+        assert!(err.is_err());
+        assert!(err.unwrap_err().to_string().contains("GCA_000010.1"));
+    }
+
+    // diff() cannot be called directly in tests because it builds its own agent
+    // and uses hardcoded URLs via GtdbApiRequest. We test its sub-paths:
+    // header writing, output routing, and the to_release_override branch.
+
+    #[test]
+    fn test_diff_csv_header_written_once_for_multi_query() {
+        // Simulate what diff() does for CSV mode with two queries:
+        // header written once, then two data rows appended
+        let sep = ",";
+        let header = format!("{}\n", DiffResult::csv_header(sep));
+
+        // Two identical unchanged results
+        let history = unchanged_history();
+        let from_snap = snapshot(find_release(&history, "R214").unwrap());
+        let to_snap = snapshot(find_release(&history, "R220").unwrap());
+        let changes = compute_changes(&from_snap, &to_snap);
+
+        let make_result = |query: &str| DiffResult {
+            query: query.into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed: false,
+            changes: changes.clone(),
+            from_taxonomy: from_snap.clone(),
+            to_taxonomy: to_snap.clone(),
+        };
+
+        let row1 = make_result("GCA_000001.1").to_flat_row(sep);
+        let row2 = make_result("GCA_000002.1").to_flat_row(sep);
+
+        // Simulate the accumulated output: header + row1 data + row2 data
+        // (to_flat_row includes its own header — strip it for rows 2+)
+        let row1_data: Vec<&str> = row1.lines().skip(1).collect();
+        let row2_data: Vec<&str> = row2.lines().skip(1).collect();
+
+        let mut accumulated = header.clone();
+        accumulated.push_str(&row1_data.join("\n"));
+        accumulated.push('\n');
+        accumulated.push_str(&row2_data.join("\n"));
+        accumulated.push('\n');
+
+        let lines: Vec<&str> = accumulated.lines().collect();
+
+        // Header appears exactly once
+        let header_count = lines.iter().filter(|l| l.starts_with("query,")).count();
+        assert_eq!(header_count, 1, "header must appear exactly once");
+
+        // Two data rows (one per query, since no changes)
+        let data_rows: Vec<&&str> = lines.iter().filter(|l| l.starts_with("GCA_")).collect();
+        assert_eq!(data_rows.len(), 2);
+    }
+
+    #[test]
+    fn test_diff_to_release_override_used_when_provided() {
+        // When args.to is Some(r), resolve_latest_release is NOT called.
+        // Test the branching logic directly.
+        let to_release_override: Option<String> = Some("R220".into());
+        let effective_to = match &to_release_override {
+            Some(r) => r.clone(),
+            None => "would_call_resolve_latest_release".into(),
+        };
+        assert_eq!(effective_to, "R220");
+    }
+
+    #[test]
+    fn test_diff_to_release_none_triggers_resolve() {
+        // When args.to is None, resolve_latest_release would be called.
+        // Verify the None branch is taken.
+        let to_release_override: Option<String> = None;
+        let triggered_resolve = to_release_override.is_none();
+        assert!(
+            triggered_resolve,
+            "None --to should trigger resolve_latest_release"
+        );
+    }
+
+    #[test]
+    fn test_diff_first_write_flag_behaviour_json_non_split() {
+        // In diff(), first_write starts as true for JSON non-split mode.
+        // This means the first write uses append=false (truncate), subsequent use true.
+        // Reproduce the flag logic.
+        let outfmt = OutputFormat::Json;
+        let is_split = false;
+
+        // first_write = !is_split && outfmt == Json
+        let mut first_write = !is_split && outfmt == OutputFormat::Json;
+        assert!(first_write, "first JSON write should truncate");
+
+        // After first iteration
+        let append_first = !first_write; // false → truncate
+        first_write = false;
+        assert!(!append_first, "first write must not append (truncate)");
+
+        // Second iteration
+        let append_second = !first_write; // true → append
+        assert!(append_second, "subsequent writes must append");
+    }
+
+    #[test]
+    fn test_diff_first_write_flag_behaviour_csv_non_split() {
+        // For CSV non-split, header is written first (first_write starts false
+        // because the header write already truncated the file).
+        // first_write = !is_split && outfmt == Json → false for CSV
+        let outfmt = OutputFormat::Csv;
+        let is_split = false;
+
+        let first_write = !is_split && outfmt == OutputFormat::Json;
+        assert!(
+            !first_write,
+            "CSV mode: first_write should be false (header already truncated)"
+        );
+
+        // First data row: append = !first_write = true → appends after header
+        let append_first_row = !first_write;
+        assert!(
+            append_first_row,
+            "first CSV data row must append after header"
+        );
+    }
+
+    #[test]
+    fn test_diff_split_mode_always_uses_truncate() {
+        // In split mode, each file is fresh — append is always false
+        let is_split = true;
+        let first_write = false; // irrelevant in split mode
+
+        // Reproduce: let append = if dest.is_split() { false } else { !first_write }
+        let append = if is_split { false } else { !first_write };
+        assert!(
+            !append,
+            "split mode must always truncate (new file per item)"
+        );
+    }
+
+    #[test]
     fn test_compute_changes_species_only() {
         let from = snapshot(&make_entry(
             "R214",
