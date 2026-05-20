@@ -11,23 +11,38 @@ use crate::utils::ToFlatRow;
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Taxon {
     taxon: String,
-    total: Option<f32>,
+
+    // API returns integer or float (e.g. 36408.0), f64 handles both
+    total: Option<f64>,
+
+    // API sends nDescChildren (camelCase) or n_desc_children (snake_case)
+    // Value is an integer, not a string
     #[serde(alias = "nDescChildren")]
-    n_desc_children: Option<String>,
+    n_desc_children: Option<i64>,
+
     #[serde(alias = "isGenome")]
     is_genome: Option<bool>,
+
     #[serde(alias = "isRep")]
     is_rep: Option<bool>,
+
     #[serde(alias = "typeMaterial")]
     type_material: Option<String>,
+
     #[serde(alias = "bergeysUrl")]
     bergeys_url: Option<String>,
+
     #[serde(alias = "seqcodeUrl")]
     seq_code_url: Option<String>,
+
     #[serde(alias = "lpsnUrl")]
     lpsn_url: Option<String>,
+
     #[serde(alias = "ncbiTaxId")]
-    ncbi_tax_id: Option<i32>,
+    ncbi_tax_id: Option<i64>, // i32 => i64 for safety
+
+    #[serde(alias = "sandpiperUrl")] // new field
+    sandpiper_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -40,19 +55,19 @@ impl ToFlatRow for TaxonResult {
     fn csv_header(sep: &str) -> String {
         format!(
             "taxon{sep}total{sep}n_desc_children{sep}is_genome{sep}is_rep\
-             {sep}type_material{sep}bergeys_url{sep}seq_code_url{sep}lpsn_url{sep}ncbi_tax_id"
+             {sep}type_material{sep}bergeys_url{sep}seq_code_url\
+             {sep}lpsn_url{sep}ncbi_tax_id{sep}sandpiper_url" // added
         )
     }
 
     fn to_flat_row(&self, sep: &str) -> String {
         let mut lines = vec![Self::csv_header(sep)];
-
         for t in &self.data {
             lines.push(format!(
-                "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
+                "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
                 t.taxon,
                 t.total.map(|v| v.to_string()).unwrap_or_default(),
-                t.n_desc_children.as_deref().unwrap_or(""),
+                t.n_desc_children.map(|v| v.to_string()).unwrap_or_default(), // was .as_deref()
                 t.is_genome.map(|v| v.to_string()).unwrap_or_default(),
                 t.is_rep.map(|v| v.to_string()).unwrap_or_default(),
                 t.type_material.as_deref().unwrap_or(""),
@@ -60,9 +75,9 @@ impl ToFlatRow for TaxonResult {
                 t.seq_code_url.as_deref().unwrap_or(""),
                 t.lpsn_url.as_deref().unwrap_or(""),
                 t.ncbi_tax_id.map(|v| v.to_string()).unwrap_or_default(),
+                t.sandpiper_url.as_deref().unwrap_or(""), // added
             ));
         }
-
         lines.join("\n") + "\n"
     }
 }

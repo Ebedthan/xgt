@@ -167,7 +167,7 @@ pub struct TaxonArgs {
     pub word: bool,
 
     /// Search for a taxon in current release
-    #[arg(short, long)]
+    #[arg(long)]
     pub search: bool,
 
     /// Search for a taxon across all releases
