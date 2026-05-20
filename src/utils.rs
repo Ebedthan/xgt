@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_gtdb_status_alias_time_ms() {
-        // API may send "timeMs" (camelCase) — the alias must handle it
+        // API may send "timeMs" (camelCase), the alias must handle it
         let json = r#"{"timeMs": 2.5, "online": true}"#;
         let status: GtdbStatus = serde_json::from_str(json).unwrap();
         assert!((status.time_ms - 2.5_f32).abs() < 0.001);

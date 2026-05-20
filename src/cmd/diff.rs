@@ -399,7 +399,7 @@ mod tests {
         // Reproduce the ensure!(!history.is_empty()) path
         let history: Vec<ReleaseEntry> = vec![];
         let is_empty = history.is_empty();
-        assert!(is_empty, "ensure! should fire — history is empty");
+        assert!(is_empty, "ensure! should fire, history is empty");
         // Verify the error message format
         let accession = "GCA_000001.1";
         let msg = format!("No release history found for accession '{accession}'.");
@@ -854,8 +854,6 @@ mod tests {
         ureq::Agent::config_builder().build().new_agent()
     }
 
-    // ── diff_genome ───────────────────────────────────────────────────────────────
-
     #[test]
     fn test_diff_genome_changed_species() {
         let mut server = Server::new();
@@ -1081,8 +1079,6 @@ mod tests {
         assert_eq!(result.to_taxonomy.release, "R220");
     }
 
-    // ── resolve_latest_release ────────────────────────────────────────────────────
-
     #[test]
     fn test_resolve_latest_release_returns_first_entry() {
         let mut server = Server::new();
@@ -1212,8 +1208,6 @@ mod tests {
             "entry with None release should yield None from and_then"
         );
     }
-
-    // ── diff (public entry point) ─────────────────────────────────────────────────
 
     #[test]
     fn test_diff_json_output_single_query() {
