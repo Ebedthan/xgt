@@ -9,6 +9,8 @@ use std::fs::{File, OpenOptions};
 
 use std::io::{self, BufRead, BufReader, Write};
 
+use ureq::tls::{TlsConfig, TlsProvider};
+
 use std::thread;
 use std::time::Duration;
 
@@ -137,18 +139,22 @@ pub fn write_to_output(buffer: &[u8], output: Option<String>, append: bool) -> R
 pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq::Agent> {
     if disable_certificate_verification {
         eprintln!(
-            "Warning: SSL certificate verification is disabled. Use only on trusted networks."
+            "Warning: SSL certificate verification is disabled. \
+             Use only on trusted networks."
         );
-        let config = Agent::config_builder()
+        Ok(Agent::config_builder()
+            .tls_config(TlsConfig::builder().disable_verification(true).build())
+            .build()
+            .new_agent())
+    } else {
+        Ok(Agent::config_builder()
             .tls_config(
-                ureq::tls::TlsConfig::builder()
-                    .disable_verification(true)
+                TlsConfig::builder()
+                    .provider(TlsProvider::NativeTls)
                     .build(),
             )
-            .build();
-        Ok(config.new_agent())
-    } else {
-        Ok(ureq::Agent::config_builder().build().new_agent())
+            .build()
+            .new_agent())
     }
 }
 

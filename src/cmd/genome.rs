@@ -67,6 +67,9 @@ pub struct GenomeCard {
     // Raw NCBI Taxonomy as a Vec of Taxon struct
     #[serde(alias = "ncbiTaxonomyUnfiltered")]
     ncbi_taxonomy_unfiltered: Vec<Taxon>,
+
+    #[serde(alias = "markerSummary")]
+    marker_summary: Option<MarkerSummary>,
 }
 
 impl ToFlatRow for GenomeCard {
@@ -76,11 +79,12 @@ impl ToFlatRow for GenomeCard {
              {sep}genome_size{sep}gc_percentage{sep}contig_count{sep}n50_contigs\
              {sep}scaffold_count{sep}n50_scaffolds{sep}ambiguous_bases\
              {sep}checkm_completeness{sep}checkm_contamination{sep}checkm_strain_heterogeneity\
+             {sep}checkm2_completeness{sep}checkm2_contamination{sep}checkm2_model\
              {sep}protein_count{sep}coding_density\
              {sep}ssu_count{sep}lsu_5s_count{sep}lsu_23s_count\
              {sep}ncbi_assembly_level{sep}ncbi_assembly_name{sep}ncbi_assembly_type\
              {sep}ncbi_bioproject{sep}ncbi_biosample\
-             {sep}ncbi_country{sep}ncbi_date{sep}ncbi_genome_category\
+             {sep}ncbi_country{sep}ncbi_date{sep}ncbi_genome_category{sep}ncbi_genome_representation\
              {sep}ncbi_isolate{sep}ncbi_isolation_source{sep}ncbi_lat_lon\
              {sep}ncbi_refseq_category{sep}ncbi_seq_rel_date\
              {sep}ncbi_strain_identifiers{sep}ncbi_submitter\
@@ -103,29 +107,13 @@ impl ToFlatRow for GenomeCard {
         let tax = &self.metadata_taxonomy;
         let tm = &self.metadata_type_material;
 
-        format!(
-            "{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}\
-             {sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}\
-             {sep}{}{sep}{}{sep}{}{sep}{}",
-            // genome
-            self.genome.accession,
-            self.genome.name,
-            // metadata_nucleotide
+        // Each line below corresponds to one column in csv_header, in the same order.
+        // Col numbers are noted to make future audits easy.
+        let v: [String; 58] = [
+            // 1-2  genome
+            self.genome.accession.clone(),
+            self.genome.name.clone(),
+            // 3-9  metadata_nucleotide
             n.genome_size.map(|v| v.to_string()).unwrap_or_default(),
             n.gc_percentage.map(|v| v.to_string()).unwrap_or_default(),
             n.contig_count.map(|v| v.to_string()).unwrap_or_default(),
@@ -133,63 +121,83 @@ impl ToFlatRow for GenomeCard {
             n.scaffold_count.map(|v| v.to_string()).unwrap_or_default(),
             n.n50_scaffolds.map(|v| v.to_string()).unwrap_or_default(),
             n.ambiguous_bases.map(|v| v.to_string()).unwrap_or_default(),
-            // metadata_gene
-            g.checkm_completeness.as_deref().unwrap_or(""),
-            g.checkm_contamination.as_deref().unwrap_or(""),
-            g.checkm_strain_heterogeneity.as_deref().unwrap_or(""),
-            g.protein_count.as_deref().unwrap_or(""),
-            g.coding_density.as_deref().unwrap_or(""),
-            g.ssu_count.as_deref().unwrap_or(""),
-            g.lsu_5s_count.as_deref().unwrap_or(""),
-            g.lsu_23s_count.as_deref().unwrap_or(""),
-            // metadata_ncbi
-            ncbi.ncbi_assembly_level.as_deref().unwrap_or(""),
-            ncbi.ncbi_assembly_name.as_deref().unwrap_or(""),
-            ncbi.ncbi_assembly_type.as_deref().unwrap_or(""),
-            ncbi.ncbi_bioproject.as_deref().unwrap_or(""),
-            ncbi.ncbi_biosample.as_deref().unwrap_or(""),
-            ncbi.ncbi_country.as_deref().unwrap_or(""),
-            ncbi.ncbi_date.as_deref().unwrap_or(""),
-            ncbi.ncbi_genome_category.as_deref().unwrap_or(""),
-            ncbi.ncbi_isolate.as_deref().unwrap_or(""),
-            ncbi.ncbi_isolation_source.as_deref().unwrap_or(""),
-            ncbi.ncbi_lat_lon.as_deref().unwrap_or(""),
-            ncbi.ncbi_refseq_category.as_deref().unwrap_or(""),
-            ncbi.ncbi_seq_rel_date.as_deref().unwrap_or(""),
-            ncbi.ncbi_strain_identifiers.as_deref().unwrap_or(""),
-            ncbi.ncbi_submitter.as_deref().unwrap_or(""),
-            ncbi.ncbi_taxid.as_deref().unwrap_or(""),
-            ncbi.ncbi_species_taxid.as_deref().unwrap_or(""),
-            ncbi.ncbi_translation_table.as_deref().unwrap_or(""),
-            ncbi.ncbi_version_status.as_deref().unwrap_or(""),
-            // metadata_taxonomy
-            tax.gtdb_representative,
-            tax.gtdb_genome_representative.as_deref().unwrap_or(""),
-            tax.gtdb_domain.as_deref().unwrap_or(""),
-            tax.gtdb_phylum.as_deref().unwrap_or(""),
-            tax.gtdb_class.as_deref().unwrap_or(""),
-            tax.gtdb_order.as_deref().unwrap_or(""),
-            tax.gtdb_family.as_deref().unwrap_or(""),
-            tax.gtdb_genus.as_deref().unwrap_or(""),
-            tax.gtdb_species.as_deref().unwrap_or(""),
-            tax.ncbi_taxonomy.as_deref().unwrap_or(""),
-            tax.ncbi_type_material_designation.as_deref().unwrap_or(""),
-            // metadata_type_material
-            tm.gtdb_type_designation.as_deref().unwrap_or(""),
+            // 10-20 metadata_gene
+            g.checkm_completeness
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            g.checkm_contamination
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            g.checkm_strain_heterogeneity
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            g.checkm2_completeness
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            g.checkm2_contamination
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            g.checkm2_model.clone().unwrap_or_default(),
+            g.protein_count.map(|v| v.to_string()).unwrap_or_default(),
+            g.coding_density.map(|v| v.to_string()).unwrap_or_default(),
+            g.ssu_count.map(|v| v.to_string()).unwrap_or_default(),
+            g.lsu_5s_count.map(|v| v.to_string()).unwrap_or_default(),
+            g.lsu_23s_count.map(|v| v.to_string()).unwrap_or_default(),
+            // 21-40 metadata_ncbi
+            ncbi.ncbi_assembly_level.clone().unwrap_or_default(),
+            ncbi.ncbi_assembly_name.clone().unwrap_or_default(),
+            ncbi.ncbi_assembly_type.clone().unwrap_or_default(),
+            ncbi.ncbi_bioproject.clone().unwrap_or_default(),
+            ncbi.ncbi_biosample.clone().unwrap_or_default(),
+            ncbi.ncbi_country.clone().unwrap_or_default(),
+            ncbi.ncbi_date.clone().unwrap_or_default(),
+            ncbi.ncbi_genome_category.clone().unwrap_or_default(),
+            ncbi.ncbi_genome_representation.clone().unwrap_or_default(), // 29 — new
+            ncbi.ncbi_isolate.clone().unwrap_or_default(),
+            ncbi.ncbi_isolation_source.clone().unwrap_or_default(),
+            ncbi.ncbi_lat_lon.clone().unwrap_or_default(),
+            ncbi.ncbi_refseq_category.clone().unwrap_or_default(),
+            ncbi.ncbi_seq_rel_date.clone().unwrap_or_default(),
+            ncbi.ncbi_strain_identifiers.clone().unwrap_or_default(),
+            ncbi.ncbi_submitter.clone().unwrap_or_default(),
+            ncbi.ncbi_taxid.map(|v| v.to_string()).unwrap_or_default(),
+            ncbi.ncbi_species_taxid.clone().unwrap_or_default(),
+            ncbi.ncbi_translation_table
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            ncbi.ncbi_version_status.clone().unwrap_or_default(),
+            // 41-51 metadata_taxonomy
+            tax.gtdb_representative.to_string(),
+            tax.gtdb_genome_representative.clone().unwrap_or_default(),
+            tax.gtdb_domain.clone().unwrap_or_default(),
+            tax.gtdb_phylum.clone().unwrap_or_default(),
+            tax.gtdb_class.clone().unwrap_or_default(),
+            tax.gtdb_order.clone().unwrap_or_default(),
+            tax.gtdb_family.clone().unwrap_or_default(),
+            tax.gtdb_genus.clone().unwrap_or_default(),
+            tax.gtdb_species.clone().unwrap_or_default(),
+            tax.ncbi_taxonomy.clone().unwrap_or_default(),
+            tax.ncbi_type_material_designation
+                .clone()
+                .unwrap_or_default(),
+            // 52-54 metadata_type_material
+            tm.gtdb_type_designation.clone().unwrap_or_default(),
             tm.gtdb_type_species_of_genus
                 .map(|v| v.to_string())
                 .unwrap_or_default(),
             tm.lpsn_priority_year
                 .map(|v| v.to_string())
                 .unwrap_or_default(),
-            // top-level GenomeCard fields
-            self.species_rep_name.as_deref().unwrap_or(""),
+            // 55-58 top-level GenomeCard fields
+            self.species_rep_name.clone().unwrap_or_default(),
             self.species_cluster_count
                 .map(|v| v.to_string())
                 .unwrap_or_default(),
-            self.subunit_summary.as_deref().unwrap_or(""),
-            self.lpsn_url.as_deref().unwrap_or(""),
-        )
+            self.subunit_summary.clone().unwrap_or_default(),
+            self.lpsn_url.clone().unwrap_or_default(),
+        ];
+
+        v.join(sep)
     }
 }
 
@@ -217,14 +225,17 @@ pub struct MetadataNucleotide {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_gene")]
 pub struct MetadataGene {
-    checkm_completeness: Option<String>,
-    checkm_contamination: Option<String>,
-    checkm_strain_heterogeneity: Option<String>,
-    lsu_5s_count: Option<String>,
-    ssu_count: Option<String>,
-    lsu_23s_count: Option<String>,
-    protein_count: Option<String>,
-    coding_density: Option<String>,
+    checkm_completeness: Option<f64>,
+    checkm_contamination: Option<f64>,
+    checkm_strain_heterogeneity: Option<f64>,
+    checkm2_completeness: Option<f64>,
+    checkm2_contamination: Option<f64>,
+    checkm2_model: Option<String>,
+    lsu_5s_count: Option<i64>,
+    ssu_count: Option<i64>,
+    lsu_23s_count: Option<i64>,
+    protein_count: Option<i64>,
+    coding_density: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -240,22 +251,23 @@ pub struct MetadataNCBI {
     ncbi_country: Option<String>,
     ncbi_date: Option<String>,
     ncbi_genome_category: Option<String>,
+    ncbi_genome_representation: Option<String>, // new field
     ncbi_isolate: Option<String>,
     ncbi_isolation_source: Option<String>,
     ncbi_lat_lon: Option<String>,
-    ncbi_molecule_count: Option<String>,
-    ncbi_cds_count: Option<String>,
+    ncbi_molecule_count: Option<i64>,
+    ncbi_cds_count: Option<i64>,
     ncbi_refseq_category: Option<String>,
     ncbi_seq_rel_date: Option<String>,
-    ncbi_spanned_gaps: Option<String>,
+    ncbi_spanned_gaps: Option<i64>,
     ncbi_species_taxid: Option<String>,
-    ncbi_ssu_count: Option<String>,
+    ncbi_ssu_count: Option<i64>,
     ncbi_submitter: Option<String>,
-    ncbi_taxid: Option<String>,
-    ncbi_total_gap_length: Option<String>,
-    ncbi_translation_table: Option<String>,
-    ncbi_trna_count: Option<String>,
-    ncbi_unspanned_gaps: Option<String>,
+    ncbi_taxid: Option<i64>,
+    ncbi_total_gap_length: Option<i64>,
+    ncbi_translation_table: Option<i64>,
+    ncbi_trna_count: Option<i64>,
+    ncbi_unspanned_gaps: Option<i64>,
     ncbi_version_status: Option<String>,
     ncbi_wgs_master: Option<String>,
 }
@@ -324,6 +336,19 @@ impl ToFlatRow for GenomeMetadata {
                 .unwrap_or_default(),
         )
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct MarkerSummary {
+    bac_n_unique: Option<i64>,
+    bac_n_multi_unique: Option<i64>,
+    bac_n_multi_non_unique: Option<i64>,
+    bac_n_missing: Option<i64>,
+    arc_n_unique: Option<i64>,
+    arc_n_multi_unique: Option<i64>,
+    arc_n_multi_non_unique: Option<i64>,
+    arc_n_missing: Option<i64>,
 }
 
 fn fetch_and_save_genome_data<T>(args: &GenomeArgs) -> Result<()>
@@ -669,14 +694,17 @@ mod tests {
                 ambiguous_bases: Some(0),
             },
             metadata_gene: MetadataGene {
-                checkm_completeness: Some("99.74".into()),
-                checkm_contamination: Some("0.0".into()),
-                checkm_strain_heterogeneity: Some("0.0".into()),
-                lsu_5s_count: Some("3".into()),
-                ssu_count: Some("7".into()),
-                lsu_23s_count: Some("7".into()),
-                protein_count: Some("4285".into()),
-                coding_density: Some("87.4".into()),
+                checkm_completeness: Some(99.74),
+                checkm_contamination: Some(0.0),
+                checkm_strain_heterogeneity: Some(0.0),
+                checkm2_completeness: None,
+                checkm2_contamination: None,
+                checkm2_model: None,
+                lsu_5s_count: Some(3),
+                ssu_count: Some(7),
+                lsu_23s_count: Some(7),
+                protein_count: Some(4285),
+                coding_density: Some(87.4),
             },
             metadata_ncbi: MetadataNCBI {
                 ncbi_genbank_assembly_accession: None,
@@ -692,21 +720,22 @@ mod tests {
                 ncbi_isolate: None,
                 ncbi_isolation_source: None,
                 ncbi_lat_lon: None,
-                ncbi_molecule_count: None,
+                ncbi_genome_representation: None, // new field
+                ncbi_molecule_count: None,        // now Option<i64>
                 ncbi_cds_count: None,
-                ncbi_refseq_category: Some("reference genome".into()),
-                ncbi_seq_rel_date: Some("2013/09/26".into()),
                 ncbi_spanned_gaps: None,
-                ncbi_species_taxid: Some("562".into()),
                 ncbi_ssu_count: None,
-                ncbi_submitter: Some("Blattner Lab".into()),
-                ncbi_taxid: Some("83333".into()),
+                ncbi_taxid: Some(83333), // now i64
                 ncbi_total_gap_length: None,
-                ncbi_translation_table: Some("11".into()),
+                ncbi_translation_table: Some(11),
                 ncbi_trna_count: None,
                 ncbi_unspanned_gaps: None,
+                ncbi_species_taxid: Some("562".into()), // stays String
+                ncbi_submitter: Some("Blattner Lab".into()),
                 ncbi_version_status: Some("latest".into()),
                 ncbi_wgs_master: None,
+                ncbi_refseq_category: None,
+                ncbi_seq_rel_date: None,
             },
             metadata_type_material: MetadataTypeMaterial {
                 gtdb_type_designation: Some("not type material".into()),
@@ -739,6 +768,7 @@ mod tests {
             link_ncbi_taxonomy_unfiltered: None,
             ncbi_taxonomy_filtered: vec![],
             ncbi_taxonomy_unfiltered: vec![],
+            marker_summary: None,
         }
     }
 

@@ -80,20 +80,20 @@ impl GtdbApiRequest {
                 // Taxon endpoints do not support ?release= — always serves latest
                 match kind {
                     TaxonEndPoint::Name => {
-                        format!("https://api.gtdb.ecogenomic.org/taxon/{}", name)
+                        format!("https://gtdb-api.ecogenomic.org/taxon/{}", name)
                     }
                     TaxonEndPoint::Search => format!(
-                        "https://api.gtdb.ecogenomic.org/taxon/search/{}?limit={}",
+                        "https://gtdb-api.ecogenomic.org/taxon/search/{}?limit={}",
                         name,
                         limit.unwrap_or(1000)
                     ),
                     TaxonEndPoint::SearchAll => format!(
-                        "https://api.gtdb.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
+                        "https://gtdb-api.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
                         name,
                         limit.unwrap_or(1000)
                     ),
                     TaxonEndPoint::Genomes => format!(
-                        "https://api.gtdb.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
+                        "https://gtdb-api.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
                         name,
                         is_reps_only.unwrap_or(false)
                     ),
@@ -113,7 +113,7 @@ impl GtdbApiRequest {
                 output_format,
             } => {
                 let mut url = format!(
-                    "https://api.gtdb.ecogenomic.org/search/gtdb{}?",
+                    "https://gtdb-api.ecogenomic.org/search/gtdb{}?",
                     if output_format == "json" {
                         String::new()
                     } else {
@@ -157,7 +157,7 @@ impl GtdbApiRequest {
                 release,
             } => {
                 let base = format!(
-                    "https://api.gtdb.ecogenomic.org/genome/{}/{}",
+                    "https://gtdb-api.ecogenomic.org/genome/{}/{}",
                     accession, request_type
                 );
                 // Append release only for card and metadata; taxon-history
@@ -219,7 +219,7 @@ mod tests {
         };
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/taxon/Bacillus"
+            "https://gtdb-api.ecogenomic.org/taxon/Bacillus"
         );
     }
 
@@ -233,7 +233,7 @@ mod tests {
         };
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/taxon/search/Bacillus?limit=500"
+            "https://gtdb-api.ecogenomic.org/taxon/search/Bacillus?limit=500"
         );
     }
 
@@ -247,7 +247,7 @@ mod tests {
         };
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/taxon/Bacillus/genomes?sp_reps_only=true"
+            "https://gtdb-api.ecogenomic.org/taxon/Bacillus/genomes?sp_reps_only=true"
         );
     }
 
@@ -267,7 +267,7 @@ mod tests {
         };
 
         let url = req.to_url();
-        assert!(url.starts_with("https://api.gtdb.ecogenomic.org/search/gtdb/csv?"));
+        assert!(url.starts_with("https://gtdb-api.ecogenomic.org/search/gtdb/csv?"));
         assert!(url.contains("search=Bacillus"));
         assert!(url.contains("sortBy=name"));
         assert!(url.contains("sortDesc=true"));
@@ -286,7 +286,7 @@ mod tests {
 
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card"
+            "https://gtdb-api.ecogenomic.org/genome/GCF_000005845.2/card"
         );
     }
 
@@ -299,7 +299,7 @@ mod tests {
         };
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card?release=R214"
+            "https://gtdb-api.ecogenomic.org/genome/GCF_000005845.2/card?release=R214"
         );
     }
 
@@ -312,7 +312,7 @@ mod tests {
         };
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/card"
+            "https://gtdb-api.ecogenomic.org/genome/GCF_000005845.2/card"
         );
     }
 
@@ -326,7 +326,7 @@ mod tests {
         };
         assert_eq!(
             req.to_url(),
-            "https://api.gtdb.ecogenomic.org/genome/GCF_000005845.2/taxon-history"
+            "https://gtdb-api.ecogenomic.org/genome/GCF_000005845.2/taxon-history"
         );
     }
 }
