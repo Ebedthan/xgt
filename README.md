@@ -319,6 +319,22 @@ All output goes to stdout by default. Use `--out FILE` to write to a
 file, or `--split` to write one file per query when processing batches.
 
 
+## Shell completions
+ 
+Generate a completion script for your shell:
+ 
+```bash
+# Bash
+xgt completions bash > ~/.local/share/bash-completion/completions/xgt
+ 
+# Zsh (ensure ~/.zfunc is in your fpath)
+xgt completions zsh > ~/.zfunc/_xgt
+ 
+# Fish
+xgt completions fish > ~/.config/fish/completions/xgt.fish
+```
+ 
+
 ## Reporting issues
 
 Found a bug or want to request a feature? [Open an issue](https://github.com/Ebedthan/xgt/issues).
