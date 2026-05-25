@@ -292,15 +292,16 @@ mod tests {
 
     #[test]
     fn test_is_existing() {
-        // Test with a non-existing file
-        let result = is_existing("test/acc.txt");
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "Output file 'test/acc.txt' already exists. Choose a different path or remove the existing file.");
-
-        // Test with an existing file
+        // File that does NOT exist, should be accepted as output path
         let result = is_existing("non_existing_file.txt");
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "non_existing_file.txt".to_string());
+        assert_eq!(result.unwrap(), "non_existing_file.txt");
+
+        // File that DOES exist, should be rejected
+        // use a path that exists to test rejection
+        let result = is_existing("src/cli.rs");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("already exists"));
     }
 
     #[test]
