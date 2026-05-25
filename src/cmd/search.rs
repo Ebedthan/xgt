@@ -152,7 +152,7 @@ pub fn search(args: &SearchArgs) -> Result<()> {
 
         let search_req = GtdbApiRequest::Search {
             query: query.clone(),
-            search_field: args.field.clone(),
+            search_field: SearchField::from(args.field.clone()),
             gtdb_species_rep_only: args.rep,
             ncbi_type_material_only: args.r#type,
             output_format: "json".into(),
@@ -253,7 +253,7 @@ fn fetch_all_pages(
     for page in 2..=total_pages {
         let search = GtdbApiRequest::Search {
             query: query.to_string(),
-            search_field: args.field.clone(),
+            search_field: SearchField::from(args.field.clone()),
             gtdb_species_rep_only: args.rep,
             ncbi_type_material_only: args.r#type,
             output_format: "json".into(), // always JSON for pagination

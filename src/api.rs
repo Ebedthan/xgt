@@ -1,3 +1,4 @@
+use crate::utils::SearchField;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -15,7 +16,7 @@ pub enum GtdbApiRequest {
         items_per_page: u32,
         sort_by: String,
         sort_desc: bool,
-        search_field: String,
+        search_field: SearchField,
         filter_text: String,
         gtdb_species_rep_only: bool,
         ncbi_type_material_only: bool,
@@ -124,7 +125,7 @@ impl GtdbApiRequest {
                     format!("search={}", query),
                     format!("page={}", page),
                     format!("itemsPerPage={}", items_per_page),
-                    format!("searchField={}", search_field),
+                    format!("searchField={}", search_field.to_string()),
                 ];
 
                 if !sort_by.is_empty() {
@@ -259,7 +260,7 @@ mod tests {
             items_per_page: 500,
             sort_by: "name".into(),
             sort_desc: true,
-            search_field: "gtdb_tax".into(),
+            search_field: SearchField::GtdbTax,
             filter_text: "species".into(),
             gtdb_species_rep_only: true,
             ncbi_type_material_only: true,
