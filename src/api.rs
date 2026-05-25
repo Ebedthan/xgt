@@ -225,20 +225,6 @@ mod tests {
     }
 
     #[test]
-    fn test_taxon_search_url() {
-        let req = GtdbApiRequest::Taxon {
-            name: "Bacillus".into(),
-            kind: TaxonEndPoint::Search,
-            limit: Some(500),
-            is_reps_only: None,
-        };
-        assert_eq!(
-            req.to_url(),
-            "https://gtdb-api.ecogenomic.org/taxon/search/Bacillus?limit=500"
-        );
-    }
-
-    #[test]
     fn test_taxon_genomes_url() {
         let req = GtdbApiRequest::Taxon {
             name: "Bacillus".into(),
@@ -329,5 +315,28 @@ mod tests {
             req.to_url(),
             "https://gtdb-api.ecogenomic.org/genome/GCF_000005845.2/taxon-history"
         );
+    }
+
+    // Add a new test for the None default:
+    #[test]
+    fn test_taxon_search_default_limit() {
+        let req = GtdbApiRequest::Taxon {
+            name: "Bacillus".into(),
+            kind: TaxonEndPoint::Search,
+            limit: None,
+            is_reps_only: None,
+        };
+        assert!(req.to_url().contains("limit=100"));
+    }
+
+    #[test]
+    fn test_taxon_search_all_releases_default_limit() {
+        let req = GtdbApiRequest::Taxon {
+            name: "Bacillus".into(),
+            kind: TaxonEndPoint::SearchAll,
+            limit: None,
+            is_reps_only: None,
+        };
+        assert!(req.to_url().contains("limit=100"));
     }
 }
