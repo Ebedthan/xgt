@@ -162,17 +162,23 @@ pub struct TaxonArgs {
     #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
     pub out: Option<String>,
 
-    /// Match only whole words
-    #[arg(short, long)]
-    pub word: bool,
-
-    /// Search for a taxon in current release
+    /// Search for a taxon by name in the current GTDB release,
+    /// returning partial matches. Use with --word to restrict
+    /// to exact matches only.
     #[arg(long)]
     pub search: bool,
 
-    /// Search for a taxon across all releases
-    #[arg(long)]
+    /// Search for a taxon by name across all GTDB releases
+    /// and NCBI, returning partial matches. Use with --word
+    /// to restrict to exact matches only.
+    /// Implies --search; cannot be used alone.
+    #[arg(long, requires = "search")]
     pub all: bool,
+
+    /// Restrict --search or --search --all results to exact
+    /// name matches only (no partial matches).
+    #[arg(short, long)]
+    pub word: bool,
 
     /// Get V taxon genomes
     #[arg(short, long)]

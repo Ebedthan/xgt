@@ -159,6 +159,7 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     utils::write_to_output(output.as_bytes(), dest.resolve(key), false)?;
     Ok(data)
 }
+
 pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
     if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
@@ -222,6 +223,7 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
         } else {
             TaxonEndPoint::Search
         };
+
         let request = GtdbApiRequest::Taxon {
             name: name.into(),
             kind,

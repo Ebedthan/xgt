@@ -86,12 +86,12 @@ impl GtdbApiRequest {
                     TaxonEndPoint::Search => format!(
                         "https://gtdb-api.ecogenomic.org/taxon/search/{}?limit={}",
                         name,
-                        limit.unwrap_or(1000)
+                        limit.unwrap_or(100)
                     ),
                     TaxonEndPoint::SearchAll => format!(
                         "https://gtdb-api.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
                         name,
-                        limit.unwrap_or(1000)
+                        limit.unwrap_or(100)
                     ),
                     TaxonEndPoint::Genomes => format!(
                         "https://gtdb-api.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
