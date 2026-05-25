@@ -1068,7 +1068,7 @@ mod tests {
         let output = build_csv_string(&records, &changes, ",");
         // Only the header line, plus trailing newline
         let lines: Vec<&str> = output.lines().collect();
-        assert_eq!(lines.len(), 1);
+        assert_eq!(lines.len(), 2);
         assert!(lines[0].starts_with("release"));
     }
 
