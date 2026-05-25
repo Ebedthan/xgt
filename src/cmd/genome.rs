@@ -6,7 +6,6 @@ use crate::api::GenomeRequestType;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use ureq::Agent;
 
 use crate::utils::ToFlatRow;
 
@@ -465,13 +464,60 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
+    let sep = if outfmt == utils::OutputFormat::Tsv {
+        "\t"
+    } else {
+        ","
+    };
+
+    // For CSV/TSV in non-split mode: write the header once before the loop,
+    // truncating any existing file. Data rows are then appended per accession.
+    // In split mode each file is self-contained so the header is written
+    // per-accession inside the loop. JSON mode has no header.
+    if !dest.is_split() && outfmt != utils::OutputFormat::Json {
+        let header = format!("release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes\n");
+        utils::write_to_output(header.as_bytes(), dest.resolve(""), false)?;
+    }
+
+    let mut first_write = !dest.is_split() && outfmt == utils::OutputFormat::Json;
 
     for acc in &accessions {
         if let Some(ref bar) = bar {
             bar.set_message(acc.clone());
         }
 
-        process_taxon_history(acc, &agent, &outfmt, &dest.resolve(acc))?;
+        let url = GtdbApiRequest::Genome {
+            accession: acc.into(),
+            request_type: GenomeRequestType::TaxonHistory,
+            release: None,
+        }
+        .to_url();
+
+        let response = utils::fetch_data(
+            &agent,
+            &url,
+            format!(
+                "No taxonomic history found for accession '{}' (HTTP 400). \
+                 Verify the accession exists in GTDB.",
+                acc
+            ),
+        )?;
+
+        let records: Vec<History> = response.into_body().read_json()?;
+        let changes = compute_taxonomic_changes(&records);
+
+        let content = match outfmt {
+            // JSON: each accession is a complete document
+            utils::OutputFormat::Json => serde_json::to_string_pretty(&records)?,
+            // CSV/TSV non-split: data rows only; header already written above
+            _ if !dest.is_split() => build_csv_rows(&records, &changes, sep),
+            // CSV/TSV split: each file is self-contained; include header
+            _ => build_csv_string(&records, &changes, sep),
+        };
+
+        let append = !dest.is_split() && !first_write;
+        utils::write_to_output(content.as_bytes(), dest.resolve(acc), append)?;
+        first_write = false;
 
         if let Some(ref bar) = bar {
             bar.inc(1);
@@ -483,41 +529,6 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn process_taxon_history(
-    accession: &str,
-    agent: &Agent,
-    outfmt: &utils::OutputFormat,
-    out: &Option<String>,
-) -> Result<()> {
-    let url = GtdbApiRequest::Genome {
-        accession: accession.into(),
-        request_type: GenomeRequestType::TaxonHistory,
-        release: None,
-    }
-    .to_url();
-
-    let response = utils::fetch_data(
-        agent,
-        &url,
-        format!(
-            "No taxonomic history found for accession '{}' (HTTP 400). \
-             Verify the accession exists in GTDB.",
-            accession
-        ),
-    )?;
-
-    let records: Vec<History> = response.into_body().read_json()?;
-    let changes = compute_taxonomic_changes(&records);
-
-    let content = match outfmt {
-        utils::OutputFormat::Json => serde_json::to_string_pretty(&records)?,
-        utils::OutputFormat::Tsv => build_csv_string(&records, &changes, "\t"),
-        utils::OutputFormat::Csv => build_csv_string(&records, &changes, ","),
-    };
-
-    utils::write_to_output(content.as_bytes(), out.clone(), true)
 }
 
 fn compute_taxonomic_changes(records: &[History]) -> HashMap<String, Vec<String>> {
@@ -544,14 +555,15 @@ fn compute_taxonomic_changes(records: &[History]) -> HashMap<String, Vec<String>
     changes
 }
 
-fn build_csv_string(
+/// Returns only the data rows (no header) for a single accession's history.
+/// Used when writing multiple accessions to a single CSV/TSV file so the header
+/// is written once before the loop.
+fn build_csv_rows(
     records: &[History],
     changes: &HashMap<String, Vec<String>>,
     sep: &str,
 ) -> String {
-    let mut lines = vec![format!(
-        "release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes"
-    )];
+    let mut lines = Vec::new();
 
     for (i, rec) in records.iter().enumerate() {
         let is_first = i == records.len() - 1;
@@ -576,6 +588,16 @@ fn build_csv_string(
     }
 
     lines.join("\n") + "\n"
+}
+
+fn build_csv_string(
+    records: &[History],
+    changes: &HashMap<String, Vec<String>>,
+    sep: &str,
+) -> String {
+    let header = format!("release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes");
+
+    format!("{}\n{}", header, build_csv_rows(records, changes, sep))
 }
 
 // Helper to compare fields
