@@ -18,11 +18,6 @@ jobs:
             use_cross: false
             archive_ext: tar.xz
 
-          - os: ubuntu-22.04
-            target: aarch64-unknown-linux-gnu
-            use_cross: true
-            archive_ext: tar.xz
-
           - os: windows-2022
             target: x86_64-pc-windows-msvc
             use_cross: false
