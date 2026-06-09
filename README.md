@@ -20,13 +20,11 @@ It is written in Rust for speed, portability, and a single self-contained binary
 
 Download the binary for your platform from the [releases page](https://github.com/Ebedthan/xgt/releases) and place it somewhere on your `$PATH`.
 
-| Platform | Download |
+| Platform            | File                                          |
 |---|---|
-| Linux x86\_64 | `xgt-vX.X.X-x86_64-unknown-linux-gnu.tar.xz` |
-| Linux aarch64 | `xgt-vX.X.X-aarch64-unknown-linux-gnu.tar.xz` |
-| macOS Apple Silicon | `xgt-vX.X.X-aarch64-apple-darwin.tar.xz` |
-| macOS Intel | `xgt-vX.X.X-x86_64-apple-darwin.tar.xz` |
-| Windows x86\_64 | `xgt-vX.X.X-x86_64-pc-windows-msvc.zip` |
+| Linux x86\_64       | `xgt-vX.X.X-x86_64-unknown-linux-gnu.tar.xz` |
+| macOS Apple Silicon | `xgt-vX.X.X-aarch64-apple-darwin.tar.xz`     |
+| Windows x86\_64     | `xgt-vX.X.X-x86_64-pc-windows-msvc.zip`      |
 
 SHA-256 checksums are provided alongside each archive.
 
