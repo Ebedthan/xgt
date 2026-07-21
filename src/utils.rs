@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use ureq::http::Response;
 use ureq::{Agent, Body};
 
@@ -412,6 +413,107 @@ pub fn output_destination(
             Some(path) => OutputDestination::File(path.clone()),
             None => OutputDestination::Stdout,
         }
+    }
+}
+
+// Tolerant deserialization helpers
+// To prevent GTDB API breaking changes
+//
+// Each function accepts any JSON scalar and coerces it to the
+// target Rust type instead of failling on unexpected types.
+//
+// Apply with #[serde(default, deserialize_with = "deser_opt_f64")] for e.g.
+// `default` ensures missing fields deserialise to None rather than an error.
+
+/// Any scalar => Option<f64>
+/// Handle floats, integers, quoted numbers, null.
+pub(crate) fn deser_opt_f64<'de, D>(d: D) -> Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(d)? {
+        Value::Number(n) => Ok(n.as_f64()),
+        Value::String(s) => Ok(s.parse::<f64>().ok()),
+        Value::Null => Ok(None),
+        _ => Ok(None),
+    }
+}
+
+/// Any scalar => Option<i64>
+/// Truncate floats to integers.
+pub(crate) fn deser_opt_i64<'de, D>(d: D) -> Result<Option<i64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(d)? {
+        Value::Number(n) => Ok(n.as_f64().map(|f| f as i64)),
+        Value::String(s) => Ok(s.parse::<i64>().ok()),
+        Value::Null => Ok(None),
+        _ => Ok(None),
+    }
+}
+
+/// Any scalar => Option<i32>
+/// Same as deser_opt_i64, but for i32.
+pub(crate) fn deser_opt_i32<'de, D>(d: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(d)? {
+        Value::Number(n) => Ok(n.as_f64().map(|f| f as i32)),
+        Value::String(s) => Ok(s.parse::<i32>().ok()),
+        Value::Null => Ok(None),
+        _ => Ok(None),
+    }
+}
+
+/// Any scalar => Option<String>
+/// Converts numbers and bools to their string representation.
+/// Null becomes None.
+pub(crate) fn deser_opt_string<'de, D>(d: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(d)? {
+        Value::String(s) => Ok(Some(s)),
+        Value::Number(n) => Ok(Some(n.to_string())),
+        Value::Bool(b) => Ok(Some(b.to_string())),
+        Value::Null => Ok(None),
+        _ => Ok(None),
+    }
+}
+
+/// Any scalar => Option<bool>
+/// Accepts "true"/"false" strings (case-insensitive) and 0/1 integers.
+pub(crate) fn deser_opt_bool<'de, D>(d: D) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(d)? {
+        Value::Bool(b) => Ok(Some(b)),
+        Value::Number(n) => Ok(n.as_i64().map(|i| i != 0)),
+        Value::String(s) => Ok(match s.to_lowercase().as_str() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }),
+        Value::Null => Ok(None),
+        _ => Ok(None),
+    }
+}
+
+/// Any scalar => bool (non-optional)
+/// Falls back to false on null or unrecognised values.
+/// Use for required boolean fields like MetadataTaxonomy::gtdb_representative.
+pub(crate) fn deser_bool<'de, D>(d: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(d)? {
+        Value::Bool(b) => Ok(b),
+        Value::Number(n) => Ok(n.as_i64().map(|i| i != 0).unwrap_or(false)),
+        Value::String(s) => Ok(s.to_lowercase() == "true"),
+        _ => Ok(false),
     }
 }
 
