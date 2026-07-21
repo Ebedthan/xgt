@@ -16,7 +16,7 @@ pub struct Cli {
     pub check_update: bool,
 
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]

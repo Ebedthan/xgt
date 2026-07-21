@@ -14,9 +14,15 @@ use std::io;
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // check for updates
+    if cli.check_update {
+        utils::check_update(cli.verbose)?;
+        return Ok(());
+    }
+
     // Check GTDB db status
     if cli.verbose {
-        if utils::is_gtdb_db_online(true)? {
+        if utils::is_gtdb_db_online(false)? {
             eprintln!("GTDB status: online");
         } else {
             eprintln!("GTDB status: offline. Please try again later.");
@@ -24,11 +30,11 @@ fn main() -> Result<()> {
         }
 
         // Log API Version
-        let api_version = utils::get_api_version(true)?;
+        let api_version = utils::get_api_version(false)?;
         eprintln!("GTDB API Version: {}", api_version);
     }
 
-    match cli.command {
+    match cli.command.expect("subcommand required") {
         Commands::Search(args) => {
             search::search(&args)?;
         }
