@@ -11,6 +11,10 @@ pub struct Cli {
     #[arg(short = 'v', long, action = clap::ArgAction::SetTrue)]
     pub verbose: bool,
 
+    /// Check if a newer version of xgt is available
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    pub check_update: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

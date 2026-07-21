@@ -517,6 +517,53 @@ where
     }
 }
 
+/// Check whether a newer version of xgt is available on GH.
+/// Compares the current binary version (from Cargo.toml at compile time)
+/// against the latest release tag on the GH release API.
+/// Prints the result to stderr and returns Ok(())
+pub fn check_update(disable_certificate_verification: bool) -> Result<()> {
+    let agent = get_agent(disable_certificate_verification)?;
+
+    let response = agent
+        .get("https://api.github.com/repos/Ebedthan/xgt/releases/latest")
+        .header("User-Agent", concat!("xgt/", env!("CARGO_PKG_VERSION")))
+        .header("Accept", "application/vnd.github+json")
+        .call()
+        .map_err(|e| anyhow!("Could not reache GitHub API: {}", e))?;
+
+    let body: serde_json::Value = response
+        .into_body()
+        .read_json()
+        .context("Failed to parse GitHub API response")?;
+
+    let latest = body["tag_name"]
+        .as_str()
+        .unwrap_or("unknown")
+        .trim_start_matches('v');
+
+    let current = env!("CARGO_PKG_VERSION");
+
+    if latest == current {
+        eprintln!("xgt is up to date (v{}).", current);
+    } else if latest == "unknown" {
+        eprintln!(
+            "Could not determine the latest version. \
+            Check https://github.com/Ebedthan/xgt/releases manually."
+        );
+    } else {
+        eprintln!(
+            "A new version of xgt is available: v{} (you have v{}).",
+            latest, current
+        );
+        eprintln!(
+            "Download: https://github.com/Ebedthan/xgt/releases/tag/v{}",
+            latest
+        );
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
