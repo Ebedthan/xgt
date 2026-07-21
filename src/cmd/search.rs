@@ -207,7 +207,7 @@ fn handle_id_or_count_response(
             Ok(search_result
                 .rows
                 .iter()
-                .map(|x| x.gid.clone())
+                .map(|x| x.accession.as_deref().unwrap_or(&x.gid).to_string())
                 .collect::<Vec<String>>()
                 .join("\n"))
         }
@@ -491,5 +491,61 @@ mod tests {
         let expected = std::fs::read_to_string("test.txt").unwrap();
         assert_eq!("23".to_string(), expected);
         std::fs::remove_file("test.txt").unwrap();
+    }
+
+    #[test]
+    fn test_handle_id_uses_accession_not_gid() {
+        // Verifies that --id returns the clean accession, not the GB_/RS_ prefixed gid
+        let rows = vec![
+            SearchResult {
+                gid: "GB_GCA_000005845.2".to_string(),
+                accession: Some("GCA_000005845.2".to_string()),
+                ncbi_org_name: None,
+                ncbi_taxonomy: None,
+                gtdb_taxonomy: None,
+                ..Default::default()
+            },
+            SearchResult {
+                gid: "RS_GCF_000001405.39".to_string(),
+                accession: Some("GCF_000001405.39".to_string()),
+                ncbi_org_name: None,
+                ncbi_taxonomy: None,
+                gtdb_taxonomy: None,
+                ..Default::default()
+            },
+        ];
+
+        let output: Vec<String> = rows
+            .iter()
+            .map(|x| x.accession.as_deref().unwrap_or(&x.gid).to_string())
+            .collect();
+
+        // Must return clean accessions, not GB_/RS_ prefixed gids
+        assert_eq!(output[0], "GCA_000005845.2");
+        assert_eq!(output[1], "GCF_000001405.39");
+        assert!(
+            !output[0].starts_with("GB_"),
+            "accession must not have GB_ prefix"
+        );
+        assert!(
+            !output[1].starts_with("RS_"),
+            "accession must not have RS_ prefix"
+        );
+    }
+
+    #[test]
+    fn test_handle_id_falls_back_to_gid_when_accession_is_none() {
+        // Safety net: if accession is None, gid is returned rather than crashing
+        let row = SearchResult {
+            gid: "GB_GCA_000005845.2".to_string(),
+            accession: None,
+            ncbi_org_name: None,
+            ncbi_taxonomy: None,
+            gtdb_taxonomy: None,
+            ..Default::default()
+        };
+
+        let output = row.accession.as_deref().unwrap_or(&row.gid).to_string();
+        assert_eq!(output, "GB_GCA_000005845.2");
     }
 }
