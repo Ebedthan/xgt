@@ -9,6 +9,10 @@ use std::collections::HashMap;
 
 use crate::utils::ToFlatRow;
 
+use crate::utils::{
+    deser_bool, deser_opt_bool, deser_opt_f64, deser_opt_i32, deser_opt_i64, deser_opt_string,
+};
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 /// GenomeCard API query result struct
 pub struct GenomeCard {
@@ -209,100 +213,161 @@ pub struct Genome {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_nucleotide")]
 pub struct MetadataNucleotide {
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     trna_aa_count: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     contig_count: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     n50_contigs: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     longest_contig: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     scaffold_count: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     n50_scaffolds: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     longest_scaffold: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     genome_size: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     gc_percentage: Option<f64>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     ambiguous_bases: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_gene")]
 pub struct MetadataGene {
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     checkm_completeness: Option<f64>,
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     checkm_contamination: Option<f64>,
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     checkm_strain_heterogeneity: Option<f64>,
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     checkm2_completeness: Option<f64>,
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     checkm2_contamination: Option<f64>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     checkm2_model: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     lsu_5s_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ssu_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     lsu_23s_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     protein_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     coding_density: Option<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadata_ncbi")]
 pub struct MetadataNCBI {
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_genbank_assembly_accession: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_strain_identifiers: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_assembly_level: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_assembly_name: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_assembly_type: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_bioproject: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_biosample: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_country: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_date: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_genome_category: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_genome_representation: Option<String>, // new field
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_isolate: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_isolation_source: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_lat_lon: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_molecule_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_cds_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_refseq_category: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_seq_rel_date: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_spanned_gaps: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_species_taxid: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_ssu_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_submitter: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_taxid: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_total_gap_length: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_translation_table: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_trna_count: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     ncbi_unspanned_gaps: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_version_status: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_wgs_master: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", rename = "metadata_type_material")]
 pub struct MetadataTypeMaterial {
+    #[serde(default, deserialize_with = "deser_opt_string")]
     gtdb_type_designation: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     gtdb_type_designation_sources: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     lpsn_type_designation: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     dsmz_type_designation: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_i32")]
     lpsn_priority_year: Option<i32>,
+    #[serde(default, deserialize_with = "deser_opt_bool")]
     gtdb_type_species_of_genus: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename = "metadataTaxonomy")]
 pub struct MetadataTaxonomy {
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_taxonomy: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_taxonomy_unfiltered: Option<String>,
+    #[serde(default, deserialize_with = "deser_bool")]
     gtdb_representative: bool,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     gtdb_genome_representative: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     ncbi_type_material_designation: Option<String>,
-    #[serde(alias = "gtdbDomain")]
+    #[serde(alias = "gtdbDomain", default, deserialize_with = "deser_opt_string")]
     gtdb_domain: Option<String>,
-    #[serde(alias = "gtdbPhylum")]
+    #[serde(alias = "gtdbPhylum", default, deserialize_with = "deser_opt_string")]
     gtdb_phylum: Option<String>,
-    #[serde(alias = "gtdbClass")]
+    #[serde(alias = "gtdbClass", default, deserialize_with = "deser_opt_string")]
     gtdb_class: Option<String>,
-    #[serde(alias = "gtdbOrder")]
+    #[serde(alias = "gtdbOrder", default, deserialize_with = "deser_opt_string")]
     gtdb_order: Option<String>,
-    #[serde(alias = "gtdbFamily")]
+    #[serde(alias = "gtdbFamily", default, deserialize_with = "deser_opt_string")]
     gtdb_family: Option<String>,
-    #[serde(alias = "gtdbGenus")]
+    #[serde(alias = "gtdbGenus", default, deserialize_with = "deser_opt_string")]
     gtdb_genus: Option<String>,
-    #[serde(alias = "gtdbSpecies")]
+    #[serde(alias = "gtdbSpecies", default, deserialize_with = "deser_opt_string")]
     gtdb_species: Option<String>,
 }
 
@@ -316,8 +381,13 @@ pub struct Taxon {
 // GTDB Genome metadata API Struct
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GenomeMetadata {
+    #[serde(default, deserialize_with = "deser_opt_string")]
     accession: Option<String>,
-    #[serde(alias = "isNcbiSurveillance")]
+    #[serde(
+        alias = "isNcbiSurveillance",
+        default,
+        deserialize_with = "deser_opt_bool"
+    )]
     is_ncbi_surveillance: Option<bool>,
 }
 
@@ -340,13 +410,21 @@ impl ToFlatRow for GenomeMetadata {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct MarkerSummary {
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     bac_n_unique: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     bac_n_multi_unique: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     bac_n_multi_non_unique: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     bac_n_missing: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     arc_n_unique: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     arc_n_multi_unique: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     arc_n_multi_non_unique: Option<i64>,
+    #[serde(default, deserialize_with = "deser_opt_i64")]
     arc_n_missing: Option<i64>,
 }
 
@@ -1452,5 +1530,53 @@ mod tests {
         assert!(tsv_content.contains("release\tdomain"));
         // JSON is structured
         assert!(json_content.starts_with('['));
+    }
+
+    #[test]
+    fn test_deser_metadata_gene_real_api_response() {
+        // Reproduces the original crash: checkm_completeness sent as bare float
+        let json = r#"{
+            "checkm_completeness": 99.97,
+            "checkm_contamination": 0.04,
+            "checkm_strain_heterogeneity": 0.0,
+            "checkm2_completeness": 100.0,
+            "checkm2_contamination": 0.13,
+            "checkm2_model": "Specific",
+            "lsu_5s_count": 8,
+            "ssu_count": 7,
+            "lsu_23s_count": 7,
+            "protein_count": 4319,
+            "coding_density": 87.56886556769012
+        }"#;
+        let result: Result<crate::cmd::genome::MetadataGene, _> = serde_json::from_str(json);
+        assert!(
+            result.is_ok(),
+            "MetadataGene must parse without error: {:?}",
+            result.err()
+        );
+        let g = result.unwrap();
+        assert_eq!(g.checkm_completeness, Some(99.97));
+        assert_eq!(g.protein_count, Some(4319));
+        assert_eq!(g.checkm2_model, Some("Specific".into()));
+    }
+
+    #[test]
+    fn test_deser_metadata_gene_missing_checkm2_fields() {
+        // Older API responses may omit checkm2 fields entirely
+        let json = r#"{
+            "checkm_completeness": 99.97,
+            "checkm_contamination": 0.04,
+            "checkm_strain_heterogeneity": 0.0,
+            "lsu_5s_count": 8,
+            "ssu_count": 7,
+            "lsu_23s_count": 7,
+            "protein_count": 4319,
+            "coding_density": 87.56
+        }"#;
+        let result: Result<crate::cmd::genome::MetadataGene, _> = serde_json::from_str(json);
+        assert!(result.is_ok());
+        let g = result.unwrap();
+        assert_eq!(g.checkm2_completeness, None);
+        assert_eq!(g.checkm2_model, None);
     }
 }

@@ -5,43 +5,43 @@ use ureq::Agent;
 use crate::api::{GtdbApiRequest, TaxonEndPoint};
 use crate::cli::TaxonArgs;
 use crate::utils;
-
 use crate::utils::ToFlatRow;
+use crate::utils::{deser_opt_bool, deser_opt_f64, deser_opt_i64, deser_opt_string};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Taxon {
     taxon: String,
-
+    #[serde(default, deserialize_with = "deser_opt_f64")]
     // API returns integer or float (e.g. 36408.0), f64 handles both
     total: Option<f64>,
 
     // API sends nDescChildren (camelCase) or n_desc_children (snake_case)
     // Value is an integer, not a string
-    #[serde(alias = "nDescChildren")]
+    #[serde(alias = "nDescChildren", default, deserialize_with = "deser_opt_i64")]
     n_desc_children: Option<i64>,
 
-    #[serde(alias = "isGenome")]
+    #[serde(alias = "isGenome", default, deserialize_with = "deser_opt_bool")]
     is_genome: Option<bool>,
 
-    #[serde(alias = "isRep")]
+    #[serde(alias = "isRep", default, deserialize_with = "deser_opt_bool")]
     is_rep: Option<bool>,
 
-    #[serde(alias = "typeMaterial")]
+    #[serde(alias = "typeMaterial", default, deserialize_with = "deser_opt_string")]
     type_material: Option<String>,
 
-    #[serde(alias = "bergeysUrl")]
+    #[serde(alias = "bergeysUrl", default, deserialize_with = "deser_opt_string")]
     bergeys_url: Option<String>,
 
-    #[serde(alias = "seqcodeUrl")]
+    #[serde(alias = "seqcodeUrl", default, deserialize_with = "deser_opt_string")]
     seq_code_url: Option<String>,
 
-    #[serde(alias = "lpsnUrl")]
+    #[serde(alias = "lpsnUrl", default, deserialize_with = "deser_opt_string")]
     lpsn_url: Option<String>,
 
-    #[serde(alias = "ncbiTaxId")]
+    #[serde(alias = "ncbiTaxId", default, deserialize_with = "deser_opt_i64")]
     ncbi_tax_id: Option<i64>, // i32 => i64 for safety
 
-    #[serde(alias = "sandpiperUrl")] // new field
+    #[serde(alias = "sandpiperUrl", default, deserialize_with = "deser_opt_string")] // new field
     sandpiper_url: Option<String>,
 }
 

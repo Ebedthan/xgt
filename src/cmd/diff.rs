@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::{GenomeRequestType, GtdbApiRequest};
 use crate::cli::DiffArgs;
-use crate::utils::{self, OutputFormat, ToFlatRow};
+use crate::utils::{self, deser_opt_string, OutputFormat, ToFlatRow};
 
 // Data types
 
@@ -11,13 +11,21 @@ use crate::utils::{self, OutputFormat, ToFlatRow};
 /// Reuses the same shape as genome::History.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
 struct ReleaseEntry {
+    #[serde(default, deserialize_with = "deser_opt_string")]
     release: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     d: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     p: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     c: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     o: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     f: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     g: Option<String>,
+    #[serde(default, deserialize_with = "deser_opt_string")]
     s: Option<String>,
 }
 

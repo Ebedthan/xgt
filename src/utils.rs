@@ -1179,4 +1179,114 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Missing input".to_string());
     }
+
+    #[derive(Deserialize)]
+    struct F64Wrapper {
+        #[serde(deserialize_with = "deser_opt_f64")]
+        v: Option<f64>,
+    }
+    #[derive(Deserialize)]
+    struct I64Wrapper {
+        #[serde(deserialize_with = "deser_opt_i64")]
+        v: Option<i64>,
+    }
+    #[derive(Deserialize)]
+    struct StringWrapper {
+        #[serde(deserialize_with = "deser_opt_string")]
+        v: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct BoolWrapper {
+        #[serde(deserialize_with = "deser_opt_bool")]
+        v: Option<bool>,
+    }
+    #[derive(Deserialize)]
+    struct BoolReqWrapper {
+        #[serde(deserialize_with = "deser_bool")]
+        v: bool,
+    }
+
+    #[test]
+    fn test_deser_opt_f64_from_float() {
+        let w: F64Wrapper = serde_json::from_str(r#"{"v":99.97}"#).unwrap();
+        assert_eq!(w.v, Some(99.97));
+    }
+    #[test]
+    fn test_deser_opt_f64_from_int() {
+        let w: F64Wrapper = serde_json::from_str(r#"{"v":4316}"#).unwrap();
+        assert_eq!(w.v, Some(4316.0));
+    }
+    #[test]
+    fn test_deser_opt_f64_from_string() {
+        let w: F64Wrapper = serde_json::from_str(r#"{"v":"99.97"}"#).unwrap();
+        assert_eq!(w.v, Some(99.97));
+    }
+    #[test]
+    fn test_deser_opt_f64_from_null() {
+        let w: F64Wrapper = serde_json::from_str(r#"{"v":null}"#).unwrap();
+        assert_eq!(w.v, None);
+    }
+
+    #[test]
+    fn test_deser_opt_i64_from_int() {
+        let w: I64Wrapper = serde_json::from_str(r#"{"v":511145}"#).unwrap();
+        assert_eq!(w.v, Some(511145));
+    }
+    #[test]
+    fn test_deser_opt_i64_from_float() {
+        let w: I64Wrapper = serde_json::from_str(r#"{"v":36408.0}"#).unwrap();
+        assert_eq!(w.v, Some(36408));
+    }
+    #[test]
+    fn test_deser_opt_i64_from_string() {
+        let w: I64Wrapper = serde_json::from_str(r#"{"v":"511145"}"#).unwrap();
+        assert_eq!(w.v, Some(511145));
+    }
+    #[test]
+    fn test_deser_opt_i64_from_null() {
+        let w: I64Wrapper = serde_json::from_str(r#"{"v":null}"#).unwrap();
+        assert_eq!(w.v, None);
+    }
+
+    #[test]
+    fn test_deser_opt_string_from_string() {
+        let w: StringWrapper = serde_json::from_str(r#"{"v":"hello"}"#).unwrap();
+        assert_eq!(w.v, Some("hello".into()));
+    }
+    #[test]
+    fn test_deser_opt_string_from_number() {
+        let w: StringWrapper = serde_json::from_str(r#"{"v":562}"#).unwrap();
+        assert_eq!(w.v, Some("562".into()));
+    }
+    #[test]
+    fn test_deser_opt_string_from_null() {
+        let w: StringWrapper = serde_json::from_str(r#"{"v":null}"#).unwrap();
+        assert_eq!(w.v, None);
+    }
+
+    #[test]
+    fn test_deser_opt_bool_from_bool() {
+        let w: BoolWrapper = serde_json::from_str(r#"{"v":true}"#).unwrap();
+        assert_eq!(w.v, Some(true));
+    }
+    #[test]
+    fn test_deser_opt_bool_from_string() {
+        let w: BoolWrapper = serde_json::from_str(r#"{"v":"false"}"#).unwrap();
+        assert_eq!(w.v, Some(false));
+    }
+    #[test]
+    fn test_deser_opt_bool_from_int() {
+        let w: BoolWrapper = serde_json::from_str(r#"{"v":1}"#).unwrap();
+        assert_eq!(w.v, Some(true));
+    }
+    #[test]
+    fn test_deser_opt_bool_from_null() {
+        let w: BoolWrapper = serde_json::from_str(r#"{"v":null}"#).unwrap();
+        assert_eq!(w.v, None);
+    }
+    #[test]
+    fn test_deser_bool_from_null_is_false() {
+        let w: BoolReqWrapper = serde_json::from_str(r#"{"v":null}"#).unwrap();
+        assert_eq!(w.v, false);
+    }
 }
