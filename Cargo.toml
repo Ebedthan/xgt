@@ -35,3 +35,15 @@ incremental = false
 name = "xgt"
 path = "src/main.rs"
 bench = false
+
+[features]
+integration-tests = []
+
+[[test]]
+name = "integration"
+path = "test/integration.rs"
+required-features = ["integration-tests"]
+
+[lib]
+name = "xgt"
+path = "src/lib.rs"
