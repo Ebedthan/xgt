@@ -9,7 +9,7 @@
 
 ## What is xgt?
 
-`xgt` is a command-line tool for querying the [Genome Taxonomy Database (GTDB)](https://gtdb.ecogenomic.org/) directly from your terminal or scripts. It covers the core GTDB REST API, genome cards, metadata, taxonomic history, taxon lineages, and search, and adds features designed for real research workflows: batch input from files or stdin, automatic pagination, retry logic, flexible output formats (JSON, CSV, TSV), and per-item file splitting for large datasets.
+`xgt` is a command-line tool for querying the [Genome Taxonomy Database (GTDB)](https://gtdb.ecogenomic.org/) directly from your terminal or scripts. It covers the core GTDB REST API, genome cards, metadata, taxonomic history, taxon lineages, and search, and adds features designed for real research workflows: batch input from files or stdin, automatic parallel pagination, retry logic, flexible output formats (JSON, CSV, TSV), per-item file splitting, and cross-release taxonomic comparison.
 
 It is written in Rust for speed, portability, and a single self-contained binary with no runtime dependencies.
 
@@ -20,13 +20,17 @@ It is written in Rust for speed, portability, and a single self-contained binary
 
 Download the binary for your platform from the [releases page](https://github.com/Ebedthan/xgt/releases) and place it somewhere on your `$PATH`.
 
-| Platform            | File                                          |
+| Platform | Download |
 |---|---|
-| Linux x86\_64       | `xgt-vX.X.X-x86_64-unknown-linux-gnu.tar.xz` |
-| macOS Apple Silicon | `xgt-vX.X.X-aarch64-apple-darwin.tar.xz`     |
-| Windows x86\_64     | `xgt-vX.X.X-x86_64-pc-windows-msvc.zip`      |
+| Linux x86\_64 | `xgt-vX.X.X-x86_64-unknown-linux-gnu.tar.xz` |
+| macOS Apple Silicon | `xgt-vX.X.X-aarch64-apple-darwin.tar.xz` |
+| Windows x86\_64 | `xgt-vX.X.X-x86_64-pc-windows-msvc.zip` |
 
 SHA-256 checksums are provided alongside each archive.
+
+**macOS Intel / Linux aarch64:** build from source (see below), or run
+the Apple Silicon binary under Rosetta 2 (installed by default on all
+Apple Silicon Macs).
 
 ### From source
 
@@ -55,6 +59,9 @@ xgt taxon g__Escherichia
 
 # Compare a genome's taxonomy between two GTDB releases
 xgt diff GCA_000005845.2 --from R214 --to R220
+
+# Check if a newer version of xgt is available
+xgt --check-update
 ```
 
 ## Subcommands
@@ -65,8 +72,10 @@ xgt diff GCA_000005845.2 --from R214 --to R220
 xgt search [OPTIONS] [QUERY]
 ```
 
-Searches the GTDB for genomes matching a query string. The query can be a
-taxon name, accession, organism name, or any field depending on `--field`.
+Searches GTDB for genomes matching a query string against one or more
+metadata fields. Pagination is automatic and parallel: queries on large
+genera like *Escherichia* (52,000+ genomes) return complete results
+without truncation.
 
 **Options**
 
@@ -76,11 +85,14 @@ taxon name, accession, organism name, or any field depending on `--field`.
 | `--word` | `-w` | Match whole words only |
 | `--rep` | `-r` | Restrict to GTDB species representatives |
 | `--type` | `-t` | Restrict to NCBI type material |
-| `--id` | `-i` | Print only genome accessions |
-| `--count` | `-c` | Print only the count of matched genomes |
+| `--id` | `-i` | Print only genome accessions, one per line |
+| `--count` | `-c` | Print only the total count of matched genomes |
+| `--max-concurrent N` | | Max concurrent page requests during pagination (default: 5) |
 | `--file FILE` | `-f` | Read queries from FILE, one per line; use `-` for stdin |
 | `--out FILE` | `-o` | Write output to FILE instead of stdout |
 | `--outfmt STR` | `-O` | Output format: `csv` (default), `tsv`, `json` |
+| `--split` | `-s` | Write one file per query |
+| `--split-dir DIR` | | Directory for per-query files (requires `--split`) |
 | `--insecure` | `-k` | Disable SSL certificate verification |
 
 **Examples**
@@ -92,19 +104,12 @@ xgt search g__Escherichia -O json
 # Search from a file, output TSV to a file
 xgt search -f genera.txt -O tsv -o results.tsv
 
-# Read from stdin, count results per query
-xgt search -f - --count
-
 # Restrict to species representatives, print accessions only
 xgt search g__Bacillus --rep --id
 
-# Pipe to downstream tools
-xgt search g__Salmonella --id | wc -l
+# Pipe accessions directly to xgt genome
+xgt search g__Rhizobium --id | xgt genome -f - -O csv -o rhizobium.csv
 ```
-
-The search automatically paginates through all results regardless of
-dataset size. Queries on large genera like *Escherichia* return
-complete results without truncation.
 
 ### `genome`: retrieve genome information
 
@@ -113,9 +118,9 @@ xgt genome [OPTIONS] [ACCESSION]
 ```
 
 Fetches data for one or more genome accessions. By default returns the
-full genome card (taxonomy, assembly statistics, CheckM quality, NCBI
-metadata). Use `--metadata` for a lightweight metadata-only response,
-or `--history` for the full taxonomic history across all GTDB releases.
+full genome card (taxonomy, assembly statistics, CheckM/CheckM2 quality,
+NCBI metadata). Use `--metadata` for a lightweight response or
+`--history` for the full taxonomic history across all GTDB releases.
 
 **Options**
 
@@ -123,9 +128,12 @@ or `--history` for the full taxonomic history across all GTDB releases.
 |---|---|---|
 | `--metadata` | `-m` | Retrieve genome metadata instead of full card |
 | `--history` | `-H` | Retrieve taxonomic history across all releases |
+| `--release RELEASE` | | Target a specific GTDB release (e.g. `R214`) |
 | `--file FILE` | `-f` | Read accessions from FILE, one per line; use `-` for stdin |
 | `--out FILE` | `-o` | Write output to FILE instead of stdout |
 | `--outfmt STR` | `-O` | Output format: `json` (default), `csv`, `tsv` |
+| `--split` | `-s` | Write one file per accession |
+| `--split-dir DIR` | | Directory for per-accession files (requires `--split`) |
 | `--insecure` | `-k` | Disable SSL certificate verification |
 
 **Examples**
@@ -134,24 +142,18 @@ or `--history` for the full taxonomic history across all GTDB releases.
 # Full genome card
 xgt genome GCA_000005845.2
 
-# Lightweight metadata in CSV
-xgt genome GCA_000005845.2 --metadata -O csv
-
 # Taxonomic history across all GTDB releases
 xgt genome GCA_000005845.2 --history
 
-# Batch: process 200 accessions from a file, write CSV
+# Batch: process accessions from a file, write CSV
 xgt genome -f accessions.txt -O csv -o results.csv
-
-# Batch: read accessions from stdin
-cat accessions.txt | xgt genome -f -
 
 # Batch: write one JSON file per accession
 xgt genome -f accessions.txt --split --split-dir genome_cards/
-```
 
-When processing a file of accessions, a progress bar is shown on stderr
-so that stdout output can be safely piped to downstream tools.
+# Target a specific GTDB release
+xgt genome GCA_000005845.2 --release R214
+```
 
 
 ### `taxon`: explore GTDB taxonomy
@@ -160,19 +162,19 @@ so that stdout output can be safely piped to downstream tools.
 xgt taxon [OPTIONS] [NAME]
 ```
 
-Retrieves information about a GTDB taxon. The taxon name must use the
-standard rank prefix format (e.g. `g__Escherichia`, `s__Escherichia coli`).
-Valid prefixes are `d__`, `p__`, `c__`, `o__`, `f__`, `g__`, `s__`.
+Retrieves information about a GTDB taxon. Names must use the standard
+rank prefix format (e.g. `g__Escherichia`, `s__Escherichia coli`).
+Valid prefixes: `d__`, `p__`, `c__`, `o__`, `f__`, `g__`, `s__`.
 
 **Options**
 
 | Flag | Short | Description |
 |---|---|---|
-| `--search` | `-s` | Search for a taxon name in the current release |
-| `--all` | | Search for a taxon name across all releases |
-| `--genomes` | `-g` | List genomes assigned to the taxon |
+| `--search` | `-s` | Search for a taxon name in the current release, returning partial matches |
+| `--all` | | Search across all GTDB releases and NCBI (requires `--search`) |
+| `--genomes` | `-g` | List genome accessions assigned to the taxon |
 | `--reps` | `-r` | With `--genomes`, return species representatives only |
-| `--word` | `-w` | Match whole words only |
+| `--word` | `-w` | Restrict `--search` results to exact matches only |
 | `--file FILE` | `-f` | Read taxon names from FILE, one per line; use `-` for stdin |
 | `--out FILE` | `-o` | Write output to FILE instead of stdout |
 | `--outfmt STR` | `-O` | Output format: `json` (default), `csv`, `tsv` |
@@ -181,23 +183,20 @@ Valid prefixes are `d__`, `p__`, `c__`, `o__`, `f__`, `g__`, `s__`.
 **Examples**
 
 ```bash
-# Full taxonomic lineage for a genus
+# Full taxonomic record for a genus
 xgt taxon g__Escherichia
 
 # Search for a taxon name in the current release
-xgt taxon --search g__Escherichia
+xgt taxon --search Escherichia
 
-# Search across all GTDB releases
-xgt taxon --all g__Escherichia
+# Search across all GTDB releases and NCBI
+xgt taxon --search --all Escherichia
 
 # List all genomes in a taxon
 xgt taxon g__Escherichia --genomes
 
 # List only species representatives
 xgt taxon g__Escherichia --genomes --reps
-
-# Output genome list as CSV
-xgt taxon g__Escherichia --genomes -O csv -o genomes.csv
 ```
 
 ### `diff`: compare taxonomy between releases
@@ -206,38 +205,35 @@ xgt taxon g__Escherichia --genomes -O csv -o genomes.csv
 xgt diff [OPTIONS] [ACCESSION] --from RELEASE
 ```
 
-Shows how the taxonomic classification of a genome changed between two
-GTDB releases. Requires `--from`; if `--to` is omitted, the latest
-available release for the genome is used. Release identifiers use the
-format `R<number>` (e.g. `R214`, `R220`, `R226`).
+Computes per-rank taxonomic changes for a genome between two GTDB
+releases. Requires `--from`; if `--to` is omitted, the latest available
+release for the genome is used automatically. Release identifiers follow
+the format `R<number>` (e.g. `R214`, `R220`, `R232`).
 
 **Options**
 
 | Flag | Short | Description |
 |---|---|---|
-| `--from RELEASE` | | Source release to compare from (required) |
-| `--to RELEASE` | | Target release to compare to (default: latest) |
+| `--from RELEASE` | | Source release (required) |
+| `--to RELEASE` | | Target release (default: latest available) |
 | `--file FILE` | `-f` | Read accessions from FILE, one per line; use `-` for stdin |
 | `--out FILE` | `-o` | Write output to FILE instead of stdout |
 | `--outfmt STR` | `-O` | Output format: `json` (default), `csv`, `tsv` |
 | `--split` | `-s` | Write one file per accession |
-| `--split-dir DIR` | | Directory for per-item files (requires `--split`) |
+| `--split-dir DIR` | | Directory for per-accession files (requires `--split`) |
 | `--insecure` | `-k` | Disable SSL certificate verification |
 
 **Examples**
 
 ```bash
-# Compare a single genome between two releases
+# Compare a genome between two releases
 xgt diff GCA_000005845.2 --from R214 --to R220
 
 # Compare against the latest release
-xgt diff GCA_000005845.2 --from R207
+xgt diff GCA_000005845.2 --from R214
 
 # Batch comparison, CSV output
 xgt diff -f accessions.txt --from R214 --to R220 -O csv -o changes.csv
-
-# One diff file per accession
-xgt diff -f accessions.txt --from R214 --to R220 --split --split-dir diffs/
 ```
 
 **Output (JSON)**
@@ -251,8 +247,8 @@ xgt diff -f accessions.txt --from R214 --to R220 --split --split-dir diffs/
   "changes": [
     {
       "rank": "species",
-      "from": "Escherichia coli",
-      "to": "Escherichia coli_D"
+      "from": "s__Escherichia coli",
+      "to": "s__G047199095 sp047199095"
     }
   ],
   "from_taxonomy": {
@@ -265,31 +261,16 @@ xgt diff -f accessions.txt --from R214 --to R220 --split --split-dir diffs/
     "genus": "g__Escherichia",
     "species": "s__Escherichia coli"
   },
-  "to_taxonomy": { "..." : "..." }
+  "to_taxonomy": { "...": "..." }
 }
 ```
 
 ## Common patterns
 
-### Batch processing with stdin
-
-```bash
-# Generate an accession list from another tool and pipe directly
-grep "Escherichia" my_study_metadata.tsv | cut -f1 | xgt genome -f - -O csv
-```
-
-### Combining subcommands
-
-```bash
-# Get all accessions in a genus, then fetch their cards
-xgt search g__Rhizobium --id > accessions.txt
-xgt genome -f accessions.txt -O csv -o rhizobium_cards.csv
-```
-
 ### Tracking taxonomic changes in a dataset
 
 ```bash
-# Find which genomes in your study changed between R214 and R220
+# Find which genomes changed between two GTDB releases
 xgt diff -f study_accessions.txt --from R214 --to R220 \
   -O csv -o taxonomy_changes.csv
 
@@ -297,45 +278,54 @@ xgt diff -f study_accessions.txt --from R214 --to R220 \
 awk -F',' '$4 == "true"' taxonomy_changes.csv
 ```
 
-### Output to separate files per accession
+### Pipeline composition
 
 ```bash
-# One JSON file per genome in a results directory
+# Get all representative accessions for a genus, then fetch genome cards
+xgt search g__Rhizobium --rep --id | xgt genome -f - -O csv -o rhizobium.csv
+```
+
+### Per-accession output files
+
+```bash
+# One JSON file per genome
 xgt genome -f accessions.txt --split --split-dir results/
+
+# One diff file per accession
+xgt diff -f accessions.txt --from R214 --split --split-dir diffs/
 ```
 
 ## Output formats
 
-All subcommands support `--outfmt csv|tsv|json` (except `search`, which
-defaults to `csv`; all others default to `json`).
+All subcommands support `--outfmt csv|tsv|json`. The default is `csv`
+for `search` and `json` for `genome`, `taxon`, and `diff`.
 
 CSV and TSV output is suitable for loading directly into R, Python, or
-spreadsheet tools. JSON output preserves all nested fields and is
-recommended when the full genome card is needed.
+spreadsheet tools. JSON preserves all nested fields and is recommended
+when the full genome card is needed.
 
-All output goes to stdout by default. Use `--out FILE` to write to a
-file, or `--split` to write one file per query when processing batches.
+Output goes to stdout by default. Use `--out` to redirect to a single
+file, or `--split` to write one file per query or accession.
 
 
 ## Shell completions
- 
-Generate a completion script for your shell:
- 
+
 ```bash
 # Bash
 xgt completions bash > ~/.local/share/bash-completion/completions/xgt
- 
+
 # Zsh (ensure ~/.zfunc is in your fpath)
 xgt completions zsh > ~/.zfunc/_xgt
- 
+
 # Fish
 xgt completions fish > ~/.config/fish/completions/xgt.fish
 ```
- 
+
 
 ## Reporting issues
 
-Found a bug or want to request a feature? [Open an issue](https://github.com/Ebedthan/xgt/issues).
+Found a bug or want to request a feature?
+[Open an issue](https://github.com/Ebedthan/xgt/issues).
 
 Please include:
 - OS and architecture
@@ -352,4 +342,7 @@ Dual-licensed under the [MIT License](LICENSE-MIT) and the
 
 - Minimum Rust version: **1.85**
 - Follows [Semantic Versioning](https://semver.org/)
-- Contributions welcome! Please open an issue before submitting large changes
+- Run unit tests: `cargo test`
+- Run integration tests (requires network):
+  `cargo test --features integration-tests --test integration`
+- Contributions welcome — please open an issue before submitting large changes
