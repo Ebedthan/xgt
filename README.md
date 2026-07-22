@@ -340,9 +340,9 @@ Dual-licensed under the [MIT License](LICENSE-MIT) and the
 
 ## Developer notes
 
-- Minimum Rust version: **1.85**
+- Minimum Rust version: **1.85.1**
 - Follows [Semantic Versioning](https://semver.org/)
 - Run unit tests: `cargo test`
 - Run integration tests (requires network):
   `cargo test --features integration-tests --test integration`
-- Contributions welcome — please open an issue before submitting large changes
+- Contributions welcome, please open an issue before submitting large changes
