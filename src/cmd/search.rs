@@ -41,41 +41,21 @@ struct SearchResult {
 
 impl SearchResult {
     /// Get genome accession number
-    /// # Example
-    /// ```no_run
-    /// let search_result = SearchResult::default();
-    /// assert_eq!(search_result.get_accession(), None);
-    /// ```
     fn get_accession(&self) -> Option<&String> {
         self.accession.as_ref()
     }
 
     /// Get NCBI organism name
-    /// # Example
-    /// ```no_run
-    /// let search_result = SearchResult::default();
-    /// assert_eq!(search_result.get_ncbi_org_name(), None);
-    /// ```
     fn get_ncbi_org_name(&self) -> Option<&String> {
         self.ncbi_org_name.as_ref()
     }
 
     /// Get NCBI taxonomy name
-    /// # Example
-    /// ```no_run
-    /// let search_result = SearchResult::default();
-    /// assert_eq!(search_result.get_ncbi_taxonomy(), None);
-    /// ```
     fn get_ncbi_taxonomy(&self) -> Option<&String> {
         self.ncbi_taxonomy.as_ref()
     }
 
     /// Get GTDB taxonomy
-    /// # Example
-    /// ```no_run
-    /// let search_result = SearchResult::default();
-    /// assert_eq!(search_result.get_gtdb_taxonomy(), None);
-    /// ```
     fn get_gtdb_taxonomy(&self) -> Option<&String> {
         self.gtdb_taxonomy.as_ref()
     }
@@ -131,11 +111,6 @@ impl SearchResults {
     }
 
     /// Get total rows
-    /// # Example
-    /// ```no_run
-    /// let search_results = SearchResults::default();
-    /// assert_eq!(search_results.get_total_rows(), 0_u32);
-    /// ```
     fn get_total_rows(&self) -> u32 {
         self.total_rows
     }
@@ -400,21 +375,11 @@ fn handle_xsv_response(
 }
 
 /// Perform whole taxon exact matching
-/// # Example
-/// ```no_run
-/// assert!(whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "d__domain"));
-/// assert!(!whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "xgt"));
-/// ```
 fn whole_taxon_match(taxonomy: &str, taxon: &str) -> bool {
     taxonomy.split("; ").any(|tax| tax == taxon)
 }
 
 /// Perform whole word exact matching
-/// # Example
-/// ```no_run
-/// assert!(whole_word_match("bar bir ber bor", "bor"));
-/// assert!(!whole_word_match("bar bir ber bor", "xgt"));
-/// ```
 fn whole_word_match(haystack: &str, needle: &str) -> bool {
     haystack.split_whitespace().any(|word| word == needle)
 }
