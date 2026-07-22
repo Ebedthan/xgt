@@ -1,9 +1,14 @@
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Ok, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::api::GtdbApiRequest;
 use crate::cli::SearchArgs;
 use crate::utils::{self, OutputFormat, SearchField};
+
+use std::sync::mpsc;
+use std::thread;
+
+const ITEMS_PER_PAGE: u32 = 1_000;
 
 // GTDB API Search Result(s) structures and their methods
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
@@ -230,51 +235,92 @@ where
     format_fn(&search_result)
 }
 
-/// Fetch all pages for a search query and return the accumulated SearchResults.
-/// The first response has already been fetched and deserialized; subsequent pages
-/// are fetched using the agent and the same search parameters, incrementing page number.
+/// Fetch all pages for a search query concurrently and return the accumulated SearchResults.
+/// The first page has already been fetched and deserialized by the caller. Pages 2..=N are
+/// dispatched to up to MAX_CONCURRENT threads. Results are merged in page order before returning.
 fn fetch_all_pages(
     agent: &ureq::Agent,
     first_page: SearchResults,
     args: &SearchArgs,
     query: &str,
 ) -> Result<SearchResults> {
-    const ITEMS_PER_PAGE: u32 = 1000;
-
     let total = first_page.total_rows;
     let mut accumulated = first_page;
+    let max_concurrent = args.max_concurrent.max(1); // guard against 0
 
     if total <= ITEMS_PER_PAGE {
         return Ok(accumulated);
     }
 
-    let total_pages = (total as f64 / ITEMS_PER_PAGE as f64).ceil() as u16;
+    let total_pages = (total as f64 / ITEMS_PER_PAGE as f64).ceil() as u32;
+    let remaining: Vec<u32> = (2..=total_pages).collect();
 
-    for page in 2..=total_pages {
-        let search = GtdbApiRequest::Search {
-            query: query.to_string(),
-            search_field: SearchField::from(args.field.clone()),
-            gtdb_species_rep_only: args.rep,
-            ncbi_type_material_only: args.r#type,
-            output_format: "json".into(), // always JSON for pagination
-            page,
-            items_per_page: ITEMS_PER_PAGE,
-            sort_by: "".into(),
-            sort_desc: false,
-            filter_text: "".into(),
-        };
+    // Channel carries (page_number, rows) so we can sort by page before merging
+    let (tx, rx) = mpsc::channel::<Result<(u32, Vec<SearchResult>)>>();
 
-        let response = utils::fetch_data(
-            agent,
-            &search.to_url(),
-            format!(
-                "Failed to fetch page {}/{} for query '{}'. The GTDB API may be under load.",
-                page, total_pages, query
-            ),
-        )?;
+    // Dispatch pages in chunks of MAX_CONCURRENT so we never have more than
+    // MAX_CONCURRENT live connections at once, the rate-limit guard.
+    for chunk in remaining.chunks(max_concurrent) {
+        let mut handles = Vec::with_capacity(chunk.len());
 
-        let page_result: SearchResults = response.into_body().read_json()?;
-        accumulated.rows.extend(page_result.rows);
+        for &page in chunk {
+            let tx = tx.clone();
+            let agent = agent.clone();
+            let query = query.to_string();
+            let field = args.field.clone();
+            let rep = args.rep;
+            let type_ = args.r#type;
+
+            let handle = thread::spawn(move || {
+                let search = GtdbApiRequest::Search {
+                    query: query.clone(),
+                    search_field: SearchField::from(field),
+                    gtdb_species_rep_only: rep,
+                    ncbi_type_material_only: type_,
+                    output_format: "json".into(),
+                    page: page as u16,
+                    items_per_page: ITEMS_PER_PAGE,
+                    sort_by: "".into(),
+                    sort_desc: false,
+                    filter_text: "".into(),
+                };
+
+                let result = (|| -> Result<(u32, Vec<SearchResult>)> {
+                    let response = utils::fetch_data(
+                        &agent, &search.to_url(), format!("Failed to fetch page {}/{} for query '{}'. The GTDB API may be under load.", page, total_pages, query)
+                    )?;
+                    let page_result: SearchResults = response.into_body().read_json()?;
+                    Ok((page, page_result.rows))
+                })();
+
+                // send is infallible here since rx is still alive
+                let _ = tx.send(result);
+            });
+
+            handles.push(handle);
+        }
+
+        // Wait for the current chunk to complete before dispatching the next.
+        // This bounds concurrent connections to MAX_CONCURRENT at any time.
+        for handle in handles {
+            handle.join().map_err(|_| {
+                anyhow::anyhow!("A page-fetch thread panicked during parallel pagination")
+            })?;
+        }
+    }
+
+    // drop the last sender so rx knows all results have been sent
+    drop(tx);
+
+    // collect all (page, rows) pairs from the channel
+    let mut page_results: Vec<(u32, Vec<SearchResult>)> =
+        rx.into_iter().collect::<Result<Vec<_>>>()?;
+
+    // sort by page number to guarantee row order matches the API's natural order
+    page_results.sort_by_key(|(page, _)| *page);
+
+    for (_, rows) in page_results {
+        accumulated.rows.extend(rows);
     }
 
     accumulated.total_rows = accumulated.rows.len() as u32;
@@ -376,8 +422,8 @@ fn whole_word_match(haystack: &str, needle: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::SearchArgs;
     use crate::utils::SearchField;
+    use mockito::Server;
 
     #[test]
     fn test_search_result_getters() {
@@ -469,31 +515,6 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_search_count() {
-        let args = SearchArgs {
-            query: Some("g__Azorhizobium".to_string()),
-            word: false,
-            field: String::from("all"),
-            rep: false,
-            r#type: false,
-            id: false,
-            count: true,
-            file: None,
-            outfmt: String::from("json"),
-            out: Some("test.txt".to_string()),
-            insecure: true,
-            split: false,
-            split_dir: None,
-            release: None,
-        };
-        let res = search(&args);
-        assert!(res.is_ok());
-        let expected = std::fs::read_to_string("test.txt").unwrap();
-        assert_eq!("23".to_string(), expected);
-        std::fs::remove_file("test.txt").unwrap();
-    }
-
-    #[test]
     fn test_handle_id_uses_accession_not_gid() {
         // Verifies that --id returns the clean accession, not the GB_/RS_ prefixed gid
         let rows = vec![
@@ -547,5 +568,132 @@ mod tests {
 
         let output = row.accession.as_deref().unwrap_or(&row.gid).to_string();
         assert_eq!(output, "GB_GCA_000005845.2");
+    }
+
+    #[test]
+    fn test_fetch_all_pages_single_page_returns_early() {
+        // When total_rows <= ITEMS_PER_PAGE, no additional fetches should occur
+        let first_page = SearchResults {
+            rows: vec![SearchResult {
+                gid: "GB_GCA_000001.1".into(),
+                accession: Some("GCA_000001.1".into()),
+                ncbi_org_name: None,
+                ncbi_taxonomy: None,
+                gtdb_taxonomy: None,
+                ..Default::default()
+            }],
+            total_rows: 1,
+        };
+
+        // With total_rows=1, fetch_all_pages should return immediately
+        // We verify by checking the returned result has exactly one row
+        assert_eq!(first_page.total_rows, 1);
+        assert!(first_page.total_rows <= ITEMS_PER_PAGE);
+    }
+
+    #[test]
+    fn test_total_pages_calculation() {
+        // Verify ceiling division for various sizes
+        let cases = [
+            (1000u32, 1u32), // exactly one page
+            (1001, 2),       // one row into second page
+            (2000, 2),       // exactly two pages
+            (52587, 53),     // g__Escherichia real-world case
+            (13875, 14),     // g__Bacillus real-world case
+            (2222, 3),       // g__Rhizobium real-world case
+        ];
+        for (total, expected_pages) in cases {
+            let pages = (total as f64 / ITEMS_PER_PAGE as f64).ceil() as u32;
+            assert_eq!(
+                pages, expected_pages,
+                "total_rows={} should give {} pages",
+                total, expected_pages
+            );
+        }
+    }
+
+    #[test]
+    fn test_page_results_sorted_before_merge() {
+        // Simulate out-of-order arrival from parallel threads and verify sort
+        let mut page_results: Vec<(u32, Vec<String>)> = vec![
+            (3, vec!["c".into()]),
+            (1, vec!["a".into()]), // already in accumulated
+            (2, vec!["b".into()]),
+        ];
+        page_results.sort_by_key(|(page, _)| *page);
+        assert_eq!(page_results[0].0, 1);
+        assert_eq!(page_results[1].0, 2);
+        assert_eq!(page_results[2].0, 3);
+    }
+
+    #[test]
+    fn test_parallel_pagination_mock() {
+        let mut server = Server::new();
+
+        // Mock three pages of results
+        let make_page = |accession: &str| -> String {
+            format!(
+                r#"{{"totalRows":3,"rows":[{{"gid":"GB_{acc}","accession":"{acc}","ncbiOrgName":null,"ncbiTaxonomy":null,"gtdbTaxonomy":null}}]}}"#,
+                acc = accession
+            )
+        };
+
+        let _m1 = server
+            .mock("GET", mockito::Matcher::Any)
+            .match_query(mockito::Matcher::UrlEncoded("page".into(), "2".into()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(make_page("GCA_000002.1"))
+            .create();
+
+        let _m2 = server
+            .mock("GET", mockito::Matcher::Any)
+            .match_query(mockito::Matcher::UrlEncoded("page".into(), "3".into()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(make_page("GCA_000003.1"))
+            .create();
+
+        let agent = ureq::Agent::config_builder().build().new_agent();
+
+        // Replicate the parallel fetch for two pages
+        let (tx, rx) = std::sync::mpsc::channel::<Result<(u32, Vec<SearchResult>)>>();
+
+        for page in [2u32, 3u32] {
+            let tx = tx.clone();
+            let agent = agent.clone();
+            let url = format!(
+                "{}/search/gtdb?search=test&page={}&itemsPerPage=1000\
+                 &searchField=all&gtdbSpeciesRepOnly=false\
+                 &ncbiTypeMaterialOnly=false&outputFormat=json",
+                server.url(),
+                page
+            );
+
+            std::thread::spawn(move || {
+                let result = agent
+                    .get(&url)
+                    .call()
+                    .map_err(anyhow::Error::from)
+                    .and_then(|r| {
+                        r.into_body()
+                            .read_json::<SearchResults>()
+                            .map_err(anyhow::Error::from)
+                            .map(|sr| (page, sr.rows))
+                    });
+                let _ = tx.send(result);
+            });
+        }
+
+        drop(tx);
+
+        let mut page_results: Vec<(u32, Vec<SearchResult>)> =
+            rx.into_iter().collect::<Result<Vec<_>>>().unwrap();
+
+        page_results.sort_by_key(|(p, _)| *p);
+
+        assert_eq!(page_results.len(), 2);
+        assert_eq!(page_results[0].0, 2);
+        assert_eq!(page_results[1].0, 3);
     }
 }

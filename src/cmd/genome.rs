@@ -895,8 +895,6 @@ mod tests {
         }
     }
 
-    // ── ToFlatRow for GenomeMetadata ──────────────────────────────────────────────
-
     #[test]
     fn test_genome_metadata_csv_header_comma() {
         let header = GenomeMetadata::csv_header(",");

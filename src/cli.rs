@@ -104,6 +104,12 @@ pub struct SearchArgs {
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
     pub insecure: bool,
+
+    /// Maximum number of concurrent API page requests during pagination.
+    /// Lower this if you encounter HTTP 429 (rate limit) errors.
+    /// Higher values may reduce wall time on fast connections.
+    #[arg(long, value_name = "N", default_value = "5")]
+    pub max_concurrent: usize,
 }
 
 #[derive(Args)]
