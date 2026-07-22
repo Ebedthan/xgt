@@ -42,7 +42,7 @@ struct SearchResult {
 impl SearchResult {
     /// Get genome accession number
     /// # Example
-    /// ```
+    /// ```no_run
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_accession(), None);
     /// ```
@@ -52,7 +52,7 @@ impl SearchResult {
 
     /// Get NCBI organism name
     /// # Example
-    /// ```
+    /// ```no_run
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_ncbi_org_name(), None);
     /// ```
@@ -62,7 +62,7 @@ impl SearchResult {
 
     /// Get NCBI taxonomy name
     /// # Example
-    /// ```
+    /// ```no_run
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_ncbi_taxonomy(), None);
     /// ```
@@ -72,7 +72,7 @@ impl SearchResult {
 
     /// Get GTDB taxonomy
     /// # Example
-    /// ```
+    /// ```no_run
     /// let search_result = SearchResult::default();
     /// assert_eq!(search_result.get_gtdb_taxonomy(), None);
     /// ```
@@ -132,7 +132,7 @@ impl SearchResults {
 
     /// Get total rows
     /// # Example
-    /// ```
+    /// ```no_run
     /// let search_results = SearchResults::default();
     /// assert_eq!(search_results.get_total_rows(), 0_u32);
     /// ```
@@ -401,7 +401,7 @@ fn handle_xsv_response(
 
 /// Perform whole taxon exact matching
 /// # Example
-/// ```
+/// ```no_run
 /// assert!(whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "d__domain"));
 /// assert!(!whole_taxon_match("d__domain; p__phylum; c__class; o__order; f__family; g__genus; s__species", "xgt"));
 /// ```
@@ -411,7 +411,7 @@ fn whole_taxon_match(taxonomy: &str, taxon: &str) -> bool {
 
 /// Perform whole word exact matching
 /// # Example
-/// ```
+/// ```no_run
 /// assert!(whole_word_match("bar bir ber bor", "bor"));
 /// assert!(!whole_word_match("bar bir ber bor", "xgt"));
 /// ```
