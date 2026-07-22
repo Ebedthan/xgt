@@ -39,9 +39,6 @@ jobs:
           - build: windows
             os: windows-latest
             rust: stable
-          - build: beta
-            os: ubuntu-latest
-            rust: beta
           - build: stable
             os: ubuntu-latest
             rust: stable
