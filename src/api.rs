@@ -1,6 +1,19 @@
 use crate::utils::SearchField;
 use std::fmt;
 
+/// Percent-encode a query string value.
+/// Encodes all characters except unreserved URI characters (A-Z a-z 0-9 - _ . ~).
+/// Spaces become %20 (not +), which is correct for query parameter values
+/// in application/x-www-form-urlencoded within a URI path.
+fn encode_query_value(s: &str) -> String {
+    s.chars()
+        .flat_map(|c| match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => vec![c],
+            _ => format!("%{:02X}", c as u32).chars().collect(),
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone)]
 pub enum GtdbApiRequest {
     Taxon {
@@ -81,21 +94,24 @@ impl GtdbApiRequest {
                 // Taxon endpoints do not support ?release=, always serves latest
                 match kind {
                     TaxonEndPoint::Name => {
-                        format!("https://gtdb-api.ecogenomic.org/taxon/{}", name)
+                        format!(
+                            "https://gtdb-api.ecogenomic.org/taxon/{}",
+                            encode_query_value(name)
+                        )
                     }
                     TaxonEndPoint::Search => format!(
                         "https://gtdb-api.ecogenomic.org/taxon/search/{}?limit={}",
-                        name,
+                        encode_query_value(name),
                         limit.unwrap_or(100)
                     ),
                     TaxonEndPoint::SearchAll => format!(
                         "https://gtdb-api.ecogenomic.org/taxon/search/{}/all-releases?limit={}",
-                        name,
+                        encode_query_value(name),
                         limit.unwrap_or(100)
                     ),
                     TaxonEndPoint::Genomes => format!(
                         "https://gtdb-api.ecogenomic.org/taxon/{}/genomes?sp_reps_only={}",
-                        name,
+                        encode_query_value(name),
                         is_reps_only.unwrap_or(false)
                     ),
                 }
@@ -122,7 +138,7 @@ impl GtdbApiRequest {
                     }
                 );
                 let mut params = vec![
-                    format!("search={}", query),
+                    format!("search={}", encode_query_value(query)),
                     format!("page={}", page),
                     format!("itemsPerPage={}", items_per_page),
                     format!("searchField={}", search_field.to_string()),
@@ -137,7 +153,7 @@ impl GtdbApiRequest {
                 }
 
                 if !filter_text.is_empty() {
-                    params.push(format!("filterText={}", filter_text));
+                    params.push(format!("filterText={}", encode_query_value(filter_text)));
                 }
 
                 if *gtdb_species_rep_only {
@@ -338,5 +354,54 @@ mod tests {
             is_reps_only: None,
         };
         assert!(req.to_url().contains("limit=100"));
+    }
+
+    #[test]
+    fn test_encode_query_value_space() {
+        assert_eq!(
+            encode_query_value("s__Escherichia coli"),
+            "s__Escherichia%20coli"
+        );
+    }
+
+    #[test]
+    fn test_encode_query_value_no_encoding_needed() {
+        assert_eq!(encode_query_value("g__Escherichia"), "g__Escherichia");
+    }
+
+    #[test]
+    fn test_encode_query_value_underscore_preserved() {
+        // Double underscore (GTDB rank prefix) must not be encoded
+        assert_eq!(encode_query_value("s__Homo_sapiens"), "s__Homo_sapiens");
+    }
+
+    #[test]
+    fn test_encode_query_value_special_chars() {
+        assert_eq!(encode_query_value("test&query=1"), "test%26query%3D1");
+    }
+
+    #[test]
+    fn test_search_url_with_species_name_encodes_space() {
+        let req = GtdbApiRequest::Search {
+            query: "s__Escherichia coli".into(),
+            search_field: "ncbi_org".to_string().into(),
+            gtdb_species_rep_only: false,
+            ncbi_type_material_only: true,
+            output_format: "json".into(),
+            page: 1,
+            items_per_page: 1000,
+            sort_by: "".into(),
+            sort_desc: false,
+            filter_text: "".into(),
+        };
+        let url = req.to_url();
+        assert!(
+            url.contains("search=s__Escherichia%20coli"),
+            "space in species name must be percent-encoded: {url}"
+        );
+        assert!(
+            !url.contains("search=s__Escherichia coli"),
+            "raw space must not appear in URL: {url}"
+        );
     }
 }

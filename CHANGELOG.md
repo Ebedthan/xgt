@@ -3,6 +3,109 @@
 All notable changes to xgt are documented in this file. 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [v1.1.1] - 2026-07-28
+
+### Fixed
+
+- **URL encoding bug: species-level names caused request failure.**
+  User input containing spaces (e.g. `s__Escherichia coli`,
+  `s__Homo sapiens`) was interpolated directly into URL query strings
+  without percent-encoding, causing `ureq` to reject the request with
+  `invalid uri character` after three retry attempts. All six
+  interpolation sites in `api.rs` that accept free-text user input
+  (`query`, `filter_text`, and all four `name` interpolations in the
+  taxon endpoints) now pass values through `encode_query_value()`,
+  which percent-encodes all characters outside the RFC 3986 unreserved
+  set. Fields that cannot contain spaces (integers, enum-validated
+  values, INSDC accessions, release identifiers) are unchanged.
+  This bug affected any query at the species level and any organism
+  name search containing a space.
+
+  Affected commands:
+  - `xgt search 's__Escherichia coli'`
+  - `xgt search 'Escherichia coli' -F org`
+  - `xgt taxon 's__Escherichia coli'`
+  - `xgt taxon 's__Escherichia coli' --genomes`
+  - `xgt taxon --search 'Escherichia coli'`
+ 
+## [v1.1.0] - 2026-07-22
+ 
+Focused release delivering three promised post-v1.0.0 improvements:
+tolerant deserialisation, parallel pagination, and version awareness.
+Also fixes two bugs reported against v1.0.0.
+ 
+### Added
+ 
+**Tolerant deserialisation**
+- All struct fields in `genome.rs`, `taxon.rs`, and `diff.rs` now use
+  custom `serde` deserialiser functions (`deser_opt_f64`, `deser_opt_i64`,
+  `deser_opt_i32`, `deser_opt_string`, `deser_opt_bool`, `deser_bool`)
+  that accept any JSON scalar type and coerce it to the declared Rust type.
+- Missing fields now deserialise to `None` via `#[serde(default)]` rather
+  than producing an error.
+- Previously, a field changing from a quoted string to a bare number in the
+  GTDB API caused an `invalid type` panic. This class of error is now
+  handled silently for all struct fields.
+**Parallel pagination**
+- `xgt search` now fetches result pages concurrently using
+  `std::thread` and `std::sync::mpsc`, with no new dependencies.
+- Pages are dispatched in chunks so that at most `--max-concurrent N`
+  connections are open simultaneously (default: 5), preventing HTTP 429
+  rate-limit errors.
+- Results are sorted by page number before merging to guarantee row order
+  matches the API's natural order regardless of thread completion order.
+- New `--max-concurrent N` flag on `xgt search` lets users tune
+  concurrency for their network and API rate-limit tolerance.
+- Wall-time improvement for multi-page queries: median time for
+  `g__Escherichia` (53 pages) reduced from ~5 s to under 2 s on a home
+  network under typical conditions.
+**`--check-update` flag**
+- `xgt --check-update` queries the GitHub releases API and prints whether
+  a newer version is available.
+- Uses the existing `ureq` agent and TLS configuration — no new
+  dependencies.
+- The `command` subcommand field is now `Option<Commands>` so
+  `xgt --check-update` works without a subcommand argument.
+**Integration test suite**
+- `tests/integration.rs`: 22 end-to-end tests against the live GTDB API
+  covering all four subcommands and the API availability checks.
+- Gated behind `--features integration-tests` so CI unit test runs are
+  unaffected.
+- New `[lib]` target in `Cargo.toml` exposes internal modules for use by
+  the integration test crate (`xgt::cmd::*`, `xgt::utils`).
+- Run with:
+  `cargo test --features integration-tests --test integration`
+### Fixed
+ 
+- **Bug 5 — `--id` returned prefixed gid instead of clean accession.**
+  `xgt search --id` previously returned internal GTDB identifiers
+  prefixed with `GB_` or `RS_` (e.g. `GB_GCA_000005845.2`) instead of
+  the clean INSDC accession (`GCA_000005845.2`). This broke the documented
+  pipeline `xgt search --id | xgt genome -f -` with HTTP 400 errors.
+  The `accession` field is now used, with `gid` as a fallback only when
+  `accession` is absent.
+- **Bug 2 — `--verbose` disabled SSL verification.**
+  `is_gtdb_db_online` and `get_api_version` were called with `insecure:
+  true` hardcoded, silently disabling certificate verification on every
+  verbose invocation regardless of whether `--insecure` was passed.
+  Both now receive `false`.
+### Changed
+ 
+- `command` field on `Cli` changed from `Commands` to `Option<Commands>`
+  to support `xgt --check-update` without a subcommand. The binary still
+  prints help when called with no arguments via `arg_required_else_help`
+  logic.
+- Doctest examples on private functions in `search.rs` marked `no_run`
+  to prevent false failures when compiled as a lib target.
+- CI beta job marked `continue-on-error: true` — beta is informational
+  and must not block stable releases.
+### Dependencies
+ 
+No new runtime dependencies. `serde_json::Value` (already a transitive
+dependency) is now used directly in `utils.rs` for the deserialisation
+helpers.
+ 
+
 ## [v1.0.0] - 2026-06-08
 
 First stable release. Three years of public use and iterative
@@ -164,8 +267,8 @@ versioning going forward.
 | `anyhow` | 1.0.69 | 1.0 |
 | `regex` | 1.11 | removed |
 | `native-tls` | 0.2 (direct) | removed (via ureq feature) |
-| `indicatif` | — | 0.17 (new) |
-| `clap_complete` | — | 4.5 (new) |
+| `indicatif` | - | 0.17 (new) |
+| `clap_complete` | - | 4.5 (new) |
 
 ---
 
