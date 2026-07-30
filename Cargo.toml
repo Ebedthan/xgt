@@ -1,9 +1,9 @@
 [package]
 name = "xgt"
-version = "1.1.1"
+version = "1.2.0"
 edition = "2021"
 authors = ["Anicet Ebou <anicet.ebou@gmail.com>"]
-description = "xgt enables efficient querying and parsing of GTDB data"
+description = "Command-line tool for querying the Genome Taxonomy Database (GTDB) REST API. Batch search, genome cards, taxon lineages, and cross-release taxonomic comparison."
 homepage = "https://github.com/Ebedthan/xgt"
 categories = ["command-line-utilities"]
 keywords = ["bioinformatics"]
