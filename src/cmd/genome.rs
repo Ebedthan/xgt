@@ -435,84 +435,43 @@ where
 {
     let accessions = utils::load_input(args, "No genome accession provided...".to_string())?;
     let agent = utils::get_agent(args.insecure)?;
-    let outfmt = utils::OutputFormat::from(args.outfmt.clone());
-    let sep = match outfmt {
-        utils::OutputFormat::Tsv => "\t",
-        _ => ",",
-    };
-
+    let outfmt = utils::OutputFormat::from(args.outfmt.as_str());
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
 
-    // Write a single header once — only for non-split, non-JSON batch output
-    if !dest.is_split() && outfmt != utils::OutputFormat::Json {
-        let header = T::csv_header(sep);
-        utils::write_to_output(format!("{}\n", header).as_bytes(), dest.resolve(""), false)?;
-    }
+    let request_type = if args.metadata {
+        GenomeRequestType::Metadata
+    } else {
+        GenomeRequestType::Card
+    };
+    let release = args.release.clone();
 
-    let mut first_write = !dest.is_split() && outfmt == utils::OutputFormat::Json;
-
-    for accession in &accessions {
-        if let Some(ref bar) = bar {
-            bar.set_message(accession.clone());
-        }
-
-        let request_type = if args.metadata {
-            GenomeRequestType::Metadata
-        } else {
-            GenomeRequestType::Card
-        };
-
-        let url = GtdbApiRequest::Genome {
-            accession: accession.clone(),
-            request_type,
-            release: args.release.clone(),
-        }
-        .to_url();
-
-        let genome_data: T = utils::fetch_data_cached(
-            &agent,
-            &url,
+    utils::fetch_batch::<T, _, _>(
+        &accessions,
+        |acc| {
+            GtdbApiRequest::Genome {
+                accession: acc.to_string(),
+                request_type,
+                release: release.clone(),
+            }
+            .to_url()
+        },
+        |acc| {
             format!(
                 "Accession '{}' was not found in GTDB (HTTP 400). \
-                 Verify the accession format (e.g. GCA_000010525.1 or GCF_000010525.1).",
-                accession
-            ),
-            use_cache,
-            TTL_GENOME,
-        )?;
+             Verify the accession format (e.g. GCA_000010525.1 or GCF_000010525.1).",
+                acc
+            )
+        },
+        TTL_GENOME,
+        &agent,
+        &outfmt,
+        &dest,
+        use_cache,
+        &bar,
+    )?;
 
-        // In split mode: write header + row to each individual file
-        if dest.is_split() && outfmt != utils::OutputFormat::Json {
-            let header = T::csv_header(sep);
-            utils::write_to_output(
-                format!("{}\n", header).as_bytes(),
-                dest.resolve(accession),
-                false,
-            )?;
-        }
-
-        let out = match outfmt {
-            utils::OutputFormat::Json => serde_json::to_string_pretty(&genome_data)? + "\n",
-            _ => genome_data.to_flat_row(sep) + "\n",
-        };
-
-        // split mode always truncates (new file per item)
-        // non-split JSON truncates only on first write
-        let append = if dest.is_split() { false } else { !first_write };
-
-        utils::write_to_output(out.as_bytes(), dest.resolve(accession), append)?;
-        first_write = false;
-
-        if let Some(ref bar) = bar {
-            bar.inc(1);
-        }
-    }
-
-    if let Some(bar) = bar {
-        bar.finish_with_message(format!("done, {} genomes processed", accessions.len()));
-    }
-
+    utils::bar_finish(bar, accessions.len(), "genomes");
     Ok(())
 }
 
@@ -540,24 +499,18 @@ pub fn get_genome_card(args: &GenomeArgs, use_cache: bool) -> Result<()> {
 pub fn get_genome_taxon_history(args: &GenomeArgs, use_cache: bool) -> Result<()> {
     let accessions = utils::load_input(args, "No genome accession provided...".into())?;
     let agent = utils::get_agent(args.insecure)?;
-    let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+    let outfmt = utils::OutputFormat::from(args.outfmt.as_str());
+    let sep = outfmt.sep();
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
-    let sep = outfmt.sep();
+    let mut writer = utils::BatchWriter::new(&dest, &outfmt);
 
-    // For CSV/TSV in non-split mode: write the header once before the loop,
-    // truncating any existing file. Data rows are then appended per accession.
-    // In split mode each file is self-contained so the header is written
-    // per-accession inside the loop. JSON mode has no header.
-    if !dest.is_split() && outfmt != utils::OutputFormat::Json {
-        let header = format!("release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes\n");
-        utils::write_to_output(header.as_bytes(), dest.resolve(""), false)?;
-    }
-
-    let mut first_write = !dest.is_split() && outfmt == utils::OutputFormat::Json;
+    let global_header =
+        format!("release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes\n");
+    writer.write_global_header(global_header.as_bytes())?;
 
     for acc in &accessions {
-        utils::bar_tick(&bar, &acc);
+        utils::bar_tick(&bar, acc);
 
         let url = GtdbApiRequest::Genome {
             accession: acc.into(),
@@ -571,32 +524,29 @@ pub fn get_genome_taxon_history(args: &GenomeArgs, use_cache: bool) -> Result<()
             &url,
             format!(
                 "No taxonomic history found for accession '{}' (HTTP 400). \
-             Verify the accession exists in GTDB.",
+                 Verify the accession exists in GTDB.",
                 acc
             ),
             use_cache,
             TTL_HISTORY,
         )?;
+
         let changes = compute_taxonomic_changes(&records);
 
-        let content = match outfmt {
-            // JSON: each accession is a complete document
+        // split_header is the per-file CSV header (used only in split+CSV/TSV mode)
+        let split_header =
+            format!("release{sep}domain{sep}phylum{sep}family{sep}species{sep}changes\n");
+        let body = match outfmt {
             utils::OutputFormat::Json => serde_json::to_string_pretty(&records)?,
-            // CSV/TSV non-split: data rows only; header already written above
             _ if !dest.is_split() => build_csv_rows(&records, &changes, sep),
-            // CSV/TSV split: each file is self-contained; include header
             _ => build_csv_string(&records, &changes, sep),
         };
 
-        let append = !dest.is_split() && !first_write;
-        utils::write_to_output(content.as_bytes(), dest.resolve(acc), append)?;
-        first_write = false;
-
+        writer.write_item(acc, split_header.as_bytes(), body.as_bytes())?;
         utils::bar_inc(&bar);
     }
 
     utils::bar_finish(bar, accessions.len(), "accessions");
-
     Ok(())
 }
 

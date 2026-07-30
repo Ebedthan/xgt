@@ -263,10 +263,8 @@ fn diff_genome(
 }
 
 // Public entry point
-
 pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
-
     let queries = utils::load_input(
         args,
         "No accession or file provided. Pass an accession directly \
@@ -276,33 +274,17 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     )?;
 
     let outfmt = OutputFormat::from(args.outfmt.as_str());
+    let sep = outfmt.sep();
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(queries.len());
-
-    // Resolve --to: if not provided, determine the latest release from
-    // the history of the first query (simplest approach without a separate API call)
-    // We defer resolution per-query since "latest" may differ per accession.
-
     let to_release_override = args.to.clone();
+    let mut writer = utils::BatchWriter::new(&dest, &outfmt);
 
-    // Write CSV/TSV header once for non-split mode
-    let sep = outfmt.sep();
-
-    if !dest.is_split() && outfmt != OutputFormat::Json {
-        utils::write_to_output(
-            format!("{}\n", DiffResult::csv_header(sep)).as_bytes(),
-            dest.resolve(""),
-            false,
-        )?;
-    }
-
-    let mut first_write = !dest.is_split() && outfmt == OutputFormat::Json;
+    writer.write_global_header(format!("{}\n", DiffResult::csv_header(sep)).as_bytes())?;
 
     for query in &queries {
         utils::bar_tick(&bar, query);
 
-        // Determine effective to_release:
-        // If --to not provided, fetch history and use the most recent release.
         let to_release = match &to_release_override {
             Some(r) => r.clone(),
             None => resolve_latest_release(query, &agent, use_cache)?,
@@ -310,29 +292,17 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
 
         let result = diff_genome(query, &agent, &args.from, &to_release, use_cache)?;
 
-        // Write header per file in split mode
-        if dest.is_split() && outfmt != OutputFormat::Json {
-            utils::write_to_output(
-                format!("{}\n", DiffResult::csv_header(sep)).as_bytes(),
-                dest.resolve(query),
-                false,
-            )?;
-        }
-
-        let output = match outfmt {
+        let split_header = format!("{}\n", DiffResult::csv_header(sep));
+        let body = match outfmt {
             OutputFormat::Json => serde_json::to_string_pretty(&result)? + "\n",
-            _ => result.to_flat_row(sep),
+            _ => result.to_flat_row(sep) + "\n",
         };
 
-        let append = if dest.is_split() { false } else { !first_write };
-        utils::write_to_output(output.as_bytes(), dest.resolve(query), append)?;
-        first_write = false;
-
+        writer.write_item(query, split_header.as_bytes(), body.as_bytes())?;
         utils::bar_inc(&bar);
     }
 
     utils::bar_finish(bar, queries.len(), "queries");
-
     Ok(())
 }
 

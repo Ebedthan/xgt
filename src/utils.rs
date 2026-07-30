@@ -478,6 +478,135 @@ pub fn output_destination(
     }
 }
 
+// Encapsulates the header/append/truncate logic.
+//
+// Usage:
+//   let mut w = BatchWriter::new(&dest, &outfmt);
+//   w.write_global_header(header_bytes)?;
+//   for item in items {
+//       w.write_item(key, header_bytes, body_bytes)?;
+//   }
+
+pub struct BatchWriter<'a> {
+    dest: &'a OutputDestination,
+    outfmt: &'a OutputFormat,
+    first_write: bool,
+}
+
+impl<'a> BatchWriter<'a> {
+    /// Create a new writer. `first_write` starts as `true` only for
+    /// non-split JSON mode, where the first item truncates and subsequent
+    /// items append.
+    pub fn new(dest: &'a OutputDestination, outfmt: &'a OutputFormat) -> Self {
+        let first_write = !dest.is_split() && *outfmt == OutputFormat::Json;
+        Self {
+            dest,
+            outfmt,
+            first_write,
+        }
+    }
+
+    /// Write the CSV/TSV header once before the loop, truncating any existing
+    /// file. No-op in JSON mode or split mode (split headers go per-item).
+    pub fn write_global_header(&self, header: &[u8]) -> Result<()> {
+        if !self.dest.is_split() && *self.outfmt != OutputFormat::Json {
+            write_to_output(header, self.dest.resolve(""), false)?;
+        }
+        Ok(())
+    }
+
+    /// Write one item:
+    /// - In split mode: writes `split_header` (if non-JSON) then `body`
+    ///   to a new file derived from `key`, always truncating.
+    /// - In non-split JSON mode: truncates on the first call, appends
+    ///   on subsequent calls.
+    /// - In non-split CSV/TSV mode: appends `body` (header already written
+    ///   by write_global_header).
+    ///
+    /// `split_header` is only used in split+CSV/TSV mode.
+    /// Pass an empty slice `&[]` when there is no per-item header.
+    pub fn write_item(&mut self, key: &str, split_header: &[u8], body: &[u8]) -> Result<()> {
+        if self.dest.is_split() {
+            // Split mode: each item is a self-contained file
+            if *self.outfmt != OutputFormat::Json && !split_header.is_empty() {
+                write_to_output(split_header, self.dest.resolve(key), false)?;
+            }
+            write_to_output(body, self.dest.resolve(key), !split_header.is_empty())?;
+        } else {
+            // Non-split: append after the first write
+            let append = !self.first_write;
+            write_to_output(body, self.dest.resolve(key), append)?;
+            self.first_write = false;
+        }
+        Ok(())
+    }
+}
+
+/// Fetch a batch of items, serialise each, and write using BatchWriter.
+///
+/// This unifies fetch_and_save_genome_data (genome.rs) and
+/// fetch_and_write_json (taxon.rs): both fetch T per item, serialise,
+/// and write. A single-item call is equivalent to the old taxon path;
+/// a multi-item call is equivalent to the old genome path.
+///
+/// Arguments:
+/// - `items`     : the accessions / names to fetch
+/// - `url_fn`    : closure that maps an item to its API URL
+/// - `err_fn`    : closure that maps an item to its error message
+/// - `ttl`       : cache TTL in seconds
+/// - `agent`     : ureq Agent
+/// - `outfmt`    : output format
+/// - `dest`      : output destination
+/// - `use_cache` : whether to use the local cache
+/// - `bar`       : optional progress bar (pass None for single-item callers)
+///
+/// Returns the fetched items in order so callers can post-validate if needed.
+#[allow(clippy::too_many_arguments)]
+pub fn fetch_batch<T, F, E>(
+    items: &[String],
+    url_fn: F,
+    err_fn: E,
+    ttl: u64,
+    agent: &ureq::Agent,
+    outfmt: &OutputFormat,
+    dest: &OutputDestination,
+    use_cache: bool,
+    bar: &Option<indicatif::ProgressBar>,
+) -> Result<Vec<T>>
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow,
+    F: Fn(&str) -> String,
+    E: Fn(&str) -> String,
+{
+    let sep = outfmt.sep();
+    let mut writer = BatchWriter::new(dest, outfmt);
+
+    // Write the global CSV/TSV header once before the loop.
+    // In JSON mode or split mode this is a no-op inside BatchWriter.
+    writer.write_global_header(format!("{}\n", T::csv_header(sep)).as_bytes())?;
+
+    let mut results = Vec::with_capacity(items.len());
+
+    for item in items {
+        bar_tick(bar, item);
+
+        let url = url_fn(item);
+        let data: T = fetch_data_cached(agent, &url, err_fn(item), use_cache, ttl)?;
+
+        let split_header = format!("{}\n", T::csv_header(sep));
+        let body = match outfmt {
+            OutputFormat::Json => serde_json::to_string_pretty(&data)? + "\n",
+            _ => data.to_flat_row(sep) + "\n",
+        };
+
+        writer.write_item(item, split_header.as_bytes(), body.as_bytes())?;
+        bar_inc(bar);
+        results.push(data);
+    }
+
+    Ok(results)
+}
+
 // Tolerant deserialization helpers
 // To prevent GTDB API breaking changes
 //
@@ -1468,5 +1597,87 @@ mod tests {
 
         // 404 from GitHub means no releases yet or wrong repo
         assert!(result.is_err() || result.unwrap().status() == 404);
+    }
+    #[test]
+    fn test_batch_writer_non_split_json_truncates_first_appends_rest() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("out.json").to_str().unwrap().to_string();
+
+        let dest = OutputDestination::File(path.clone());
+        let outfmt = OutputFormat::Json;
+        let mut w = BatchWriter::new(&dest, &outfmt);
+
+        // No global header in JSON mode
+        w.write_global_header(b"ignored\n").unwrap();
+        assert!(
+            !std::path::Path::new(&path).exists(),
+            "global header is no-op in JSON mode"
+        );
+
+        w.write_item("key1", &[], b"{\"a\":1}\n").unwrap();
+        w.write_item("key2", &[], b"{\"b\":2}\n").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "{\"a\":1}\n{\"b\":2}\n");
+    }
+
+    #[test]
+    fn test_batch_writer_non_split_csv_writes_header_then_appends() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("out.csv").to_str().unwrap().to_string();
+
+        let dest = OutputDestination::File(path.clone());
+        let outfmt = OutputFormat::Csv;
+        let mut w = BatchWriter::new(&dest, &outfmt);
+
+        w.write_global_header(b"col1,col2\n").unwrap();
+        w.write_item("k1", &[], b"val1,val2\n").unwrap();
+        w.write_item("k2", &[], b"val3,val4\n").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "col1,col2\nval1,val2\nval3,val4\n");
+    }
+
+    #[test]
+    fn test_batch_writer_split_csv_writes_header_per_file() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let dest = OutputDestination::Split {
+            dir: Some(dir.path().to_str().unwrap().to_string()),
+            extension: "csv".into(),
+        };
+        let outfmt = OutputFormat::Csv;
+        let mut w = BatchWriter::new(&dest, &outfmt);
+
+        w.write_global_header(b"ignored\n").unwrap(); // no-op in split mode
+        w.write_item("GCA_000001.1", b"col1,col2\n", b"val1,val2\n")
+            .unwrap();
+        w.write_item("GCA_000002.1", b"col1,col2\n", b"val3,val4\n")
+            .unwrap();
+
+        let f1 = std::fs::read_to_string(dir.path().join("GCA_000001.1.csv")).unwrap();
+        let f2 = std::fs::read_to_string(dir.path().join("GCA_000002.1.csv")).unwrap();
+
+        assert_eq!(f1, "col1,col2\nval1,val2\n");
+        assert_eq!(f2, "col1,col2\nval3,val4\n");
+    }
+
+    #[test]
+    fn test_batch_writer_split_json_no_header_per_file() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let dest = OutputDestination::Split {
+            dir: Some(dir.path().to_str().unwrap().to_string()),
+            extension: "json".into(),
+        };
+        let outfmt = OutputFormat::Json;
+        let mut w = BatchWriter::new(&dest, &outfmt);
+
+        w.write_item("GCA_000001.1", b"col1,col2\n", b"{\"a\":1}\n")
+            .unwrap();
+
+        let content = std::fs::read_to_string(dir.path().join("GCA_000001.1.json")).unwrap();
+        // split_header must be ignored in JSON mode
+        assert_eq!(content, "{\"a\":1}\n");
     }
 }
