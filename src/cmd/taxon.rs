@@ -261,11 +261,8 @@ pub fn search_taxon(args: &TaxonArgs, use_cache: bool) -> Result<()> {
             }
         );
 
-        let sep = if outfmt == utils::OutputFormat::Tsv {
-            "\t"
-        } else {
-            ","
-        };
+        let sep = outfmt.sep();
+
         let output = match outfmt {
             utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
             _ => data.to_flat_row(sep),

@@ -141,6 +141,16 @@ pub enum OutputFormat {
     Tsv,
 }
 
+impl OutputFormat {
+    pub fn sep(&self) -> &'static str {
+        if *self == Self::Tsv {
+            "\t"
+        } else {
+            ","
+        }
+    }
+}
+
 impl Display for OutputFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -286,11 +286,8 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     let to_release_override = args.to.clone();
 
     // Write CSV/TSV header once for non-split mode
-    let sep = if outfmt == OutputFormat::Tsv {
-        "\t"
-    } else {
-        ","
-    };
+    let sep = outfmt.sep();
+
     if !dest.is_split() && outfmt != OutputFormat::Json {
         utils::write_to_output(
             format!("{}\n", DiffResult::csv_header(sep)).as_bytes(),

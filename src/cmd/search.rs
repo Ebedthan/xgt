@@ -192,11 +192,7 @@ pub fn search(args: &SearchArgs, use_cache: bool) -> Result<()> {
                     filter_and_validate(&mut all_results, query, args)?;
 
                     let outfmt = OutputFormat::from(args.outfmt.clone());
-                    let sep = if outfmt == OutputFormat::Tsv {
-                        "\t"
-                    } else {
-                        ","
-                    };
+                    let sep = outfmt.sep();
 
                     let header = format!(
                         "accession{sep}ncbi_organism_name{sep}ncbi_taxonomy{sep}\
@@ -412,11 +408,7 @@ fn handle_xsv_response(
     filter_and_validate(&mut all_results, needle, args)?;
 
     let outfmt = OutputFormat::from(args.outfmt.clone());
-    let sep = if outfmt == OutputFormat::Tsv {
-        "\t"
-    } else {
-        ","
-    };
+    let sep = outfmt.sep();
 
     let header = format!(
         "accession{sep}ncbi_organism_name{sep}ncbi_taxonomy{sep}\

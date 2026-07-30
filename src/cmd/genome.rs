@@ -543,11 +543,7 @@ pub fn get_genome_taxon_history(args: &GenomeArgs, use_cache: bool) -> Result<()
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
-    let sep = if outfmt == utils::OutputFormat::Tsv {
-        "\t"
-    } else {
-        ","
-    };
+    let sep = outfmt.sep();
 
     // For CSV/TSV in non-split mode: write the header once before the loop,
     // truncating any existing file. Data rows are then appended per accession.
