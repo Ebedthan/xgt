@@ -16,7 +16,7 @@ pub struct Cli {
     pub check_update: bool,
 
     /// Bypass the local cache for this request (always fetch from API).
-    #[arg(long, action = clap::ArgAction::SetTrue, global = true, conflicts_with = "cache")]
+    #[arg(long, action = clap::ArgAction::SetTrue, global = true)]
     pub no_cache: bool,
 
     /// Print cache statistics and exit.
