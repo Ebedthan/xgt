@@ -106,16 +106,12 @@ pub enum SearchField {
 
 impl From<String> for SearchField {
     fn from(value: String) -> Self {
-        if value == "acc" {
-            SearchField::NcbiId
-        } else if value == "org" {
-            SearchField::NcbiOrg
-        } else if value == "gtdb" {
-            SearchField::GtdbTax
-        } else if value == "ncbi" {
-            SearchField::NcbiTax
-        } else {
-            SearchField::All
+        match value.as_str() {
+            "acc" => Self::NcbiId,
+            "org" => Self::NcbiOrg,
+            "gtdb" => Self::GtdbTax,
+            "ncbi" => Self::NcbiTax,
+            _ => Self::All,
         }
     }
 }
@@ -163,12 +159,10 @@ impl Display for OutputFormat {
 
 impl From<String> for OutputFormat {
     fn from(value: String) -> Self {
-        if value == "tsv" {
-            Self::Tsv
-        } else if value == "json" {
-            Self::Json
-        } else {
-            Self::Csv
+        match value.as_str() {
+            "tsv" => Self::Tsv,
+            "json" => Self::Json,
+            _ => Self::Csv,
         }
     }
 }
