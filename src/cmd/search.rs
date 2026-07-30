@@ -81,7 +81,10 @@ pub fn search(args: &SearchArgs, use_cache: bool) -> Result<()> {
         sep = outfmt.sep()
     );
     let mut writer = BatchWriter::new(&dest, &outfmt);
-    writer.write_global_header(format!("{csv_header}\n").as_bytes())?;
+    // --id and --count produce plain values with no header row
+    if !args.id && !args.count {
+        writer.write_global_header(format!("{csv_header}\n").as_bytes())?;
+    }
 
     for query in &queries {
         utils::bar_tick(&bar, query);

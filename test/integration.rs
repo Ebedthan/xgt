@@ -143,7 +143,7 @@ fn test_search_basic_json_output() {
         ..search_args_defaults()
     };
 
-    search::search(&args).expect("search failed");
+    search::search(&args, false).expect("search failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     // Valid JSON array
@@ -169,7 +169,7 @@ fn test_search_csv_output_has_header() {
         ..search_args_defaults()
     };
 
-    search::search(&args).expect("search csv failed");
+    search::search(&args, false).expect("search csv failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let first_line = content.lines().next().unwrap_or("");
@@ -197,7 +197,7 @@ fn test_search_tsv_output_uses_tabs() {
         ..search_args_defaults()
     };
 
-    search::search(&args).expect("search tsv failed");
+    search::search(&args, false).expect("search tsv failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let first_line = content.lines().next().unwrap_or("");
@@ -225,10 +225,22 @@ fn test_search_id_flag_returns_clean_accessions() {
         ..search_args_defaults()
     };
 
-    search::search(&args).expect("search --id failed");
+    search::search(&args, false).expect("search --id failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     assert!(!content.is_empty(), "--id should produce output");
+
+    let first = content.lines().next().unwrap_or("");
+    assert!(
+        !first.contains("accession,"),
+        "--id must not write a CSV header: got {first}"
+    );
+    for line in content.lines().filter(|l| !l.is_empty()) {
+        assert!(
+            line.starts_with("GCA_") || line.starts_with("GCF_"),
+            "unexpected accession format: {line}"
+        );
+    }
 
     // Every line must be a clean accession — no GB_ or RS_ prefixes
     for line in content.lines().filter(|l| !l.is_empty()) {
@@ -258,12 +270,16 @@ fn test_search_count_flag_returns_integer() {
         ..search_args_defaults()
     };
 
-    search::search(&args).expect("search --count failed");
+    search::search(&args, false).expect("search --count failed");
 
     let content = std::fs::read_to_string(&out_path)
         .unwrap()
         .trim()
         .to_string();
+    assert!(
+        !content.contains(','),
+        "--count output must not contain a header: got {content}"
+    );
     let n: u64 = content
         .parse()
         .expect("--count should return a plain integer");
@@ -293,8 +309,8 @@ fn test_search_rep_flag_restricts_results() {
         ..search_args_defaults()
     };
 
-    search::search(&args_all).unwrap();
-    search::search(&args_rep).unwrap();
+    search::search(&args_all, false).unwrap();
+    search::search(&args_rep, false).unwrap();
 
     let n_all: u64 = std::fs::read_to_string(&path_all)
         .unwrap()
@@ -328,7 +344,7 @@ fn test_search_from_file() {
         ..search_args_defaults()
     };
 
-    search::search(&args).expect("search -f failed");
+    search::search(&args, false).expect("search -f failed");
 
     // One file per query
     let files: Vec<_> = std::fs::read_dir(dir.path())
@@ -364,7 +380,7 @@ fn test_search_pagination_returns_all_results() {
         out: Some(out_path.clone()),
         ..search_args_defaults()
     };
-    search::search(&args_count).unwrap();
+    search::search(&args_count, false).unwrap();
     let total: u64 = std::fs::read_to_string(&out_path)
         .unwrap()
         .trim()
@@ -383,7 +399,7 @@ fn test_search_pagination_returns_all_results() {
         out: Some(out_path2.clone()),
         ..search_args_defaults()
     };
-    search::search(&args_id).unwrap();
+    search::search(&args_id, false).unwrap();
     let lines = std::fs::read_to_string(&out_path2).unwrap();
     let n_lines = lines.lines().filter(|l| !l.is_empty()).count() as u64;
     assert_eq!(
@@ -409,7 +425,7 @@ fn test_genome_card_json_output() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_card(&args).expect("genome card failed");
+    genome::get_genome_card(&args, false).expect("genome card failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let parsed: serde_json::Value =
@@ -443,7 +459,7 @@ fn test_genome_card_csv_output_column_count() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_card(&args).expect("genome card csv failed");
+    genome::get_genome_card(&args, false).expect("genome card csv failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let mut lines = content.lines();
@@ -476,7 +492,7 @@ fn test_genome_metadata_json_output() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_metadata(&args).expect("genome metadata failed");
+    genome::get_genome_metadata(&args, false).expect("genome metadata failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
@@ -500,7 +516,7 @@ fn test_genome_history_json_output() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_taxon_history(&args).expect("genome history failed");
+    genome::get_genome_taxon_history(&args, false).expect("genome history failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
@@ -530,7 +546,7 @@ fn test_genome_history_csv_single_header() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_taxon_history(&args).expect("genome history batch csv failed");
+    genome::get_genome_taxon_history(&args, false).expect("genome history batch csv failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let header_count = content
@@ -557,7 +573,7 @@ fn test_genome_batch_from_file() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_card(&args).expect("genome batch failed");
+    genome::get_genome_card(&args, false).expect("genome batch failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let lines: Vec<&str> = content.lines().collect();
@@ -578,7 +594,7 @@ fn test_genome_split_output() {
         ..genome_args_defaults()
     };
 
-    genome::get_genome_card(&args).expect("genome --split failed");
+    genome::get_genome_card(&args, false).expect("genome --split failed");
 
     let files: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()
@@ -604,7 +620,7 @@ fn test_taxon_name_json_output() {
         ..taxon_args_defaults()
     };
 
-    taxon::get_taxon_name(&args).expect("taxon name failed");
+    taxon::get_taxon_name(&args, false).expect("taxon name failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
@@ -629,7 +645,7 @@ fn test_taxon_genomes_returns_accessions() {
         ..taxon_args_defaults()
     };
 
-    taxon::get_taxon_genomes(&args).expect("taxon --genomes failed");
+    taxon::get_taxon_genomes(&args, false).expect("taxon --genomes failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     assert!(!content.is_empty(), "taxon --genomes should produce output");
@@ -649,7 +665,7 @@ fn test_taxon_search_current_release() {
         ..taxon_args_defaults()
     };
 
-    taxon::search_taxon(&args).expect("taxon --search failed");
+    taxon::search_taxon(&args, false).expect("taxon --search failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     assert!(!content.is_empty(), "taxon --search should produce output");
@@ -670,7 +686,7 @@ fn test_taxon_search_all_releases() {
         ..taxon_args_defaults()
     };
 
-    taxon::search_taxon(&args).expect("taxon --search --all failed");
+    taxon::search_taxon(&args, false).expect("taxon --search --all failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     assert!(
@@ -698,7 +714,7 @@ fn test_diff_json_output_structure() {
         ..diff_args_defaults()
     };
 
-    diff::diff(&args).expect("diff failed");
+    diff::diff(&args, false).expect("diff failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
@@ -751,7 +767,7 @@ fn test_diff_csv_output_structure() {
         ..diff_args_defaults()
     };
 
-    diff::diff(&args).expect("diff csv failed");
+    diff::diff(&args, false).expect("diff csv failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let header = content.lines().next().unwrap_or("");
@@ -783,7 +799,7 @@ fn test_diff_to_omitted_defaults_to_latest() {
         ..diff_args_defaults()
     };
 
-    diff::diff(&args).expect("diff without --to failed");
+    diff::diff(&args, false).expect("diff without --to failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
@@ -813,7 +829,7 @@ fn test_diff_batch_from_file() {
         ..diff_args_defaults()
     };
 
-    diff::diff(&args).expect("diff batch failed");
+    diff::diff(&args, false).expect("diff batch failed");
 
     let content = std::fs::read_to_string(&out_path).unwrap();
     // Header + at least one data row per accession
@@ -830,7 +846,7 @@ fn test_diff_invalid_release_returns_error() {
         ..diff_args_defaults()
     };
 
-    let result = diff::diff(&args);
+    let result = diff::diff(&args, false);
     assert!(
         result.is_err(),
         "diff with a non-existent --to release should return an error"
