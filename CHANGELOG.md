@@ -3,6 +3,91 @@
 All notable changes to xgt are documented in this file. 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [v1.2.0] - 2026-07-30
+
+Minor release focused on performance, correctness, and code quality.
+Introduces a transparent local response cache, fixes all known URL
+encoding bugs, and delivers a significant codebase refactor that reduces
+the source by ~200 lines while improving maintainability.
+
+### Added
+
+**Transparent local response cache**
+- All API responses are now cached locally in a SQLite database
+  (`~/.cache/xgt/cache.db` on Linux/macOS,
+  `%LOCALAPPDATA%\xgt\cache.db` on Windows).
+- Cache is enabled by default. Pass `--no-cache` (global flag) to
+  bypass it for a single request.
+- TTLs are set per endpoint type: `diff` results (fixed release pairs
+  are immutable) are cached for 1 year; `genome --history` for 90 days;
+  `genome card`, `genome metadata`, and `taxon` for 30 days; `search`
+  results for 7 days.
+- `--cache-info` prints entry count, expired entry count, and database
+  size on disk, then exits.
+- `--clear-cache` deletes all cached responses, then exits.
+- Cache failures (missing file, locked database, corrupt entry) fall
+  through silently to a live API request — the cache never breaks the
+  tool.
+- Expired entries are evicted automatically on each cache write, with
+  no separate maintenance step required.
+- New dependency: `rusqlite` 0.31 (bundled SQLite, no system library
+  required); `sha2` 0.10 for cache key hashing; `dirs` 5.0 for
+  XDG-compliant cache directory resolution.
+
+### Fixed
+
+**`search --id` and `search --count` incorrectly wrote a CSV header**
+- After the `BatchWriter` refactor, `write_global_header` was called
+  unconditionally, prepending the CSV column header to `--id` and
+  `--count` output. Both modes produce plain values with no header row.
+- Fixed by guarding `write_global_header` with
+  `!args.id && !args.count` in `search()`.
+
+### Changed
+
+**Codebase refactor — ~200 lines removed**
+- `OutputFormat::sep()` method added to `utils.rs` — eliminates 11
+  repeated `if outfmt == Tsv { "\t" } else { "," }` expressions across
+  all command files.
+- `From<String>` implementations for `SearchField` and `OutputFormat`
+  replaced with `match s.as_str()` — cleaner and exhaustiveness-checked.
+- `From<&str>` added for both types — eliminates 11 unnecessary
+  `.clone()` calls at conversion sites.
+- `BatchWriter` struct added to `utils.rs` — encapsulates the
+  header-once / append / truncate / split write logic that was
+  previously duplicated across `diff.rs` (once) and `genome.rs`
+  (twice).
+- `fetch_batch` generic function added to `utils.rs` — unifies
+  `fetch_and_save_genome_data` (genome.rs) and `fetch_and_write_json`
+  (taxon.rs). A single-item call replaces the old taxon path; a
+  multi-item call replaces the old genome batch loop.
+- `fetch_json` wrapper in `taxon.rs` removed (inlined at call site).
+- Four dead functions removed from `search.rs`:
+  `handle_id_or_count_response`, `process_response`,
+  `handle_json_response`, `handle_xsv_response`.
+- Six trivial getter methods removed from `search.rs`:
+  `SearchResult::get_accession`, `get_ncbi_org_name`,
+  `get_ncbi_taxonomy`, `get_gtdb_taxonomy`,
+  `SearchResults::get_total_rows` — fields accessed directly.
+- Progress bar helpers `bar_tick`, `bar_inc`, `bar_finish` added to
+  `utils.rs` — eliminates repeated `if let Some(ref bar)` boilerplate
+  across `diff.rs` and `genome.rs`.
+- Shadowed `outfmt` recomputation inside the XSV arm of `search()`
+  removed.
+- Typo fixed: `reache` → `reach` in `utils.rs` error message.
+- Doctest examples on private functions in `search.rs` marked `no_run`.
+- Beta CI job marked `continue-on-error: true`.
+
+### Dependencies
+
+| Dependency | v1.1.x | v1.3.0 |
+|---|---|---|
+| `rusqlite` | — | 0.31 (bundled, new) |
+| `sha2` | — | 0.10 (new) |
+| `dirs` | — | 5.0 (new) |
+| All others | unchanged | unchanged |
+
+
 ## [v1.1.1] - 2026-07-28
 
 ### Fixed
