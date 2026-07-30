@@ -2,6 +2,7 @@ use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::api::{GenomeRequestType, GtdbApiRequest};
+use crate::cache::TTL_DIFF;
 use crate::cli::DiffArgs;
 use crate::utils::{self, deser_opt_string, OutputFormat, ToFlatRow};
 
@@ -181,6 +182,7 @@ fn diff_genome(
     agent: &ureq::Agent,
     from_release: &str,
     to_release: &str,
+    use_cache: bool,
 ) -> Result<DiffResult> {
     let url = GtdbApiRequest::Genome {
         accession: accession.into(),
@@ -189,17 +191,26 @@ fn diff_genome(
     }
     .to_url();
 
-    let response = utils::fetch_data(
+    // Taxon history for a fixed accession only grows, never changes.
+    // Use TTL_DIFF (1 year) rather than the shorter TTL_HISTORY
+    // so that repeated diff calls against the same accession are instant.
+    let history: Vec<ReleaseEntry> = utils::fetch_data_cached(
         agent,
         &url,
         format!(
             "No taxonomic history found for '{}'. \
-             Verify the accession exists in GTDB.",
+                 Verify the accession exists in GTDB.",
             accession
         ),
+        use_cache,
+        TTL_DIFF,
     )?;
 
-    let history: Vec<ReleaseEntry> = response.into_body().read_json()?;
+    ensure!(
+        !history.is_empty(),
+        "No release history found for accession '{}'.",
+        accession
+    );
 
     ensure!(
         !history.is_empty(),
@@ -253,8 +264,9 @@ fn diff_genome(
 
 // Public entry point
 
-pub fn diff(args: &DiffArgs) -> Result<()> {
+pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
+
     let queries = utils::load_input(
         args,
         "No accession or file provided. Pass an accession directly \
@@ -298,10 +310,10 @@ pub fn diff(args: &DiffArgs) -> Result<()> {
         // If --to not provided, fetch history and use the most recent release.
         let to_release = match &to_release_override {
             Some(r) => r.clone(),
-            None => resolve_latest_release(query, &agent)?,
+            None => resolve_latest_release(query, &agent, use_cache)?,
         };
 
-        let result = diff_genome(query, &agent, &args.from, &to_release)?;
+        let result = diff_genome(query, &agent, &args.from, &to_release, use_cache)?;
 
         // Write header per file in split mode
         if dest.is_split() && outfmt != OutputFormat::Json {
@@ -327,7 +339,7 @@ pub fn diff(args: &DiffArgs) -> Result<()> {
     }
 
     if let Some(bar) = bar {
-        bar.finish_with_message(format!("done — {} queries processed", queries.len()));
+        bar.finish_with_message(format!("done - {} queries processed", queries.len()));
     }
 
     Ok(())
@@ -335,7 +347,7 @@ pub fn diff(args: &DiffArgs) -> Result<()> {
 
 /// Fetch the taxon history and return the most recent release name.
 /// Used when --to is not specified.
-fn resolve_latest_release(accession: &str, agent: &ureq::Agent) -> Result<String> {
+fn resolve_latest_release(accession: &str, agent: &ureq::Agent, use_cache: bool) -> Result<String> {
     let url = GtdbApiRequest::Genome {
         accession: accession.into(),
         request_type: GenomeRequestType::TaxonHistory,
@@ -343,13 +355,13 @@ fn resolve_latest_release(accession: &str, agent: &ureq::Agent) -> Result<String
     }
     .to_url();
 
-    let response = utils::fetch_data(
+    let history: Vec<ReleaseEntry> = utils::fetch_data_cached(
         agent,
         &url,
         format!("Could not fetch history for '{}'.", accession),
+        use_cache,
+        TTL_DIFF,
     )?;
-
-    let history: Vec<ReleaseEntry> = response.into_body().read_json()?;
 
     // The history is ordered newest-first (as returned by the API)
     history

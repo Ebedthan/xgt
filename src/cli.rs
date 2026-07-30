@@ -15,6 +15,23 @@ pub struct Cli {
     #[arg(long, action = clap::ArgAction::SetTrue)]
     pub check_update: bool,
 
+    /// Enable local response cache to avoid redundant API requests.
+    /// Cached responses are stored in ~/.cache/xgt/cache.db.
+    #[arg(long, action = clap::ArgAction::SetTrue, global = true)]
+    pub cache: bool,
+
+    /// Bypass the local cache for this request (always fetch from API).
+    #[arg(long, action = clap::ArgAction::SetTrue, global = true, conflicts_with = "cache")]
+    pub no_cache: bool,
+
+    /// Print cache statistics and exit.
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    pub cache_info: bool,
+
+    /// Clear all cached responses and exit.
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    pub clear_cache: bool,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

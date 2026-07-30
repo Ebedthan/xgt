@@ -102,7 +102,7 @@ impl Cache {
         self.conn.execute(
             "INSERT OR REPLACE INTO cache (key, body, created_at, ttl)
              VALUES (?1, ?2, ?3, ?4)",
-            params![key, body.as_bytes(), now as i64, ttl as i64],
+            params![key, body.as_bytes(), now, ttl as i64],
         )?;
 
         Ok(())

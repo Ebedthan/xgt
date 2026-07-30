@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use ureq::Agent;
 
 use crate::api::{GtdbApiRequest, TaxonEndPoint};
+use crate::cache::TTL_TAXON;
 use crate::cli::TaxonArgs;
 use crate::utils;
 use crate::utils::ToFlatRow;
@@ -130,10 +131,11 @@ fn fetch_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     agent: &Agent,
     request: GtdbApiRequest,
     err_msg: String,
+    use_cache: bool,
+    ttl: u64,
 ) -> Result<T> {
     let url = request.to_url();
-    let response = utils::fetch_data(agent, &url, err_msg)?;
-    let data: T = response.into_body().read_json()?;
+    let data: T = utils::fetch_data_cached(agent, &url, err_msg, use_cache, ttl)?;
     Ok(data)
 }
 
@@ -145,8 +147,10 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     outfmt: &utils::OutputFormat,
     key: &str, // query/name used for split filename
     dest: &utils::OutputDestination,
+    use_cache: bool,
+    ttl: u64,
 ) -> Result<T> {
-    let data: T = fetch_json(agent, request, err_msg)?;
+    let data: T = fetch_json(agent, request, err_msg, use_cache, ttl)?;
     let sep = if *outfmt == utils::OutputFormat::Tsv {
         "\t"
     } else {
@@ -160,7 +164,7 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     Ok(data)
 }
 
-pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
+pub fn get_taxon_name(args: &TaxonArgs, use_cache: bool) -> Result<()> {
     if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
@@ -178,12 +182,14 @@ pub fn get_taxon_name(args: &TaxonArgs) -> Result<()> {
             &outfmt,
             name,
             &dest,
+            use_cache,
+            TTL_TAXON,
         )?;
     }
     Ok(())
 }
 
-pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
+pub fn get_taxon_genomes(args: &TaxonArgs, use_cache: bool) -> Result<()> {
     if let Some(name) = &args.name {
         let agent = utils::get_agent(args.insecure)?;
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
@@ -202,6 +208,8 @@ pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
             &outfmt,
             name,
             &dest,
+            use_cache,
+            TTL_TAXON,
         )?;
         ensure!(
             !data.data.is_empty(),
@@ -212,7 +220,7 @@ pub fn get_taxon_genomes(args: &TaxonArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
+pub fn search_taxon(args: &TaxonArgs, use_cache: bool) -> Result<()> {
     if let Some(name) = args.name.as_deref() {
         let agent = utils::get_agent(args.insecure)?;
         let outfmt = utils::OutputFormat::from(args.outfmt.clone());
@@ -235,6 +243,8 @@ pub fn search_taxon(args: &TaxonArgs) -> Result<()> {
             &agent,
             request,
             format!("No taxa matching '{}' found in GTDB.", name),
+            use_cache,
+            TTL_TAXON,
         )?;
 
         if args.word {
@@ -289,7 +299,7 @@ mod tests {
             release: None,
         };
         let actual_output = args.out.clone();
-        get_taxon_name(&args)?;
+        get_taxon_name(&args, false)?;
 
         let expected_output = fs::read_to_string("output.json")?;
         let expected_taxon_data: TaxonResult = serde_json::from_str(&expected_output)?;
@@ -323,7 +333,7 @@ mod tests {
             release: None,
         };
 
-        get_taxon_name(&args)?;
+        get_taxon_name(&args, false)?;
 
         Ok(())
     }
@@ -348,7 +358,7 @@ mod tests {
             split_dir: None,
             release: None,
         };
-        let result = get_taxon_name(&args);
+        let result = get_taxon_name(&args, false);
         assert!(result.is_err());
     }
 
@@ -372,7 +382,7 @@ mod tests {
 
         let actual_output = args.out.clone();
 
-        get_taxon_genomes(&args)?;
+        get_taxon_genomes(&args, false)?;
 
         let expected_output = fs::read_to_string("output.json")?;
         let expected_taxon_data: TaxonGenomes = serde_json::from_str(&expected_output)?;

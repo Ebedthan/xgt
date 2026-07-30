@@ -4,13 +4,17 @@ mod cli;
 mod cmd;
 mod utils;
 
+use crate::cache::Cache;
 use crate::cli::{Cli, Commands};
+
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
-use cmd::{diff, genome, search, taxon};
+
 use std::io;
+
+use cmd::{diff, genome, search, taxon};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -20,6 +24,29 @@ fn main() -> Result<()> {
         utils::check_update(cli.verbose)?;
         return Ok(());
     }
+
+    if cli.cache_info {
+        let cache = Cache::open()?;
+        let info = cache.info()?;
+        eprintln!("Cache: {}", cache::cache_path().display());
+        eprintln!(
+            "  Entries:  {} ({} expired)",
+            info.entry_count, info.expired_count
+        );
+        eprintln!("  Size:     {:.1} MB", info.size_bytes as f64 / 1_048_576.0);
+        return Ok(());
+    }
+
+    if cli.clear_cache {
+        let cache = Cache::open()?;
+        let n = cache.clear()?;
+        eprintln!("Cache cleared ({} entries removed).", n);
+        return Ok(());
+    }
+
+    // Determine effective cache setting:
+    // --cache enables it, --no-cache disables it, neither = disabled (opt-in for now)
+    let use_cache = cli.cache && !cli.no_cache;
 
     // Check GTDB db status
     if cli.verbose {
@@ -37,28 +64,28 @@ fn main() -> Result<()> {
 
     match cli.command.expect("subcommand required") {
         Commands::Search(args) => {
-            search::search(&args)?;
+            search::search(&args, use_cache)?;
         }
         Commands::Genome(args) => {
             if args.history {
-                genome::get_genome_taxon_history(&args)?;
+                genome::get_genome_taxon_history(&args, use_cache)?;
             } else if args.metadata {
-                genome::get_genome_metadata(&args)?;
+                genome::get_genome_metadata(&args, use_cache)?;
             } else {
-                genome::get_genome_card(&args)?
+                genome::get_genome_card(&args, use_cache)?
             }
         }
         Commands::Taxon(args) => {
             if args.search || args.all {
-                taxon::search_taxon(&args)?;
+                taxon::search_taxon(&args, use_cache)?;
             } else if args.genomes {
-                taxon::get_taxon_genomes(&args)?;
+                taxon::get_taxon_genomes(&args, use_cache)?;
             } else {
-                taxon::get_taxon_name(&args)?;
+                taxon::get_taxon_name(&args, use_cache)?;
             }
         }
         Commands::Diff(args) => {
-            diff::diff(&args)?;
+            diff::diff(&args, use_cache)?;
         }
         Commands::Completions(args) => {
             let mut cmd = Cli::command();

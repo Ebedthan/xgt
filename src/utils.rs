@@ -15,70 +15,52 @@ use ureq::tls::{TlsConfig, TlsProvider};
 use std::thread;
 use std::time::Duration;
 
-use crate::cache::{Cache, TTL_DIFF, TTL_GENOME, TTL_HISTORY, TTL_SEARCH, TTL_TAXON};
+use crate::cache::Cache;
 
 use crate::cli::{DiffArgs, GenomeArgs, SearchArgs, TaxonArgs};
 
-/// Determine the appropriate TTL for a URL based on the endpoint it calls.
-fn ttl_for_url(url: &str) -> u64 {
-    if url.contains("/taxon-history") {
-        TTL_HISTORY
-    } else if url.contains("/genome/") {
-        TTL_GENOME
-    } else if url.contains("/taxon/") {
-        TTL_TAXON
-    } else if url.contains("/search/") {
-        TTL_SEARCH
-    } else {
-        TTL_SEARCH // conservative default
-    }
-}
-
+/// Fetch a URL, using the cache if enabled, and deserialise the JSON body.
 /// Fetch data with transparent caching.
 /// If `use_cache` is false, behaves identically to `fetch_data`.
 /// If `use_cache` is true:
 ///    - Returns cached body if present and not expired
 ///    - Otherwise, fetches data from the server and caches it
 ///
-/// The diff subcommand uses TTL_DIFF since results for fixed release pairs
-/// never change; callers can override by passing the URL directly.
-pub fn fetch_data_cached(
+pub fn fetch_data_cached<T>(
     agent: &ureq::Agent,
     url: &str,
     err_msg: String,
     use_cache: bool,
-) -> Result<String> {
-    if !use_cache {
-        // cache bypassed
-        let response = fetch_data(agent, url, err_msg)?;
-        return Ok(response.into_body().read_to_string()?);
-    }
-
-    // Try to open the cache. If it fails, fall through to live fetch
-    // rather than erroring. Cache failure must never break the tool.
-    if let Ok(cache) = Cache::open() {
-        if let Some(cached) = cache.get(url) {
-            return Ok(cached);
+    ttl: u64,
+) -> Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let body_str = if use_cache {
+        match Cache::open() {
+            Ok(cache) => {
+                if let Some(hit) = cache.get(url) {
+                    hit
+                } else {
+                    let s = fetch_data(agent, url, err_msg)?
+                        .into_body()
+                        .read_to_string()?;
+                    let _ = cache.evict_expired();
+                    let _ = cache.set(url, &s, ttl);
+                    s
+                }
+            }
+            Err(_) => fetch_data(agent, url, err_msg)?
+                .into_body()
+                .read_to_string()?,
         }
-
-        // Cache miss, fetch live
-        let response = fetch_data(agent, url, err_msg)?;
-        let body = response.into_body().read_to_string()?;
-
-        // Evict expired entries on cache wrote. Keeps the DB
-        // tidy without a separate maintenance step.
-        let _ = cache.evict_expired();
-
-        // Store with endpoint-appropriate TTL
-        let ttl = ttl_for_url(url);
-        let _ = cache.set(url, &body, ttl);
-
-        Ok(body)
     } else {
-        // Cache unavailable, fall through silently
-        let response = fetch_data(agent, url, err_msg)?;
-        Ok(response.into_body().read_to_string()?)
-    }
+        fetch_data(agent, url, err_msg)?
+            .into_body()
+            .read_to_string()?
+    };
+
+    serde_json::from_str(&body_str).map_err(anyhow::Error::from)
 }
 
 pub trait ToFlatRow {

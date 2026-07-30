@@ -2,6 +2,7 @@ use anyhow::{ensure, Ok, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::api::GtdbApiRequest;
+use crate::cache::TTL_SEARCH;
 use crate::cli::SearchArgs;
 use crate::utils::{self, OutputFormat, SearchField};
 
@@ -118,7 +119,7 @@ impl SearchResults {
 
 /*----- Main Search Function and its methods -----*/
 /// Search GTDB data from `SearchArgs`
-pub fn search(args: &SearchArgs) -> Result<()> {
+pub fn search(args: &SearchArgs, use_cache: bool) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
     let queries = utils::load_input(args, "No search query provided...".to_string())?;
     let outfmt = OutputFormat::from(args.outfmt.clone());
@@ -143,18 +144,84 @@ pub fn search(args: &SearchArgs) -> Result<()> {
             filter_text: "".into(),
         };
 
-        let response = utils::fetch_data(
-            &agent,
-            &search_req.to_url(),
-            "The server returned an unexpected status code (400).".into(),
-        )?;
-
         let output_result = if args.id || args.count {
-            handle_id_or_count_response(&agent, response, query, args)
+            let first_page: SearchResults = utils::fetch_data_cached(
+                &agent,
+                &search_req.to_url(),
+                "The server returned an unexpected status code (400).".into(),
+                use_cache,
+                TTL_SEARCH,
+            )?;
+
+            let mut search_result = fetch_all_pages(&agent, first_page, args, query, use_cache)?;
+            filter_and_validate(&mut search_result, query, args)?;
+            if args.count {
+                Ok(search_result.get_total_rows().to_string())
+            } else {
+                Ok(search_result
+                    .rows
+                    .iter()
+                    .map(|x| x.accession.as_deref().unwrap_or(&x.gid).to_string())
+                    .collect::<Vec<String>>()
+                    .join("\n"))
+            }
         } else {
             match &outfmt {
-                OutputFormat::Json => handle_json_response(&agent, response, query, args),
-                _ => handle_xsv_response(&agent, response, query, args),
+                OutputFormat::Json => {
+                    let result: SearchResults = utils::fetch_data_cached(
+                        &agent,
+                        &search_req.to_url(),
+                        "The server returned an unexpected status code (400).".into(),
+                        use_cache,
+                        TTL_SEARCH,
+                    )?;
+
+                    serde_json::to_string_pretty(&result.rows).map_err(Into::into)
+                }
+                _ => {
+                    let first_page: SearchResults = utils::fetch_data_cached(
+                        &agent,
+                        &search_req.to_url(),
+                        "The server returned an unexpected status code (400).".into(),
+                        use_cache,
+                        TTL_SEARCH,
+                    )?;
+
+                    let mut all_results =
+                        fetch_all_pages(&agent, first_page, args, query, use_cache)?;
+                    filter_and_validate(&mut all_results, query, args)?;
+
+                    let outfmt = OutputFormat::from(args.outfmt.clone());
+                    let sep = if outfmt == OutputFormat::Tsv {
+                        "\t"
+                    } else {
+                        ","
+                    };
+
+                    let header = format!(
+                        "accession{sep}ncbi_organism_name{sep}ncbi_taxonomy{sep}\
+                         gtdb_taxonomy{sep}gtdb_species_representative{sep}ncbi_type_material"
+                    );
+
+                    let mut lines = vec![header];
+                    for row in &all_results.rows {
+                        lines.push(format!(
+                            "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
+                            row.accession.as_deref().unwrap_or(""),
+                            row.ncbi_org_name.as_deref().unwrap_or(""),
+                            row.ncbi_taxonomy.as_deref().unwrap_or(""),
+                            row.gtdb_taxonomy.as_deref().unwrap_or(""),
+                            row.is_gtdb_species_rep
+                                .map(|b| if b { "True" } else { "False" })
+                                .unwrap_or(""),
+                            row.is_ncbi_type_material
+                                .map(|b| if b { "True" } else { "False" })
+                                .unwrap_or(""),
+                        ));
+                    }
+
+                    Ok(lines.join("\n") + "\n")
+                }
             }
         };
 
@@ -179,8 +246,9 @@ fn handle_id_or_count_response(
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
+    use_cache: bool,
 ) -> Result<String> {
-    process_response(agent, response, needle, args, |search_result| {
+    process_response(agent, response, needle, args, use_cache, |search_result| {
         if args.count {
             Ok(search_result.get_total_rows().to_string())
         } else {
@@ -199,13 +267,14 @@ fn process_response<F>(
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
+    use_cache: bool,
     format_fn: F,
 ) -> Result<String>
 where
     F: FnOnce(&SearchResults) -> Result<String>,
 {
     let first_page: SearchResults = response.into_body().read_json()?;
-    let mut search_result = fetch_all_pages(agent, first_page, args, needle)?;
+    let mut search_result = fetch_all_pages(agent, first_page, args, needle, use_cache)?;
     filter_and_validate(&mut search_result, needle, args)?;
     format_fn(&search_result)
 }
@@ -218,6 +287,7 @@ fn fetch_all_pages(
     first_page: SearchResults,
     args: &SearchArgs,
     query: &str,
+    use_cache: bool,
 ) -> Result<SearchResults> {
     let total = first_page.total_rows;
     let mut accumulated = first_page;
@@ -261,10 +331,7 @@ fn fetch_all_pages(
                 };
 
                 let result = (|| -> Result<(u32, Vec<SearchResult>)> {
-                    let response = utils::fetch_data(
-                        &agent, &search.to_url(), format!("Failed to fetch page {}/{} for query '{}'. The GTDB API may be under load.", page, total_pages, query)
-                    )?;
-                    let page_result: SearchResults = response.into_body().read_json()?;
+                    let page_result: SearchResults = utils::fetch_data_cached(&agent, &search.to_url(), format!("Failed to fetch page {}/{} for query '{}'. The GTDB API may be under load.", page, total_pages, query), use_cache, TTL_SEARCH)?;
                     Ok((page, page_result.rows))
                 })();
 
@@ -326,8 +393,9 @@ fn handle_json_response(
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
+    use_cache: bool,
 ) -> Result<String> {
-    process_response(agent, response, needle, args, |search_result| {
+    process_response(agent, response, needle, args, use_cache, |search_result| {
         serde_json::to_string_pretty(&search_result.rows).map_err(Into::into)
     })
 }
@@ -337,9 +405,10 @@ fn handle_xsv_response(
     response: ureq::http::Response<ureq::Body>,
     needle: &str,
     args: &SearchArgs,
+    use_cache: bool,
 ) -> Result<String> {
     let first_page: SearchResults = response.into_body().read_json()?;
-    let mut all_results = fetch_all_pages(agent, first_page, args, needle)?;
+    let mut all_results = fetch_all_pages(agent, first_page, args, needle, use_cache)?;
     filter_and_validate(&mut all_results, needle, args)?;
 
     let outfmt = OutputFormat::from(args.outfmt.clone());

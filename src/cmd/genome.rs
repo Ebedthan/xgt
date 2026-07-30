@@ -1,4 +1,5 @@
 use crate::api::GtdbApiRequest;
+use crate::cache::{TTL_GENOME, TTL_HISTORY};
 use crate::cli::GenomeArgs;
 use crate::utils;
 
@@ -428,7 +429,7 @@ pub struct MarkerSummary {
     arc_n_missing: Option<i64>,
 }
 
-fn fetch_and_save_genome_data<T>(args: &GenomeArgs) -> Result<()>
+fn fetch_and_save_genome_data<T>(args: &GenomeArgs, use_cache: bool) -> Result<()>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow,
 {
@@ -469,7 +470,7 @@ where
         }
         .to_url();
 
-        let response = utils::fetch_data(
+        let genome_data: T = utils::fetch_data_cached(
             &agent,
             &url,
             format!(
@@ -477,9 +478,9 @@ where
                  Verify the accession format (e.g. GCA_000010525.1 or GCF_000010525.1).",
                 accession
             ),
+            use_cache,
+            TTL_GENOME,
         )?;
-
-        let genome_data: T = response.into_body().read_json()?;
 
         // In split mode: write header + row to each individual file
         if dest.is_split() && outfmt != utils::OutputFormat::Json {
@@ -528,15 +529,15 @@ pub struct History {
     s: Option<String>,
 }
 
-pub fn get_genome_metadata(args: &GenomeArgs) -> Result<()> {
-    fetch_and_save_genome_data::<GenomeMetadata>(args)
+pub fn get_genome_metadata(args: &GenomeArgs, use_cache: bool) -> Result<()> {
+    fetch_and_save_genome_data::<GenomeMetadata>(args, use_cache)
 }
 
-pub fn get_genome_card(args: &GenomeArgs) -> Result<()> {
-    fetch_and_save_genome_data::<GenomeCard>(args)
+pub fn get_genome_card(args: &GenomeArgs, use_cache: bool) -> Result<()> {
+    fetch_and_save_genome_data::<GenomeCard>(args, use_cache)
 }
 
-pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
+pub fn get_genome_taxon_history(args: &GenomeArgs, use_cache: bool) -> Result<()> {
     let accessions = utils::load_input(args, "No genome accession provided...".into())?;
     let agent = utils::get_agent(args.insecure)?;
     let outfmt = utils::OutputFormat::from(args.outfmt.clone());
@@ -571,17 +572,17 @@ pub fn get_genome_taxon_history(args: &GenomeArgs) -> Result<()> {
         }
         .to_url();
 
-        let response = utils::fetch_data(
+        let records: Vec<History> = utils::fetch_data_cached(
             &agent,
             &url,
             format!(
                 "No taxonomic history found for accession '{}' (HTTP 400). \
-                 Verify the accession exists in GTDB.",
+             Verify the accession exists in GTDB.",
                 acc
             ),
+            use_cache,
+            TTL_HISTORY,
         )?;
-
-        let records: Vec<History> = response.into_body().read_json()?;
         let changes = compute_taxonomic_changes(&records);
 
         let content = match outfmt {
