@@ -242,7 +242,7 @@ fn test_search_id_flag_returns_clean_accessions() {
         );
     }
 
-    // Every line must be a clean accession — no GB_ or RS_ prefixes
+    // Every line must be a clean accession, no GB_ or RS_ prefixes
     for line in content.lines().filter(|l| !l.is_empty()) {
         assert!(
             !line.starts_with("GB_") && !line.starts_with("RS_"),
@@ -388,7 +388,7 @@ fn test_search_pagination_returns_all_results() {
         .unwrap();
     assert!(total > 1000, "g__Escherichia should have >1000 genomes");
 
-    // Now fetch --id and count lines — should match the count
+    // Now fetch --id and count lines, should match the count
     let out2 = NamedTempFile::new().unwrap();
     let out_path2 = out2.path().to_str().unwrap().to_string();
     drop(out2);

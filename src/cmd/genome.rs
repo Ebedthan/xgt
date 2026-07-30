@@ -156,7 +156,7 @@ impl ToFlatRow for GenomeCard {
             ncbi.ncbi_country.clone().unwrap_or_default(),
             ncbi.ncbi_date.clone().unwrap_or_default(),
             ncbi.ncbi_genome_category.clone().unwrap_or_default(),
-            ncbi.ncbi_genome_representation.clone().unwrap_or_default(), // 29 — new
+            ncbi.ncbi_genome_representation.clone().unwrap_or_default(),
             ncbi.ncbi_isolate.clone().unwrap_or_default(),
             ncbi.ncbi_isolation_source.clone().unwrap_or_default(),
             ncbi.ncbi_lat_lon.clone().unwrap_or_default(),
@@ -938,7 +938,7 @@ mod tests {
     fn test_genome_card_to_flat_row_contains_gtdb_representative() {
         let card = make_genome_card();
         let row = card.to_flat_row(",");
-        // gtdb_representative is a bool field — true
+        // gtdb_representative is a bool field, true
         assert!(row.contains("true"));
     }
 
@@ -1072,7 +1072,7 @@ mod tests {
         assert!(r220_line.starts_with("R220,"));
         assert!(r220_line.contains("Bacillus subtilis -> Bacillus velezensis"));
 
-        // R214 line is last — initial classification
+        // R214 line is last, initial classification
         let r214_line = lines[2];
         assert!(r214_line.starts_with("R214,"));
         assert!(r214_line.contains("initial classification"));
@@ -1152,7 +1152,7 @@ mod tests {
             .with_body(&history_json)
             .create();
 
-        // Temporarily override the base URL by using fetch_data directly —
+        // Temporarily override the base URL by using fetch_data directly,
         // we test the full function via a temp file
         let out_file = NamedTempFile::new().unwrap();
         let out_path = out_file.path().to_str().unwrap().to_string();

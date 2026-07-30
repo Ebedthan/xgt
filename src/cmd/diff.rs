@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn test_diff_genome_500_triggers_retry_exhaustion() {
         let mut server = Server::new();
-        // 500 is retryable — fetch_data will exhaust MAX_RETRIES
+        // 500 is retryable, fetch_data will exhaust MAX_RETRIES
         let _m = server
             .mock("GET", "/genome/GCA_000009.1/taxon-history")
             .with_status(500)
@@ -501,7 +501,7 @@ mod tests {
         let row2 = make_result("GCA_000002.1").to_flat_row(sep);
 
         // Simulate the accumulated output: header + row1 data + row2 data
-        // (to_flat_row includes its own header — strip it for rows 2+)
+        // (to_flat_row includes its own header, strip it for rows 2+)
         let row1_data: Vec<&str> = row1.lines().skip(1).collect();
         let row2_data: Vec<&str> = row2.lines().skip(1).collect();
 
@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn test_diff_split_mode_always_uses_truncate() {
-        // In split mode, each file is fresh — append is always false
+        // In split mode, each file is fresh, append is always false
         let is_split = true;
         let first_write = false; // irrelevant in split mode
 
@@ -925,7 +925,7 @@ mod tests {
         let response = agent.get(&url).call().unwrap();
         let history: Vec<ReleaseEntry> = response.into_body().read_json().unwrap();
 
-        // R207 is not in the history — find_release should return None
+        // R207 is not in the history, find_release should return None
         let missing = find_release(&history, "R207");
         assert!(missing.is_none(), "R207 should not be in history");
     }
@@ -1182,7 +1182,7 @@ mod tests {
             ),
         ];
 
-        // first() gives the None-release entry — and_then skips it
+        // first() gives the None-release entry, and_then skips it
         let latest = history.first().and_then(|e| e.release.clone());
         assert!(
             latest.is_none(),
@@ -1268,7 +1268,7 @@ mod tests {
         let to_snap = snapshot(find_release(&history, "R220").unwrap());
         let changes = compute_changes(&from_snap, &to_snap);
 
-        // phylum, class, family, species changed — 4 changes
+        // phylum, class, family, species changed
         assert_eq!(changes.len(), 4);
 
         let result = DiffResult {

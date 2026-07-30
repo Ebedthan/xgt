@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_key_url_with_special_chars() {
-        // Species names contain spaces and underscores — these are percent-encoded
+        // Species names contain spaces and underscores, these are percent-encoded
         // in real URLs but the key function must handle them regardless
         let key = Cache::key("https://gtdb-api.ecogenomic.org/taxon/s__Escherichia%20coli");
         assert_eq!(key.len(), 64);
@@ -342,7 +342,7 @@ mod tests {
     fn test_set_get_unicode_body() {
         let cache = Cache::open_in_memory().unwrap();
         let url = "https://example.com/unicode";
-        let body = "Côte d'Ivoire — p__Pseudomonadota — s__Escherichia coli 😀";
+        let body = "Côte d'Ivoire - p__Pseudomonadota - s__Escherichia coli 😀";
 
         cache.set(url, body, TTL_SEARCH).unwrap();
         assert_eq!(cache.get(url).as_deref(), Some(body));
@@ -588,7 +588,7 @@ mod tests {
 
     #[test]
     fn test_set_get_large_body() {
-        // Genome cards can be several KB — verify no truncation
+        // Genome cards can be several KB, verify no truncation
         let cache = Cache::open_in_memory().unwrap();
         let url = "https://example.com/large";
         let body = "x".repeat(100_000);

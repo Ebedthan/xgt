@@ -79,7 +79,7 @@ fn is_retryable(err: &ureq::Error) -> bool {
         | ureq::Error::StatusCode(429) => true,
         // Network/IO errors (timeout, connection reset, DNS failure) are transient
         ureq::Error::Io(_) => true,
-        // All other status codes (4xx etc.) are deterministic — don't retry
+        // All other status codes (4xx etc.) are deterministic, don't retry
         _ => false,
     }
 }
@@ -1065,7 +1065,7 @@ mod tests {
         let agent = Agent::config_builder().build().new_agent();
         let url = format!("{}/status/db", server.url());
 
-        // 500 is retryable — fetch_data will retry MAX_RETRIES times then error
+        // 500 is retryable, fetch_data will retry MAX_RETRIES times then error
         let result = fetch_data(&agent, &url, "status check failed".into());
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
@@ -1238,7 +1238,7 @@ mod tests {
     fn test_fetch_data_does_not_retry_400() {
         let mut server = Server::new();
 
-        // Returns 400 — should not be retried
+        // Returns 400, should not be retried
         let _m = server
             .mock("GET", "/bad")
             .with_status(400)
@@ -1567,7 +1567,7 @@ mod tests {
     fn test_check_update_version_comparison_equal() {
         let current = env!("CARGO_PKG_VERSION");
         // If latest == current, no update needed
-        assert_eq!(current, current); // trivially true — documents the comparison logic
+        assert_eq!(current, current); // trivially true, documents the comparison logic
     }
 
     #[test]
@@ -1577,7 +1577,7 @@ mod tests {
         let stripped = tag.trim_start_matches('v');
         assert_eq!(stripped, "1.0.0");
 
-        // Without prefix — should also work
+        // Without prefix, should also work
         let tag_no_prefix = "1.0.0";
         let stripped_no_prefix = tag_no_prefix.trim_start_matches('v');
         assert_eq!(stripped_no_prefix, "1.0.0");
