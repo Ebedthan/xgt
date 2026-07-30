@@ -557,9 +557,7 @@ pub fn get_genome_taxon_history(args: &GenomeArgs, use_cache: bool) -> Result<()
     let mut first_write = !dest.is_split() && outfmt == utils::OutputFormat::Json;
 
     for acc in &accessions {
-        if let Some(ref bar) = bar {
-            bar.set_message(acc.clone());
-        }
+        utils::bar_tick(&bar, &acc);
 
         let url = GtdbApiRequest::Genome {
             accession: acc.into(),
@@ -594,14 +592,10 @@ pub fn get_genome_taxon_history(args: &GenomeArgs, use_cache: bool) -> Result<()
         utils::write_to_output(content.as_bytes(), dest.resolve(acc), append)?;
         first_write = false;
 
-        if let Some(ref bar) = bar {
-            bar.inc(1);
-        }
+        utils::bar_inc(&bar);
     }
 
-    if let Some(bar) = bar {
-        bar.finish_with_message(format!("done, {} accessions processed", accessions.len()));
-    }
+    utils::bar_finish(bar, accessions.len(), "accessions");
 
     Ok(())
 }

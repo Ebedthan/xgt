@@ -126,19 +126,6 @@ impl ToFlatRow for TaxonGenomes {
 // - Write using utils::write_to_output
 // To avoid code duplication, we can create a helper function that encapsulates this logic.
 
-// Pure fetch: deserializes and returns data, no writing
-fn fetch_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
-    agent: &Agent,
-    request: GtdbApiRequest,
-    err_msg: String,
-    use_cache: bool,
-    ttl: u64,
-) -> Result<T> {
-    let url = request.to_url();
-    let data: T = utils::fetch_data_cached(agent, &url, err_msg, use_cache, ttl)?;
-    Ok(data)
-}
-
 // Fetch and immediately write: used by callers with no post-processing
 fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     agent: &Agent,
@@ -150,7 +137,8 @@ fn fetch_and_write_json<T: for<'de> Deserialize<'de> + Serialize + ToFlatRow>(
     use_cache: bool,
     ttl: u64,
 ) -> Result<T> {
-    let data: T = fetch_json(agent, request, err_msg, use_cache, ttl)?;
+    let url = request.to_url();
+    let data: T = utils::fetch_data_cached(agent, &url, err_msg, use_cache, ttl)?;
     let sep = if *outfmt == utils::OutputFormat::Tsv {
         "\t"
     } else {
@@ -238,10 +226,10 @@ pub fn search_taxon(args: &TaxonArgs, use_cache: bool) -> Result<()> {
             limit: None,
             is_reps_only: None,
         };
-
-        let mut data: TaxonSearchResult = fetch_json(
+        let url = request.to_url();
+        let mut data: TaxonSearchResult = utils::fetch_data_cached(
             &agent,
-            request,
+            &url,
             format!("No taxa matching '{}' found in GTDB.", name),
             use_cache,
             TTL_TAXON,

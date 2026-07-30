@@ -275,7 +275,7 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
             .to_string(),
     )?;
 
-    let outfmt = OutputFormat::from(args.outfmt.clone());
+    let outfmt = OutputFormat::from(args.outfmt.as_str());
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(queries.len());
 
@@ -299,9 +299,7 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     let mut first_write = !dest.is_split() && outfmt == OutputFormat::Json;
 
     for query in &queries {
-        if let Some(ref bar) = bar {
-            bar.set_message(query.clone());
-        }
+        utils::bar_tick(&bar, query);
 
         // Determine effective to_release:
         // If --to not provided, fetch history and use the most recent release.
@@ -330,14 +328,10 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
         utils::write_to_output(output.as_bytes(), dest.resolve(query), append)?;
         first_write = false;
 
-        if let Some(ref bar) = bar {
-            bar.inc(1);
-        }
+        utils::bar_inc(&bar);
     }
 
-    if let Some(bar) = bar {
-        bar.finish_with_message(format!("done - {} queries processed", queries.len()));
-    }
+    utils::bar_finish(bar, queries.len(), "queries");
 
     Ok(())
 }

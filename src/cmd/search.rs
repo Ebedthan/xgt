@@ -122,7 +122,7 @@ impl SearchResults {
 pub fn search(args: &SearchArgs, use_cache: bool) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
     let queries = utils::load_input(args, "No search query provided...".to_string())?;
-    let outfmt = OutputFormat::from(args.outfmt.clone());
+    let outfmt = OutputFormat::from(args.outfmt.as_str());
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(queries.len());
 
@@ -133,7 +133,7 @@ pub fn search(args: &SearchArgs, use_cache: bool) -> Result<()> {
 
         let search_req = GtdbApiRequest::Search {
             query: query.clone(),
-            search_field: SearchField::from(args.field.clone()),
+            search_field: SearchField::from(args.field.as_str()),
             gtdb_species_rep_only: args.rep,
             ncbi_type_material_only: args.r#type,
             output_format: "json".into(),
@@ -191,7 +191,7 @@ pub fn search(args: &SearchArgs, use_cache: bool) -> Result<()> {
                         fetch_all_pages(&agent, first_page, args, query, use_cache)?;
                     filter_and_validate(&mut all_results, query, args)?;
 
-                    let outfmt = OutputFormat::from(args.outfmt.clone());
+                    let outfmt = OutputFormat::from(args.outfmt.as_str());
                     let sep = outfmt.sep();
 
                     let header = format!(
@@ -373,7 +373,7 @@ fn filter_and_validate(
     args: &SearchArgs,
 ) -> anyhow::Result<()> {
     if args.word {
-        results.filter_json(needle.to_string(), SearchField::from(args.field.clone()));
+        results.filter_json(needle.to_string(), SearchField::from(args.field.as_str()));
     }
     ensure!(
         results.get_total_rows() != 0,
@@ -407,7 +407,7 @@ fn handle_xsv_response(
     let mut all_results = fetch_all_pages(agent, first_page, args, needle, use_cache)?;
     filter_and_validate(&mut all_results, needle, args)?;
 
-    let outfmt = OutputFormat::from(args.outfmt.clone());
+    let outfmt = OutputFormat::from(args.outfmt.as_str());
     let sep = outfmt.sep();
 
     let header = format!(

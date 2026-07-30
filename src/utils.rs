@@ -104,15 +104,21 @@ pub enum SearchField {
     NcbiTax,
 }
 
-impl From<String> for SearchField {
-    fn from(value: String) -> Self {
-        match value.as_str() {
+impl From<&str> for SearchField {
+    fn from(s: &str) -> Self {
+        match s {
             "acc" => Self::NcbiId,
             "org" => Self::NcbiOrg,
             "gtdb" => Self::GtdbTax,
             "ncbi" => Self::NcbiTax,
             _ => Self::All,
         }
+    }
+}
+
+impl From<String> for SearchField {
+    fn from(value: String) -> Self {
+        Self::from(value.as_str())
     }
 }
 
@@ -157,13 +163,19 @@ impl Display for OutputFormat {
     }
 }
 
-impl From<String> for OutputFormat {
-    fn from(value: String) -> Self {
-        match value.as_str() {
+impl From<&str> for OutputFormat {
+    fn from(s: &str) -> Self {
+        match s {
             "tsv" => Self::Tsv,
             "json" => Self::Json,
             _ => Self::Csv,
         }
+    }
+}
+
+impl From<String> for OutputFormat {
+    fn from(s: String) -> Self {
+        Self::from(s.as_str())
     }
 }
 
@@ -579,7 +591,7 @@ pub fn check_update(disable_certificate_verification: bool) -> Result<()> {
         .header("User-Agent", concat!("xgt/", env!("CARGO_PKG_VERSION")))
         .header("Accept", "application/vnd.github+json")
         .call()
-        .map_err(|e| anyhow!("Could not reache GitHub API: {}", e))?;
+        .map_err(|e| anyhow!("Could not reach GitHub API: {}", e))?;
 
     let body: serde_json::Value = response
         .into_body()
@@ -612,6 +624,24 @@ pub fn check_update(disable_certificate_verification: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+pub fn bar_tick(bar: &Option<ProgressBar>, msg: &str) {
+    if let Some(b) = bar {
+        b.set_message(msg.to_string());
+    }
+}
+
+pub fn bar_inc(bar: &Option<ProgressBar>) {
+    if let Some(b) = bar {
+        b.inc(1);
+    }
+}
+
+pub fn bar_finish(bar: Option<ProgressBar>, n: usize, label: &str) {
+    if let Some(b) = bar {
+        b.finish_with_message(format!("done, {} {} processed", n, label));
+    }
 }
 
 #[cfg(test)]
