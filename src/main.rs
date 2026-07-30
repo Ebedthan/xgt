@@ -44,9 +44,8 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Determine effective cache setting:
-    // --cache enables it, --no-cache disables it, neither = disabled (opt-in for now)
-    let use_cache = cli.cache && !cli.no_cache;
+    // Determine effective cache setting, opt-out by default
+    let use_cache = !cli.no_cache;
 
     // Check GTDB db status
     if cli.verbose {
