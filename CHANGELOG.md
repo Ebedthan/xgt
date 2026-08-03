@@ -3,7 +3,7 @@
 All notable changes to xgt are documented in this file. 
 Versions follow [Semantic Versioning](https://semver.org/).
 
-## [v1.2.0] - 2026-07-30
+## [v1.2.0] - 2026-08-28
 
 Minor release focused on performance, correctness, and code quality.
 Introduces a transparent local response cache, fixes all known URL
