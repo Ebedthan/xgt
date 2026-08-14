@@ -1,0 +1,67 @@
+cff-version: 1.2.0
+message: "If you use xgt in your research, please cite it using the metadata below."
+type: software
+title: "xgt: a command-line interface for the Genome Taxonomy Database with cross-release taxonomic comparison"
+version: "1.2.0"
+date-released: "2026-07-30"
+license:
+  - MIT
+  - Apache-2.0
+repository-code: "https://github.com/Ebedthan/xgt"
+url: "https://github.com/Ebedthan/xgt"
+abstract: >
+  xgt is a command-line tool for querying the Genome Taxonomy Database
+  (GTDB) REST API. It provides batch search, genome card retrieval,
+  taxon lineage exploration, and cross-release taxonomic comparison
+  via the diff subcommand, with support for JSON, CSV, and TSV output,
+  parallel pagination, a transparent local response cache, and no
+  runtime dependencies.
+keywords:
+  - GTDB
+  - microbial taxonomy
+  - genomics
+  - bioinformatics
+  - command-line tool
+  - Rust
+  - metagenomics
+  - taxonomic comparison
+authors:
+  - family-names: Ebou
+    given-names: Anicet E. T.
+    email: ediman.ebou@inphb.ci
+    orcid: "https://orcid.org/0000-0003-4005-177X"
+    affiliation: >
+      Laboratoire de Microbiologie, Biotechnologie et Bioinformatique,
+      Institut National Polytechnique Felix Houphouet-Boigny,
+      BP 1093 Yamoussoukro, Cote d'Ivoire
+  - family-names: Koua
+    given-names: Dominique K.
+    orcid: "https://orcid.org/0000-0002-9078-8844"
+    affiliation: >
+      Laboratoire de Microbiologie, Biotechnologie et Bioinformatique,
+      Institut National Polytechnique Felix Houphouet-Boigny,
+      BP 1093 Yamoussoukro, Cote d'Ivoire
+  - family-names: Zeze
+    given-names: Adolphe
+    orcid: "https://orcid.org/0009-0004-5941-6657"
+    affiliation: >
+      Laboratoire de Microbiologie, Biotechnologie et Bioinformatique,
+      Institut National Polytechnique Felix Houphouet-Boigny,
+      BP 1093 Yamoussoukro, Cote d'Ivoire
+preferred-citation:
+  type: article
+  title: "xgt: a command-line interface for the Genome Taxonomy Database with cross-release taxonomic comparison"
+  authors:
+    - family-names: Ebou
+      given-names: Anicet E. T.
+      orcid: "https://orcid.org/0000-0003-4005-177X"
+    - family-names: Koua
+      given-names: Dominique K.
+      orcid: "https://orcid.org/0000-0002-9078-8844"
+    - family-names: Zeze
+      given-names: Adolphe
+      orcid: "https://orcid.org/0009-0004-5941-6657"
+  journal: "GigaScience"
+  year: 2026
+  doi: "10.1093/gigascience/giag086"
+  url: "https://doi.org/10.1093/gigascience/giag086"
