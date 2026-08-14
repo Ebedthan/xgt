@@ -408,6 +408,34 @@ xgt completions zsh > ~/.zfunc/_xgt
 xgt completions fish > ~/.config/fish/completions/xgt.fish
 ```
 
+### BibTeX
+
+```bibtex
+
+@article{ebouXgtCommandlineInterface2026,
+  title = {Xgt: A Command-Line Interface for the {{Genome Taxonomy Database}} with Cross-Release Taxonomic Comparison},
+  shorttitle = {Xgt},
+  author = {Ebou, Anicet E T and Koua, Dominique K and Z{\'e}z{\'e}, Adolphe},
+  year = 2026,
+  month = aug,
+  journal = {GigaScience},
+  pages = {giag086},
+  issn = {2047-217X},
+  doi = {10.1093/gigascience/giag086},
+  urldate = {2026-08-14},
+  file = {/home/ediman/Zotero/storage/IDID2K6M/Ebou et al. - 2026 - xgt a command-line interface for the Genome Taxonomy Database with cross-release taxonomic comparis.pdf;/home/ediman/Zotero/storage/LV6WYEDZ/giag086.html}
+}
+```
+
+## Citation
+
+If you use xgt in your research, please cite:
+
+Ebou AET, Koua DK, Zézé A. xgt: a command-line interface for the Genome
+Taxonomy Database with cross-release taxonomic comparison. *GigaScience*.
+2026. doi:[10.1093/gigascience/giag086](https://doi.org/10.1093/gigascience/giag086)
+
+
 ## Reporting issues
 
 Found a bug or want to request a feature?
