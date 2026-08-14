@@ -431,8 +431,6 @@ Taxonomy Database with cross-release taxonomic comparison. *GigaScience*.
   pages = {giag086},
   issn = {2047-217X},
   doi = {10.1093/gigascience/giag086},
-  urldate = {2026-08-14},
-  file = {/home/ediman/Zotero/storage/IDID2K6M/Ebou et al. - 2026 - xgt a command-line interface for the Genome Taxonomy Database with cross-release taxonomic comparis.pdf;/home/ediman/Zotero/storage/LV6WYEDZ/giag086.html}
 }
 ```
 
