@@ -62,10 +62,22 @@ fn main() -> Result<()> {
     }
 
     let command = match cli.command {
-        Some(Commands::Search(args)) => {
+        Some(cmd) => cmd,
+        None => {
+            // no subcommand provided.
+            // print help and exit.
+            use clap::CommandFactory;
+            Cli::command().print_help()?;
+            println!();
+            std::process::exit(0);
+        }
+    };
+
+    match command {
+        Commands::Search(args) => {
             search::search(&args, use_cache)?;
         }
-        Some(Commands::Genome(args)) => {
+        Commands::Genome(args) => {
             if args.history {
                 genome::get_genome_taxon_history(&args, use_cache)?;
             } else if args.metadata {
@@ -74,7 +86,7 @@ fn main() -> Result<()> {
                 genome::get_genome_card(&args, use_cache)?
             }
         }
-        Some(Commands::Taxon(args)) => {
+        Commands::Taxon(args) => {
             if args.search || args.all {
                 taxon::search_taxon(&args, use_cache)?;
             } else if args.genomes {
@@ -83,21 +95,13 @@ fn main() -> Result<()> {
                 taxon::get_taxon_name(&args, use_cache)?;
             }
         }
-        Some(Commands::Diff(args)) => {
+        Commands::Diff(args) => {
             diff::diff(&args, use_cache)?;
         }
-        Some(Commands::Completions(args)) => {
+        Commands::Completions(args) => {
             let mut cmd = Cli::command();
             let bin_name = cmd.get_name().to_string();
             generate(args.shell, &mut cmd, bin_name, &mut io::stdout());
-        }
-        None => {
-            // no subcommand provided.
-            // print help and exit.
-            use clap::CommandFactory;
-            Cli::command().print_help()?;
-            println!();
-            std::process::exit(0);
         }
     };
 
