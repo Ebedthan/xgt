@@ -61,11 +61,11 @@ fn main() -> Result<()> {
         eprintln!("GTDB API Version: {}", api_version);
     }
 
-    match cli.command.expect("subcommand required") {
-        Commands::Search(args) => {
+    let command = match cli.command {
+        Some(Commands::Search(args)) => {
             search::search(&args, use_cache)?;
         }
-        Commands::Genome(args) => {
+        Some(Commands::Genome(args)) => {
             if args.history {
                 genome::get_genome_taxon_history(&args, use_cache)?;
             } else if args.metadata {
@@ -74,7 +74,7 @@ fn main() -> Result<()> {
                 genome::get_genome_card(&args, use_cache)?
             }
         }
-        Commands::Taxon(args) => {
+        Some(Commands::Taxon(args)) => {
             if args.search || args.all {
                 taxon::search_taxon(&args, use_cache)?;
             } else if args.genomes {
@@ -83,13 +83,21 @@ fn main() -> Result<()> {
                 taxon::get_taxon_name(&args, use_cache)?;
             }
         }
-        Commands::Diff(args) => {
+        Some(Commands::Diff(args)) => {
             diff::diff(&args, use_cache)?;
         }
-        Commands::Completions(args) => {
+        Some(Commands::Completions(args)) => {
             let mut cmd = Cli::command();
             let bin_name = cmd.get_name().to_string();
             generate(args.shell, &mut cmd, bin_name, &mut io::stdout());
+        }
+        None => {
+            // no subcommand provided.
+            // print help and exit.
+            use clap::CommandFactory;
+            Cli::command().print_help()?;
+            println!();
+            std::process::exit(0);
         }
     };
 
