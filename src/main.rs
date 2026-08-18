@@ -61,6 +61,7 @@ fn main() -> Result<()> {
         eprintln!("GTDB API Version: {}", api_version);
     }
 
+    // Main workflow
     let command = match cli.command {
         Some(cmd) => cmd,
         None => {
