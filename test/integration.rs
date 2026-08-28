@@ -853,6 +853,72 @@ fn test_diff_invalid_release_returns_error() {
     );
 }
 
+#[test]
+fn test_diff_batch_parallel_preserves_order() {
+    // Run a batch of three known accessions and verify output order
+    // matches input order regardless of which thread finishes first.
+    let input = make_input_file(&[
+        ECOLI_ACC,         // GCA_000005845.2
+        BSUB_ACC,          // GCA_000009045.1
+        "GCA_000006765.1", // P. aeruginosa PAO1
+    ]);
+    let out = NamedTempFile::new().unwrap();
+    let out_path = out.path().to_str().unwrap().to_string();
+    drop(out);
+
+    let args = DiffArgs {
+        file: Some(input.path().to_str().unwrap().to_string()),
+        from: FROM_REL.into(),
+        to: Some(TO_REL.into()),
+        outfmt: "csv".into(),
+        out: Some(out_path.clone()),
+        max_concurrent: 3,
+        ..diff_args_defaults()
+    };
+
+    diff::diff(&args, false).expect("parallel diff failed");
+
+    let content = std::fs::read_to_string(&out_path).unwrap();
+    let rows: Vec<&str> = content
+        .lines()
+        .skip(1) // skip header
+        .filter(|l| !l.is_empty())
+        .collect();
+
+    // At least one row per accession
+    assert!(rows.len() >= 3, "expected at least 3 rows");
+
+    // First data row must be for ECOLI_ACC (input order preserved)
+    assert!(
+        rows[0].starts_with(ECOLI_ACC),
+        "first row must be for {ECOLI_ACC}, got: {}",
+        rows[0]
+    );
+}
+
+#[test]
+fn test_diff_max_concurrent_one_is_sequential() {
+    // max_concurrent=1 must produce correct results (degenerates to sequential)
+    let out = NamedTempFile::new().unwrap();
+    let out_path = out.path().to_str().unwrap().to_string();
+    drop(out);
+
+    let args = DiffArgs {
+        query: Some(ECOLI_ACC.into()),
+        from: FROM_REL.into(),
+        to: Some(TO_REL.into()),
+        outfmt: "json".into(),
+        out: Some(out_path.clone()),
+        max_concurrent: 1,
+        ..diff_args_defaults()
+    };
+
+    diff::diff(&args, false).expect("sequential diff failed");
+    let content = std::fs::read_to_string(&out_path).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+    assert!(parsed["query"].is_string());
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // API availability
 // ═════════════════════════════════════════════════════════════════════════════

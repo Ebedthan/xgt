@@ -1472,4 +1472,38 @@ mod tests {
         assert_eq!(snap.genus, "");
         assert_eq!(snap.species, "");
     }
+
+    // In diff.rs tests block
+
+    #[test]
+    fn test_parallel_results_sorted_by_index() {
+        // Simulate out-of-order arrival from threads and verify sort
+        let mut results: Vec<(usize, &str)> = vec![
+            (2, "GCA_000003.1"),
+            (0, "GCA_000001.1"),
+            (1, "GCA_000002.1"),
+        ];
+        results.sort_by_key(|(idx, _)| *idx);
+        assert_eq!(results[0].1, "GCA_000001.1");
+        assert_eq!(results[1].1, "GCA_000002.1");
+        assert_eq!(results[2].1, "GCA_000003.1");
+    }
+
+    #[test]
+    fn test_max_concurrent_guard_against_zero() {
+        // max(1) ensures zero is treated as 1
+        let user_input: usize = 0;
+        let effective = user_input.max(1);
+        assert_eq!(effective, 1);
+    }
+
+    #[test]
+    fn test_chunk_size_matches_max_concurrent() {
+        let queries: Vec<usize> = (0..10).collect();
+        let max_conc = 3;
+        let chunks: Vec<&[usize]> = queries.chunks(max_conc).collect();
+        assert_eq!(chunks.len(), 4); // ceil(10/3) = 4
+        assert_eq!(chunks[0].len(), 3);
+        assert_eq!(chunks[3].len(), 1); // last chunk has remainder
+    }
 }
