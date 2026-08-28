@@ -269,6 +269,11 @@ pub struct DiffArgs {
     #[arg(long, value_name = "DIR", requires = "split")]
     pub split_dir: Option<String>,
 
+    /// Maximum number of concurrent diff request.
+    /// Lower if you encounter rate limiting issues.
+    #[arg(long, value_name = "N", default_value = "5")]
+    pub max_concurrent: usize,
+
     /// Disable SSL certificate verification
     #[arg(short = 'k')]
     pub insecure: bool,

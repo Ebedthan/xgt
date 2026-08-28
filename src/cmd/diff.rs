@@ -1,5 +1,7 @@
 use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
+use std::sync::mpsc;
+use std::thread;
 
 use crate::api::{GenomeRequestType, GtdbApiRequest};
 use crate::cache::TTL_DIFF;
@@ -265,6 +267,7 @@ fn diff_genome(
 // Public entry point
 pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     let agent = utils::get_agent(args.insecure)?;
+
     let queries = utils::load_input(
         args,
         "No accession or file provided. Pass an accession directly \
@@ -277,27 +280,65 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     let sep = outfmt.sep();
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(queries.len());
-    let to_release_override = args.to.clone();
-    let mut writer = utils::BatchWriter::new(&dest, &outfmt);
+    let max_conc = args.max_concurrent.max(1);
 
+    let from_release = args.from.clone();
+    let to_release_override = args.to.clone();
+
+    // Parrallel dispatch
+    let n = queries.len();
+    let (tx, rx) = mpsc::channel::<(usize, Result<DiffResult>)>();
+
+    for chunk in (0..n).collect::<Vec<_>>().chunks(max_conc) {
+        let mut handles = Vec::with_capacity(chunk.len());
+
+        for &idx in chunk {
+            let tx = tx.clone();
+            let agent = agent.clone();
+            let query = queries[idx].clone();
+            let from_release = from_release.clone();
+            let to_release_override = to_release_override.clone();
+
+            let handle = thread::spawn(move || {
+                let result = (|| -> Result<DiffResult> {
+                    let to_release = match &to_release_override {
+                        Some(r) => r.clone(),
+                        None => resolve_latest_release(&query, &agent, use_cache)?,
+                    };
+                    diff_genome(&query, &agent, &from_release, &to_release, use_cache)
+                })();
+
+                let _ = tx.send((idx, result));
+            });
+
+            handles.push(handle);
+        }
+
+        // Wait for the whole chunk before dispatchin ghe next one.
+        for handle in handles {
+            handle
+                .join()
+                .map_err(|_| anyhow::anyhow!("A diff thread panicked"))?;
+        }
+    }
+
+    drop(tx);
+
+    // collect and sort
+    let mut indexed_results: Vec<(usize, Result<DiffResult>)> = rx.into_iter().collect();
+    indexed_results.sort_by_key(|(idx, _)| *idx);
+
+    let mut writer = utils::BatchWriter::new(&dest, &outfmt);
     writer.write_global_header(format!("{}\n", DiffResult::csv_header(sep)).as_bytes())?;
 
-    for query in &queries {
-        utils::bar_tick(&bar, query);
-
-        let to_release = match &to_release_override {
-            Some(r) => r.clone(),
-            None => resolve_latest_release(query, &agent, use_cache)?,
-        };
-
-        let result = diff_genome(query, &agent, &args.from, &to_release, use_cache)?;
-
+    for (_, result) in indexed_results {
+        let result = result?;
+        let query = &result.query.clone();
         let split_header = format!("{}\n", DiffResult::csv_header(sep));
         let body = match outfmt {
             OutputFormat::Json => serde_json::to_string_pretty(&result)? + "\n",
-            _ => result.to_flat_row(sep) + "\n",
+            _ => result.to_flat_row(sep),
         };
-
         writer.write_item(query, split_header.as_bytes(), body.as_bytes())?;
         utils::bar_inc(&bar);
     }
