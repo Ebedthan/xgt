@@ -337,7 +337,18 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
         let split_header = format!("{}\n", DiffResult::csv_header(sep));
         let body = match outfmt {
             OutputFormat::Json => serde_json::to_string_pretty(&result)? + "\n",
-            _ => result.to_flat_row(sep),
+            _ => {
+                // to_flat_row includes a header line as its first row.
+                // BatchWriter handles the header (globally for non-split,
+                // via split_header for split mode).
+                result
+                    .to_flat_row(sep)
+                    .lines()
+                    .skip(1)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    + "\n"
+            }
         };
         writer.write_item(query, split_header.as_bytes(), body.as_bytes())?;
         utils::bar_inc(&bar);
