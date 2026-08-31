@@ -31,8 +31,9 @@ use xgt::cmd::{diff, genome, search, taxon};
 //   2. Present in GTDB since at least R207
 // Avoid non-representative accessions, they are frequently removed between
 // releases and will cause spurious 404 failures in integration tests.
-const ECOLI_ACC: &str = "GCA_000005845.2"; // E. coli K-12 MG1655, NCBI ref
-                                           // const BSUB_ACC: &str = "GCA_000009045.1"; // B. subtilis 168, NCBI ref
+// REPLACE WITH:
+const ECOLI_ACC: &str = "GCA_000005845.2"; // E. coli K-12 MG1655 — NCBI ref
+const BSUB_ACC: &str = "GCA_000009045.1"; // B. subtilis 168 — NCBI ref
 const SMALL_GENUS: &str = "g__Rhizobium";
 const SMALL_TAXON: &str = "g__Escherichia";
 const FROM_REL: &str = "R214";
@@ -104,6 +105,7 @@ fn diff_args_defaults() -> DiffArgs {
         split: false,
         split_dir: None,
         insecure: false,
+        max_concurrent: 5,
     }
 }
 
