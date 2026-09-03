@@ -8,8 +8,6 @@ use crate::cache::TTL_DIFF;
 use crate::cli::DiffArgs;
 use crate::utils::{self, deser_opt_string, OutputFormat, ToFlatRow};
 
-// Data types
-
 /// One release entry from the taxon-history endpoint.
 /// Reuses the same shape as genome::History.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
@@ -64,8 +62,6 @@ pub struct RankChange {
     pub to: String,
 }
 
-// ToFlatRow
-
 impl ToFlatRow for DiffResult {
     fn csv_header(sep: &str) -> String {
         format!(
@@ -79,7 +75,7 @@ impl ToFlatRow for DiffResult {
     }
 
     fn to_flat_row(&self, sep: &str) -> String {
-        // One row per changed rank; if nothing changed, one row with empty rank fields
+        // One row per changed rank. If nothing changed, one row with empty rank fields
         let mut lines = vec![Self::csv_header(sep)];
 
         let common = format!(
@@ -128,8 +124,6 @@ impl ToFlatRow for DiffResult {
         lines.join("\n") + "\n"
     }
 }
-
-// Core logic
 
 /// Extract a TaxonomySnapshot from a ReleaseEntry.
 fn snapshot(entry: &ReleaseEntry) -> TaxonomySnapshot {

@@ -68,6 +68,51 @@ pub trait ToFlatRow {
     fn to_flat_row(&self, sep: &str) -> String;
 }
 
+pub trait ToSqliteRow {
+    /// SQL CREATE TABLE statement for this type.
+    fn create_table_sql() -> &'static str;
+
+    /// SQL INSERT OR REPLACE statement for this type.
+    fn insert_sql() -> &'static str;
+
+    /// Bind this instance's values to a rusqlite Statement.
+    fn bind_params(&self, stmt: &mut rusqlite::Statement) -> rusqlite::Result<()>;
+}
+
+pub struct SqliteWriter {
+    conn: rusqlite::Connection,
+}
+
+impl SqliteWriter {
+    /// Open or create a SQLite database at the given path.
+    pub fn open(path: &str) -> Result<Self> {
+        let conn = rusqlite::Connection::open(path)?;
+        conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+        Ok(Self { conn })
+    }
+
+    /// Create the table (if no exists) and insert rows in a transaction.
+    /// INSERT OR REPLACE means re-running on the same data is idemptent.
+    pub fn write_batch<T: ToSqliteRow>(
+        &self,
+        rows: &[T],
+        create_sql: &str,
+        insert_sql: &str,
+    ) -> Result<()> {
+        self.conn.execute_batch(create_sql)?;
+        let tx = self.conn.unchecked_transaction()?;
+        {
+            let mut stmt = tx.prepare(insert_sql)?;
+            for row in rows {
+                row.bind_params(&mut stmt)?;
+                stmt.execute([])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+}
+
 /// Returns true for errors that are worth retrying (transient server/network issues).
 fn is_retryable(err: &ureq::Error) -> bool {
     match err {
