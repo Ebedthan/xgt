@@ -6,7 +6,9 @@ use std::thread;
 use crate::api::{GenomeRequestType, GtdbApiRequest};
 use crate::cache::TTL_DIFF;
 use crate::cli::DiffArgs;
+use crate::utils::ToSqliteRow;
 use crate::utils::{self, deser_opt_string, OutputFormat, ToFlatRow};
+use rusqlite::Statement;
 
 /// One release entry from the taxon-history endpoint.
 /// Reuses the same shape as genome::History.
@@ -122,6 +124,80 @@ impl ToFlatRow for DiffResult {
         }
 
         lines.join("\n") + "\n"
+    }
+}
+
+impl ToSqliteRow for DiffResult {
+    fn create_table_sql() -> &'static str {
+        "CREATE TABLE IF NOT EXISTS diff_results (
+            query        TEXT,
+            from_release TEXT,
+            to_release   TEXT,
+            changed      INTEGER,
+            rank         TEXT,
+            from_value   TEXT,
+            to_value     TEXT,
+            from_domain  TEXT,
+            from_phylum  TEXT,
+            from_class   TEXT,
+            from_order   TEXT,
+            from_family  TEXT,
+            from_genus   TEXT,
+            from_species TEXT,
+            to_domain    TEXT,
+            to_phylum    TEXT,
+            to_class     TEXT,
+            to_order     TEXT,
+            to_family    TEXT,
+            to_genus     TEXT,
+            to_species   TEXT,
+            PRIMARY KEY (query, from_release, to_release, rank)
+        );"
+    }
+
+    fn insert_sql() -> &'static str {
+        "INSERT OR REPLACE INTO diff_results VALUES (
+            ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+        )"
+    }
+
+    fn bind_params(&self, stmt: &mut Statement) -> rusqlite::Result<()> {
+        // One row per changed rank; if unchanged, one row with empty rank fields
+        let rows: Vec<(String, String, String)> = if self.changes.is_empty() {
+            vec![(String::new(), String::new(), String::new())]
+        } else {
+            self.changes
+                .iter()
+                .map(|c| (c.rank.clone(), c.from.clone(), c.to.clone()))
+                .collect()
+        };
+
+        for (rank, from_val, to_val) in rows {
+            stmt.execute(rusqlite::params![
+                self.query,
+                self.from_release,
+                self.to_release,
+                self.changed as i64,
+                rank,
+                from_val,
+                to_val,
+                self.from_taxonomy.domain,
+                self.from_taxonomy.phylum,
+                self.from_taxonomy.class,
+                self.from_taxonomy.order,
+                self.from_taxonomy.family,
+                self.from_taxonomy.genus,
+                self.from_taxonomy.species,
+                self.to_taxonomy.domain,
+                self.to_taxonomy.phylum,
+                self.to_taxonomy.class,
+                self.to_taxonomy.order,
+                self.to_taxonomy.family,
+                self.to_taxonomy.genus,
+                self.to_taxonomy.species,
+            ])?;
+        }
+        Ok(())
     }
 }
 

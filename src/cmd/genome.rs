@@ -434,48 +434,93 @@ pub struct MarkerSummary {
 
 fn fetch_and_save_genome_data<T>(args: &GenomeArgs, use_cache: bool) -> Result<()>
 where
-    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow + utils::ToSqliteRow,
+    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow + ToSqliteRow,
 {
     let accessions = utils::load_input(args, "No genome accession provided...".to_string())?;
     let agent = utils::get_agent(args.insecure)?;
-    let outfmt = utils::OutputFormat::from(args.outfmt.as_str());
+    let outfmt = utils::OutputFormat::from(args.outfmt.clone());
+    let sep = outfmt.sep();
     let dest = utils::output_destination(&args.out, args.split, &outfmt, &args.split_dir);
     let bar = utils::make_progress_bar(accessions.len());
+    let mut sqlite_rows: Vec<T> = Vec::new();
 
-    let request_type = if args.metadata {
-        GenomeRequestType::Metadata
-    } else {
-        GenomeRequestType::Card
-    };
-    let release = args.release.clone();
+    if !dest.is_split() && !outfmt.is_sqlite() && outfmt != utils::OutputFormat::Json {
+        let header = T::csv_header(sep);
+        utils::write_to_output(format!("{}\n", header).as_bytes(), dest.resolve(""), false)?;
+    }
 
-    utils::fetch_batch_sqlite::<T, _, _>(
-        &accessions,
-        |acc| {
-            GtdbApiRequest::Genome {
-                accession: acc.to_string(),
-                request_type,
-                release: release.clone(),
-            }
-            .to_url()
-        },
-        |acc| {
+    let mut first_write = !dest.is_split() && outfmt == utils::OutputFormat::Json;
+
+    for accession in &accessions {
+        if let Some(ref bar) = bar {
+            bar.set_message(accession.clone());
+        }
+
+        let request_type = if args.metadata {
+            GenomeRequestType::Metadata
+        } else {
+            GenomeRequestType::Card
+        };
+
+        let url = GtdbApiRequest::Genome {
+            accession: accession.clone(),
+            request_type,
+            release: args.release.clone(),
+        }
+        .to_url();
+
+        let genome_data: T = utils::fetch_data_cached(
+            &agent,
+            &url,
             format!(
                 "Accession '{}' was not found in GTDB (HTTP 400). \
-             Verify the accession format (e.g. GCA_000010525.1 or GCF_000010525.1).",
-                acc
-            )
-        },
-        TTL_GENOME,
-        &agent,
-        &outfmt,
-        &dest,
-        use_cache,
-        &bar,
-        None,
-    )?;
+                 Verify the accession format (e.g. GCA_000010525.1 or GCF_000010525.1).",
+                accession
+            ),
+            use_cache,
+            TTL_GENOME,
+        )?;
 
-    utils::bar_finish(bar, accessions.len(), "genomes");
+        if outfmt.is_sqlite() {
+            // Collect for batch write after the loop
+            sqlite_rows.push(genome_data);
+        } else {
+            if dest.is_split() && outfmt != utils::OutputFormat::Json {
+                let header = T::csv_header(sep);
+                utils::write_to_output(
+                    format!("{}\n", header).as_bytes(),
+                    dest.resolve(accession),
+                    false,
+                )?;
+            }
+
+            let out = match outfmt {
+                utils::OutputFormat::Json => serde_json::to_string_pretty(&genome_data)? + "\n",
+                _ => genome_data.to_flat_row(sep) + "\n",
+            };
+
+            let append = if dest.is_split() { false } else { !first_write };
+            utils::write_to_output(out.as_bytes(), dest.resolve(accession), append)?;
+            first_write = false;
+        }
+
+        if let Some(ref bar) = bar {
+            bar.inc(1);
+        }
+    }
+
+    if outfmt.is_sqlite() {
+        let path = args
+            .out
+            .as_deref()
+            .expect("--out is required with --outfmt sqlite (validated at CLI level)");
+        let db = utils::SqliteWriter::open(path)?;
+        db.write_batch(&sqlite_rows, T::create_table_sql(), T::insert_sql())?;
+    }
+
+    if let Some(bar) = bar {
+        bar.finish_with_message(format!("done, {} genomes processed", accessions.len()));
+    }
     Ok(())
 }
 
