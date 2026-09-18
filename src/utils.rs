@@ -104,8 +104,8 @@ impl SqliteWriter {
         {
             let mut stmt = tx.prepare(insert_sql)?;
             for row in rows {
+                // execute is called inside bind_params via rusqlite::params![]
                 row.bind_params(&mut stmt)?;
-                stmt.execute([])?;
             }
         }
         tx.commit()?;

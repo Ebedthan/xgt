@@ -10,6 +10,9 @@ use std::collections::HashMap;
 
 use crate::utils::ToFlatRow;
 
+use crate::utils::ToSqliteRow;
+use rusqlite::Statement;
+
 use crate::utils::{
     deser_bool, deser_opt_bool, deser_opt_f64, deser_opt_i32, deser_opt_i64, deser_opt_string,
 };
@@ -638,6 +641,177 @@ fn compare_field(
             notes.push(format!("{} added: {}", name, current_val));
         }
         _ => {}
+    }
+}
+
+impl ToSqliteRow for GenomeCard {
+    fn create_table_sql() -> &'static str {
+        "CREATE TABLE IF NOT EXISTS genome_cards (
+            accession                    TEXT PRIMARY KEY,
+            name                         TEXT,
+            genome_size                  INTEGER,
+            gc_percentage                REAL,
+            contig_count                 INTEGER,
+            n50_contigs                  INTEGER,
+            scaffold_count               INTEGER,
+            n50_scaffolds                INTEGER,
+            ambiguous_bases              INTEGER,
+            checkm_completeness          REAL,
+            checkm_contamination         REAL,
+            checkm_strain_heterogeneity  REAL,
+            checkm2_completeness         REAL,
+            checkm2_contamination        REAL,
+            checkm2_model                TEXT,
+            protein_count                INTEGER,
+            coding_density               REAL,
+            ssu_count                    INTEGER,
+            lsu_5s_count                 INTEGER,
+            lsu_23s_count                INTEGER,
+            ncbi_assembly_level          TEXT,
+            ncbi_assembly_name           TEXT,
+            ncbi_assembly_type           TEXT,
+            ncbi_bioproject              TEXT,
+            ncbi_biosample               TEXT,
+            ncbi_country                 TEXT,
+            ncbi_date                    TEXT,
+            ncbi_genome_category         TEXT,
+            ncbi_genome_representation   TEXT,
+            ncbi_isolate                 TEXT,
+            ncbi_isolation_source        TEXT,
+            ncbi_lat_lon                 TEXT,
+            ncbi_refseq_category         TEXT,
+            ncbi_seq_rel_date            TEXT,
+            ncbi_strain_identifiers      TEXT,
+            ncbi_submitter               TEXT,
+            ncbi_taxid                   INTEGER,
+            ncbi_species_taxid           TEXT,
+            ncbi_translation_table       INTEGER,
+            ncbi_version_status          TEXT,
+            gtdb_representative          INTEGER,
+            gtdb_genome_representative   TEXT,
+            gtdb_domain                  TEXT,
+            gtdb_phylum                  TEXT,
+            gtdb_class                   TEXT,
+            gtdb_order                   TEXT,
+            gtdb_family                  TEXT,
+            gtdb_genus                   TEXT,
+            gtdb_species                 TEXT,
+            ncbi_taxonomy                TEXT,
+            ncbi_type_material_designation TEXT,
+            gtdb_type_designation        TEXT,
+            gtdb_type_species_of_genus   TEXT,
+            lpsn_priority_year           INTEGER,
+            species_rep_name             TEXT,
+            species_cluster_count        INTEGER,
+            subunit_summary              TEXT,
+            lpsn_url                     TEXT
+        );"
+    }
+
+    fn insert_sql() -> &'static str {
+        "INSERT OR REPLACE INTO genome_cards VALUES (
+            ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+            ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+            ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+        )"
+    }
+
+    fn bind_params(&self, stmt: &mut Statement) -> rusqlite::Result<()> {
+        let n = &self.metadata_nucleotide;
+        let g = &self.metadata_gene;
+        let ncbi = &self.metadata_ncbi;
+        let tax = &self.metadata_taxonomy;
+        let tm = &self.metadata_type_material;
+
+        stmt.execute(rusqlite::params![
+            // genome
+            self.genome.accession,
+            self.genome.name,
+            // nucleotide
+            n.genome_size,
+            n.gc_percentage,
+            n.contig_count,
+            n.n50_contigs,
+            n.scaffold_count,
+            n.n50_scaffolds,
+            n.ambiguous_bases,
+            // gene
+            g.checkm_completeness,
+            g.checkm_contamination,
+            g.checkm_strain_heterogeneity,
+            g.checkm2_completeness,
+            g.checkm2_contamination,
+            g.checkm2_model,
+            g.protein_count,
+            g.coding_density,
+            g.ssu_count,
+            g.lsu_5s_count,
+            g.lsu_23s_count,
+            // ncbi
+            ncbi.ncbi_assembly_level,
+            ncbi.ncbi_assembly_name,
+            ncbi.ncbi_assembly_type,
+            ncbi.ncbi_bioproject,
+            ncbi.ncbi_biosample,
+            ncbi.ncbi_country,
+            ncbi.ncbi_date,
+            ncbi.ncbi_genome_category,
+            ncbi.ncbi_genome_representation,
+            ncbi.ncbi_isolate,
+            ncbi.ncbi_isolation_source,
+            ncbi.ncbi_lat_lon,
+            ncbi.ncbi_refseq_category,
+            ncbi.ncbi_seq_rel_date,
+            ncbi.ncbi_strain_identifiers,
+            ncbi.ncbi_submitter,
+            ncbi.ncbi_taxid,
+            ncbi.ncbi_species_taxid,
+            ncbi.ncbi_translation_table,
+            ncbi.ncbi_version_status,
+            // taxonomy
+            tax.gtdb_representative as i64,
+            tax.gtdb_genome_representative,
+            tax.gtdb_domain,
+            tax.gtdb_phylum,
+            tax.gtdb_class,
+            tax.gtdb_order,
+            tax.gtdb_family,
+            tax.gtdb_genus,
+            tax.gtdb_species,
+            tax.ncbi_taxonomy,
+            tax.ncbi_type_material_designation,
+            // type material
+            tm.gtdb_type_designation,
+            tm.gtdb_type_species_of_genus.map(|b| b as i64),
+            tm.lpsn_priority_year,
+            // top-level
+            self.species_rep_name,
+            self.species_cluster_count,
+            self.subunit_summary,
+            self.lpsn_url,
+        ])?;
+        Ok(())
+    }
+}
+
+impl ToSqliteRow for GenomeMetadata {
+    fn create_table_sql() -> &'static str {
+        "CREATE TABLE IF NOT EXISTS genome_metadata (
+            accession            TEXT PRIMARY KEY,
+            is_ncbi_surveillance INTEGER
+        );"
+    }
+
+    fn insert_sql() -> &'static str {
+        "INSERT OR REPLACE INTO genome_metadata VALUES (?, ?)"
+    }
+
+    fn bind_params(&self, stmt: &mut Statement) -> rusqlite::Result<()> {
+        stmt.execute(rusqlite::params![
+            self.accession,
+            self.is_ncbi_surveillance.map(|b| b as i64),
+        ])?;
+        Ok(())
     }
 }
 
