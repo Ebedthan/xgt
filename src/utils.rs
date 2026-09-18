@@ -186,6 +186,7 @@ pub enum OutputFormat {
     Csv,
     Json,
     Tsv,
+    Sqlite,
 }
 
 impl OutputFormat {
@@ -196,6 +197,10 @@ impl OutputFormat {
             ","
         }
     }
+
+    pub fn is_sqlite(&self) -> bool {
+        matches!(self, Self::Sqlite)
+    }
 }
 
 impl Display for OutputFormat {
@@ -204,6 +209,7 @@ impl Display for OutputFormat {
             Self::Csv => write!(f, "csv"),
             Self::Json => write!(f, "json"),
             Self::Tsv => write!(f, "tsv"),
+            Self::Sqlite => write!(f, "sqlite"),
         }
     }
 }
@@ -213,6 +219,7 @@ impl From<&str> for OutputFormat {
         match s {
             "tsv" => Self::Tsv,
             "json" => Self::Json,
+            "sqlite" => Self::Sqlite,
             _ => Self::Csv,
         }
     }
@@ -559,7 +566,10 @@ impl<'a> BatchWriter<'a> {
     /// Write the CSV/TSV header once before the loop, truncating any existing
     /// file. No-op in JSON mode or split mode (split headers go per-item).
     pub fn write_global_header(&self, header: &[u8]) -> Result<()> {
-        if !self.dest.is_split() && *self.outfmt != OutputFormat::Json {
+        if !self.dest.is_split()
+            && *self.outfmt != OutputFormat::Json
+            && *self.outfmt != OutputFormat::Sqlite
+        {
             write_to_output(header, self.dest.resolve(""), false)?;
         }
         Ok(())
@@ -576,6 +586,10 @@ impl<'a> BatchWriter<'a> {
     /// `split_header` is only used in split+CSV/TSV mode.
     /// Pass an empty slice `&[]` when there is no per-item header.
     pub fn write_item(&mut self, key: &str, split_header: &[u8], body: &[u8]) -> Result<()> {
+        if self.outfmt.is_sqlite() {
+            return Ok(());
+        }
+
         if self.dest.is_split() {
             // Split mode: each item is a self-contained file
             if *self.outfmt != OutputFormat::Json && !split_header.is_empty() {
@@ -612,6 +626,8 @@ impl<'a> BatchWriter<'a> {
 ///
 /// Returns the fetched items in order so callers can post-validate if needed.
 #[allow(clippy::too_many_arguments)]
+/// Fetch a batch and write as CSV / TSV / JSON.
+/// Used by taxon.rs and any caller that does not need SQLite output.
 pub fn fetch_batch<T, F, E>(
     items: &[String],
     url_fn: F,
@@ -630,9 +646,6 @@ where
 {
     let sep = outfmt.sep();
     let mut writer = BatchWriter::new(dest, outfmt);
-
-    // Write the global CSV/TSV header once before the loop.
-    // In JSON mode or split mode this is a no-op inside BatchWriter.
     writer.write_global_header(format!("{}\n", T::csv_header(sep)).as_bytes())?;
 
     let mut results = Vec::with_capacity(items.len());
@@ -646,12 +659,80 @@ where
         let split_header = format!("{}\n", T::csv_header(sep));
         let body = match outfmt {
             OutputFormat::Json => serde_json::to_string_pretty(&data)? + "\n",
-            _ => data.to_flat_row(sep) + "\n",
+            _ => {
+                data.to_flat_row(sep)
+                    .lines()
+                    .skip(1)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    + "\n"
+            }
         };
 
         writer.write_item(item, split_header.as_bytes(), body.as_bytes())?;
         bar_inc(bar);
         results.push(data);
+    }
+
+    Ok(results)
+}
+
+/// Fetch a batch and write as CSV / TSV / JSON / SQLite.
+/// Used by genome.rs and diff.rs where SQLite output is supported.
+/// Requires T: ToSqliteRow in addition to ToFlatRow.
+pub fn fetch_batch_sqlite<T, F, E>(
+    items: &[String],
+    url_fn: F,
+    err_fn: E,
+    ttl: u64,
+    agent: &ureq::Agent,
+    outfmt: &OutputFormat,
+    dest: &OutputDestination,
+    use_cache: bool,
+    bar: &Option<indicatif::ProgressBar>,
+    sqlite_out: Option<&str>,
+) -> Result<Vec<T>>
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow + ToSqliteRow,
+    F: Fn(&str) -> String,
+    E: Fn(&str) -> String,
+{
+    let sep = outfmt.sep();
+    let mut writer = BatchWriter::new(dest, outfmt);
+    writer.write_global_header(format!("{}\n", T::csv_header(sep)).as_bytes())?;
+
+    let mut results = Vec::with_capacity(items.len());
+
+    for item in items {
+        bar_tick(bar, item);
+
+        let url = url_fn(item);
+        let data: T = fetch_data_cached(agent, &url, err_fn(item), use_cache, ttl)?;
+
+        if !outfmt.is_sqlite() {
+            let split_header = format!("{}\n", T::csv_header(sep));
+            let body = match outfmt {
+                OutputFormat::Json => serde_json::to_string_pretty(&data)? + "\n",
+                _ => {
+                    data.to_flat_row(sep)
+                        .lines()
+                        .skip(1)
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                        + "\n"
+                }
+            };
+            writer.write_item(item, split_header.as_bytes(), body.as_bytes())?;
+        }
+
+        bar_inc(bar);
+        results.push(data);
+    }
+
+    if outfmt.is_sqlite() {
+        let path = sqlite_out.expect("sqlite_out must be Some when outfmt is Sqlite");
+        let db = SqliteWriter::open(path)?;
+        db.write_batch(&results, T::create_table_sql(), T::insert_sql())?;
     }
 
     Ok(results)

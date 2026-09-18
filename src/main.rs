@@ -79,6 +79,13 @@ fn main() -> Result<()> {
             search::search(&args, use_cache)?;
         }
         Commands::Genome(args) => {
+            if args.outfmt == "sqlite" && args.out.is_none() {
+                anyhow::bail!(
+                    "--outfmt sqlite requires --out FILE.db \
+                     (SQLite output has no meaningful stdout representation)"
+                );
+            }
+
             if args.history {
                 genome::get_genome_taxon_history(&args, use_cache)?;
             } else if args.metadata {
@@ -88,6 +95,13 @@ fn main() -> Result<()> {
             }
         }
         Commands::Taxon(args) => {
+            if args.outfmt == "sqlite" && args.out.is_none() {
+                anyhow::bail!(
+                    "--outfmt sqlite requires --out FILE.db \
+                     (SQLite output has no meaningful stdout representation)"
+                );
+            }
+
             if args.search || args.all {
                 taxon::search_taxon(&args, use_cache)?;
             } else if args.genomes {
@@ -97,6 +111,13 @@ fn main() -> Result<()> {
             }
         }
         Commands::Diff(args) => {
+            if args.outfmt == "sqlite" && args.out.is_none() {
+                anyhow::bail!(
+                    "--outfmt sqlite requires --out FILE.db \
+                     (SQLite output has no meaningful stdout representation)"
+                );
+            }
+
             diff::diff(&args, use_cache)?;
         }
         Commands::Completions(args) => {

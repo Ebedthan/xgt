@@ -431,7 +431,7 @@ pub struct MarkerSummary {
 
 fn fetch_and_save_genome_data<T>(args: &GenomeArgs, use_cache: bool) -> Result<()>
 where
-    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow,
+    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow + utils::ToSqliteRow,
 {
     let accessions = utils::load_input(args, "No genome accession provided...".to_string())?;
     let agent = utils::get_agent(args.insecure)?;
@@ -446,7 +446,7 @@ where
     };
     let release = args.release.clone();
 
-    utils::fetch_batch::<T, _, _>(
+    utils::fetch_batch_sqlite::<T, _, _>(
         &accessions,
         |acc| {
             GtdbApiRequest::Genome {
@@ -469,6 +469,7 @@ where
         &dest,
         use_cache,
         &bar,
+        None,
     )?;
 
     utils::bar_finish(bar, accessions.len(), "genomes");

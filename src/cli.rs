@@ -91,11 +91,11 @@ pub struct SearchArgs {
     pub file: Option<String>,
 
     /// Output to FILE (format set by --outfmt)
-    #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
+    #[arg(short, long, value_name = "FILE", value_parser = is_existing, required_if_eq("outfmt", "sqlite"))]
     pub out: Option<String>,
 
     /// Output format
-    #[arg(short = 'O', long, value_name = "STR", default_value = "csv", value_parser = ["csv", "json", "tsv"])]
+    #[arg(short = 'O', long, value_name = "STR", default_value = "csv", value_parser = ["csv", "json", "tsv", "sqlite"])]
     pub outfmt: String,
 
     /// Write each result to a separate file named after the query/accession.
@@ -142,13 +142,13 @@ pub struct GenomeArgs {
     #[arg(short, long, conflicts_with = "history")]
     pub metadata: bool,
 
-    /// Output format
-    #[arg(short = 'O', long, value_name = "STR", default_value = "json", value_parser = ["csv", "json", "tsv"])]
-    pub outfmt: String,
-
-    /// Output raw JSON
-    #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
+    /// Output to FILE (format set by --outfmt)
+    #[arg(short, long, value_name = "FILE", value_parser = is_existing, required_if_eq("outfmt", "sqlite"))]
     pub out: Option<String>,
+
+    /// Output format
+    #[arg(short = 'O', long, value_name = "STR", default_value = "csv", value_parser = ["csv", "json", "tsv", "sqlite"])]
+    pub outfmt: String,
 
     /// Write each result to a separate file named after the query/accession.
     /// Mutually exclusive with --out.
@@ -181,8 +181,12 @@ pub struct TaxonArgs {
     pub file: Option<String>,
 
     /// Output to FILE (format set by --outfmt)
-    #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
+    #[arg(short, long, value_name = "FILE", value_parser = is_existing, required_if_eq("outfmt", "sqlite"))]
     pub out: Option<String>,
+
+    /// Output format
+    #[arg(short = 'O', long, value_name = "STR", default_value = "csv", value_parser = ["csv", "json", "tsv", "sqlite"])]
+    pub outfmt: String,
 
     /// Search for a taxon by name in the current GTDB release,
     /// returning partial matches. Use with --word to restrict
@@ -209,10 +213,6 @@ pub struct TaxonArgs {
     /// Set taxon V genomes search to lookup reps seqs only
     #[arg(short, long)]
     pub reps: bool,
-
-    /// Output format
-    #[arg(short = 'O', long, value_name = "STR", default_value = "json", value_parser = ["csv", "json", "tsv"])]
-    pub outfmt: String,
 
     /// Write each result to a separate file named after the query/accession.
     /// Mutually exclusive with --out.
@@ -252,14 +252,13 @@ pub struct DiffArgs {
     #[arg(long, value_name = "RELEASE", value_parser = parse_release)]
     pub to: Option<String>,
 
-    /// Output format
-    #[arg(short = 'O', long, value_name = "STR", default_value = "json",
-          value_parser = ["csv", "tsv", "json"])]
-    pub outfmt: String,
-
     /// Output to FILE (format set by --outfmt)
-    #[arg(short, long, value_name = "FILE", value_parser = is_existing)]
+    #[arg(short, long, value_name = "FILE", value_parser = is_existing, required_if_eq("outfmt", "sqlite"))]
     pub out: Option<String>,
+
+    /// Output format
+    #[arg(short = 'O', long, value_name = "STR", default_value = "csv", value_parser = ["csv", "json", "tsv", "sqlite"])]
+    pub outfmt: String,
 
     /// Write each result to a separate file named after the query
     #[arg(short = 's', long, conflicts_with = "out")]
