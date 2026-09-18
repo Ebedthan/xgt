@@ -659,14 +659,7 @@ where
         let split_header = format!("{}\n", T::csv_header(sep));
         let body = match outfmt {
             OutputFormat::Json => serde_json::to_string_pretty(&data)? + "\n",
-            _ => {
-                data.to_flat_row(sep)
-                    .lines()
-                    .skip(1)
-                    .collect::<Vec<_>>()
-                    .join("\n")
-                    + "\n"
-            }
+            _ => data.to_flat_row(sep) + "\n",
         };
 
         writer.write_item(item, split_header.as_bytes(), body.as_bytes())?;

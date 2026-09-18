@@ -34,7 +34,7 @@ Apple Silicon Macs).
 
 ### From source
 
-Requires Rust 1.85.1 or later ([install via rustup](https://rustup.rs/)).
+Requires Rust 1.95.0 or later ([install via rustup](https://rustup.rs/)).
 
 ```bash
 git clone https://github.com/Ebedthan/xgt.git

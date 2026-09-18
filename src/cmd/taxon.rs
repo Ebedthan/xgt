@@ -62,24 +62,26 @@ impl ToFlatRow for TaxonResult {
     }
 
     fn to_flat_row(&self, sep: &str) -> String {
-        let mut lines = vec![Self::csv_header(sep)];
-        for t in &self.data {
-            lines.push(format!(
-                "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
-                t.taxon,
-                t.total.map(|v| v.to_string()).unwrap_or_default(),
-                t.n_desc_children.map(|v| v.to_string()).unwrap_or_default(), // was .as_deref()
-                t.is_genome.map(|v| v.to_string()).unwrap_or_default(),
-                t.is_rep.map(|v| v.to_string()).unwrap_or_default(),
-                t.type_material.as_deref().unwrap_or(""),
-                t.bergeys_url.as_deref().unwrap_or(""),
-                t.seq_code_url.as_deref().unwrap_or(""),
-                t.lpsn_url.as_deref().unwrap_or(""),
-                t.ncbi_tax_id.map(|v| v.to_string()).unwrap_or_default(),
-                t.sandpiper_url.as_deref().unwrap_or(""), // added
-            ));
-        }
-        lines.join("\n") + "\n"
+        self.data
+            .iter()
+            .map(|t| {
+                format!(
+                    "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
+                    t.taxon,
+                    t.total.map(|v| v.to_string()).unwrap_or_default(),
+                    t.n_desc_children.map(|v| v.to_string()).unwrap_or_default(),
+                    t.is_genome.map(|v| v.to_string()).unwrap_or_default(),
+                    t.is_rep.map(|v| v.to_string()).unwrap_or_default(),
+                    t.type_material.as_deref().unwrap_or(""),
+                    t.bergeys_url.as_deref().unwrap_or(""),
+                    t.seq_code_url.as_deref().unwrap_or(""),
+                    t.lpsn_url.as_deref().unwrap_or(""),
+                    t.ncbi_tax_id.map(|v| v.to_string()).unwrap_or_default(),
+                    t.sandpiper_url.as_deref().unwrap_or(""),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
@@ -94,9 +96,7 @@ impl ToFlatRow for TaxonSearchResult {
     }
 
     fn to_flat_row(&self, _sep: &str) -> String {
-        let mut lines = vec![Self::csv_header(_sep)];
-        lines.extend(self.matches.iter().cloned());
-        lines.join("\n") + "\n"
+        self.matches.join("\n")
     }
 }
 
@@ -112,9 +112,7 @@ impl ToFlatRow for TaxonGenomes {
     }
 
     fn to_flat_row(&self, _sep: &str) -> String {
-        let mut lines = vec![Self::csv_header(_sep)];
-        lines.extend(self.data.iter().cloned());
-        lines.join("\n") + "\n"
+        self.data.join("\n")
     }
 }
 
@@ -250,7 +248,11 @@ pub fn search_taxon(args: &TaxonArgs, use_cache: bool) -> Result<()> {
 
         let output = match context.outfmt {
             utils::OutputFormat::Json => serde_json::to_string_pretty(&data)?,
-            _ => data.to_flat_row(sep),
+            _ => format!(
+                "{}\n{}",
+                TaxonSearchResult::csv_header(sep),
+                data.to_flat_row(sep)
+            ),
         };
         utils::write_to_output(output.as_bytes(), context.dest.resolve(name), false)?;
     }
