@@ -7,7 +7,7 @@ description = "Command-line tool for querying the Genome Taxonomy Database (GTDB
 homepage = "https://github.com/Ebedthan/xgt"
 categories = ["command-line-utilities"]
 keywords = ["bioinformatics"]
-rust-version = "1.85"
+rust-version = "1.95.0"
 repository = "https://github.com/Ebedthan/xgt"
 
 [dependencies]
