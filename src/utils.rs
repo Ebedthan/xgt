@@ -198,6 +198,9 @@ pub fn write_to_output(buffer: &[u8], output: Option<String>, append: bool) -> R
     Ok(())
 }
 
+/// Set user agent based on package version, e.g.: xgt/1.2.0
+pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
 /// Select agent request based on SSL peer verification activation
 pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq::Agent> {
     if disable_certificate_verification {
@@ -206,11 +209,13 @@ pub fn get_agent(disable_certificate_verification: bool) -> anyhow::Result<ureq:
              Use only on trusted networks."
         );
         Ok(Agent::config_builder()
+            .user_agent(USER_AGENT)
             .tls_config(TlsConfig::builder().disable_verification(true).build())
             .build()
             .new_agent())
     } else {
         Ok(Agent::config_builder()
+            .user_agent(USER_AGENT)
             .tls_config(
                 TlsConfig::builder()
                     .provider(TlsProvider::NativeTls)
