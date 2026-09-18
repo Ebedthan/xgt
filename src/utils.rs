@@ -680,6 +680,7 @@ where
 /// Fetch a batch and write as CSV / TSV / JSON / SQLite.
 /// Used by genome.rs and diff.rs where SQLite output is supported.
 /// Requires T: ToSqliteRow in addition to ToFlatRow.
+#[allow(clippy::too_many_arguments)]
 pub fn fetch_batch_sqlite<T, F, E>(
     items: &[String],
     url_fn: F,
