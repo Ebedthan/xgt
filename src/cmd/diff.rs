@@ -78,7 +78,7 @@ impl ToFlatRow for DiffResult {
 
     fn to_flat_row(&self, sep: &str) -> String {
         // One row per changed rank. If nothing changed, one row with empty rank fields
-        let mut lines = vec![Self::csv_header(sep)];
+        let mut lines = Vec::new();
 
         let common = format!(
             "{}{sep}{}{sep}{}{sep}{}",
@@ -399,29 +399,39 @@ pub fn diff(args: &DiffArgs, use_cache: bool) -> Result<()> {
     indexed_results.sort_by_key(|(idx, _)| *idx);
 
     let mut writer = utils::BatchWriter::new(&dest, &outfmt);
+    let mut sqlite_rows: Vec<DiffResult> = Vec::new();
+
     writer.write_global_header(format!("{}\n", DiffResult::csv_header(sep)).as_bytes())?;
 
     for (_, result) in indexed_results {
         let result = result?;
-        let query = &result.query.clone();
-        let split_header = format!("{}\n", DiffResult::csv_header(sep));
-        let body = match outfmt {
-            OutputFormat::Json => serde_json::to_string_pretty(&result)? + "\n",
-            _ => {
-                // to_flat_row includes a header line as its first row.
-                // BatchWriter handles the header (globally for non-split,
-                // via split_header for split mode).
-                result
-                    .to_flat_row(sep)
-                    .lines()
-                    .skip(1)
-                    .collect::<Vec<_>>()
-                    .join("\n")
-                    + "\n"
-            }
-        };
-        writer.write_item(query, split_header.as_bytes(), body.as_bytes())?;
+
+        if outfmt.is_sqlite() {
+            sqlite_rows.push(result);
+        } else {
+            let query = result.query.clone();
+            let split_header = format!("{}\n", DiffResult::csv_header(sep));
+            let body = match outfmt {
+                OutputFormat::Json => serde_json::to_string_pretty(&result)? + "\n",
+                _ => result.to_flat_row(sep),
+            };
+            writer.write_item(&query, split_header.as_bytes(), body.as_bytes())?;
+        }
+
         utils::bar_inc(&bar);
+    }
+
+    if outfmt.is_sqlite() {
+        let path = args
+            .out
+            .as_deref()
+            .expect("--out is required with --outfmt sqlite (validated at CLI level)");
+        let db = utils::SqliteWriter::open(path)?;
+        db.write_batch(
+            &sqlite_rows,
+            DiffResult::create_table_sql(),
+            DiffResult::insert_sql(),
+        )?;
     }
 
     utils::bar_finish(bar, queries.len(), "queries");
@@ -469,6 +479,234 @@ mod tests {
             g: None,
             s: Some(s.into()),
         }
+    }
+
+    fn make_diff_result(changed: bool) -> DiffResult {
+        let from = TaxonomySnapshot {
+            release: "R214".into(),
+            domain: "d__Bacteria".into(),
+            phylum: "p__Pseudomonadota".into(),
+            class: "c__Gammaproteobacteria".into(),
+            order: "o__Enterobacterales".into(),
+            family: "f__Enterobacteriaceae".into(),
+            genus: "g__Escherichia".into(),
+            species: "s__Escherichia coli".into(),
+        };
+        let to = TaxonomySnapshot {
+            release: "R220".into(),
+            domain: "d__Bacteria".into(),
+            phylum: "p__Pseudomonadota".into(),
+            class: "c__Gammaproteobacteria".into(),
+            order: "o__Enterobacterales".into(),
+            family: "f__Enterobacteriaceae".into(),
+            genus: "g__Escherichia".into(),
+            species: if changed {
+                "s__G047199095 sp047199095".into()
+            } else {
+                "s__Escherichia coli".into()
+            },
+        };
+        DiffResult {
+            query: "GCA_000005845.2".into(),
+            from_release: "R214".into(),
+            to_release: "R220".into(),
+            changed,
+            changes: if changed {
+                vec![RankChange {
+                    rank: "species".into(),
+                    from: "s__Escherichia coli".into(),
+                    to: "s__G047199095 sp047199095".into(),
+                }]
+            } else {
+                vec![]
+            },
+            from_taxonomy: from,
+            to_taxonomy: to,
+        }
+    }
+
+    fn open_diff_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(DiffResult::create_table_sql()).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_diff_create_table_sql_is_valid() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(DiffResult::create_table_sql())
+            .expect("CREATE TABLE for diff_results must be valid SQL");
+    }
+
+    #[test]
+    fn test_diff_insert_sql_placeholder_count() {
+        // 21 columns in diff_results
+        let insert = DiffResult::insert_sql();
+        let count = insert.chars().filter(|&c| c == '?').count();
+        assert_eq!(count, 21, "insert_sql must have 21 placeholders");
+    }
+
+    #[test]
+    fn test_diff_unchanged_result_inserts_one_row() {
+        let conn = open_diff_db();
+        let result = make_diff_result(false);
+        let mut stmt = conn.prepare(DiffResult::insert_sql()).unwrap();
+        result.bind_params(&mut stmt).unwrap();
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM diff_results", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1, "unchanged result must insert exactly one row");
+
+        let (changed, rank): (i64, String) = conn
+            .query_row("SELECT changed, rank FROM diff_results", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(changed, 0);
+        assert_eq!(rank, "", "unchanged result must have empty rank");
+    }
+
+    #[test]
+    fn test_diff_changed_result_inserts_one_row_per_rank() {
+        let conn = open_diff_db();
+        let result = make_diff_result(true); // one change: species
+        let mut stmt = conn.prepare(DiffResult::insert_sql()).unwrap();
+        result.bind_params(&mut stmt).unwrap();
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM diff_results", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1, "one rank change must insert one row");
+
+        let (rank, from_val, to_val): (String, String, String) = conn
+            .query_row(
+                "SELECT rank, from_value, to_value FROM diff_results",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(rank, "species");
+        assert_eq!(from_val, "s__Escherichia coli");
+        assert_eq!(to_val, "s__G047199095 sp047199095");
+    }
+
+    #[test]
+    fn test_diff_multi_rank_change_inserts_multiple_rows() {
+        let conn = open_diff_db();
+        let mut result = make_diff_result(true);
+        result.changes.push(RankChange {
+            rank: "genus".into(),
+            from: "g__Escherichia".into(),
+            to: "g__NewGenus".into(),
+        });
+
+        let mut stmt = conn.prepare(DiffResult::insert_sql()).unwrap();
+        result.bind_params(&mut stmt).unwrap();
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM diff_results", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 2, "two rank changes must insert two rows");
+    }
+
+    #[test]
+    fn test_diff_insert_or_replace_is_idempotent() {
+        let conn = open_diff_db();
+        let result = make_diff_result(true);
+        let mut stmt = conn.prepare(DiffResult::insert_sql()).unwrap();
+        result.bind_params(&mut stmt).unwrap();
+        result.bind_params(&mut stmt).unwrap(); // insert same data twice
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM diff_results", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1, "duplicate inserts must not create duplicate rows");
+    }
+
+    #[test]
+    fn test_diff_taxonomy_context_stored_correctly() {
+        let conn = open_diff_db();
+        let result = make_diff_result(true);
+        let mut stmt = conn.prepare(DiffResult::insert_sql()).unwrap();
+        result.bind_params(&mut stmt).unwrap();
+
+        let (from_domain, from_species, to_species): (String, String, String) = conn
+            .query_row(
+                "SELECT from_domain, from_species, to_species FROM diff_results",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(from_domain, "d__Bacteria");
+        assert_eq!(from_species, "s__Escherichia coli");
+        assert_eq!(to_species, "s__G047199095 sp047199095");
+    }
+
+    #[test]
+    fn test_diff_sqlite_writer_write_batch() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("diff.db").to_str().unwrap().to_string();
+
+        let rows = vec![make_diff_result(false), make_diff_result(true)];
+
+        let writer = utils::SqliteWriter::open(&path).unwrap();
+        writer
+            .write_batch(
+                &rows,
+                DiffResult::create_table_sql(),
+                DiffResult::insert_sql(),
+            )
+            .unwrap();
+
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        // unchanged -> 1 row, changed -> 1 row = 2 total
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM diff_results", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_diff_sqlite_writer_accumulates_across_batches() {
+        // Simulates running xgt diff twice and writing to the same db
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir
+            .path()
+            .join("accumulate.db")
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        let writer = utils::SqliteWriter::open(&path).unwrap();
+
+        // First batch: one accession
+        let batch1 = vec![make_diff_result(false)];
+        writer
+            .write_batch(
+                &batch1,
+                DiffResult::create_table_sql(),
+                DiffResult::insert_sql(),
+            )
+            .unwrap();
+
+        // Second batch: different accession
+        let mut result2 = make_diff_result(true);
+        result2.query = "GCA_000009045.1".into();
+        let batch2 = vec![result2];
+        writer
+            .write_batch(
+                &batch2,
+                DiffResult::create_table_sql(),
+                DiffResult::insert_sql(),
+            )
+            .unwrap();
+
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM diff_results", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 2, "two separate batches must accumulate to 2 rows");
     }
 
     #[test]
@@ -622,10 +860,9 @@ mod tests {
         let row1 = make_result("GCA_000001.1").to_flat_row(sep);
         let row2 = make_result("GCA_000002.1").to_flat_row(sep);
 
-        // Simulate the accumulated output: header + row1 data + row2 data
-        // (to_flat_row includes its own header, strip it for rows 2+)
-        let row1_data: Vec<&str> = row1.lines().skip(1).collect();
-        let row2_data: Vec<&str> = row2.lines().skip(1).collect();
+        // Simulate the accumulated output
+        let row1_data: Vec<&str> = row1.lines().collect();
+        let row2_data: Vec<&str> = row2.lines().collect();
 
         let mut accumulated = header.clone();
         accumulated.push_str(&row1_data.join("\n"));
@@ -867,7 +1104,7 @@ mod tests {
         };
         let row = result.to_flat_row(",");
         // Header + one data row
-        assert_eq!(row.lines().count(), 2);
+        assert_eq!(row.lines().count(), 1);
         assert!(row.contains("GCA_000001.1,R214,R220,false"));
     }
 
@@ -1407,11 +1644,7 @@ mod tests {
         let lines: Vec<&str> = csv.lines().collect();
 
         // header + 4 data rows (one per change)
-        assert_eq!(
-            lines.len(),
-            5,
-            "expected header + 4 change rows, got: {csv}"
-        );
+        assert_eq!(lines.len(), 4, "expected 4 change rows, got: {csv}");
         // every data row starts with the query
         for line in &lines[1..] {
             assert!(line.starts_with("GCA_000001.1,"), "unexpected line: {line}");
@@ -1441,12 +1674,8 @@ mod tests {
         let lines: Vec<&str> = csv.lines().collect();
 
         // header + exactly 1 data row with empty rank/from/to
-        assert_eq!(
-            lines.len(),
-            2,
-            "expected header + 1 row for unchanged result"
-        );
-        assert!(lines[1].contains("false"));
+        assert_eq!(lines.len(), 1, "expected 1 row for unchanged result");
+        assert!(lines[0].contains("false"));
     }
 
     #[test]

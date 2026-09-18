@@ -670,68 +670,6 @@ where
     Ok(results)
 }
 
-/// Fetch a batch and write as CSV / TSV / JSON / SQLite.
-/// Used by genome.rs and diff.rs where SQLite output is supported.
-/// Requires T: ToSqliteRow in addition to ToFlatRow.
-#[allow(clippy::too_many_arguments)]
-pub fn fetch_batch_sqlite<T, F, E>(
-    items: &[String],
-    url_fn: F,
-    err_fn: E,
-    ttl: u64,
-    agent: &ureq::Agent,
-    outfmt: &OutputFormat,
-    dest: &OutputDestination,
-    use_cache: bool,
-    bar: &Option<indicatif::ProgressBar>,
-    sqlite_out: Option<&str>,
-) -> Result<Vec<T>>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize + ToFlatRow + ToSqliteRow,
-    F: Fn(&str) -> String,
-    E: Fn(&str) -> String,
-{
-    let sep = outfmt.sep();
-    let mut writer = BatchWriter::new(dest, outfmt);
-    writer.write_global_header(format!("{}\n", T::csv_header(sep)).as_bytes())?;
-
-    let mut results = Vec::with_capacity(items.len());
-
-    for item in items {
-        bar_tick(bar, item);
-
-        let url = url_fn(item);
-        let data: T = fetch_data_cached(agent, &url, err_fn(item), use_cache, ttl)?;
-
-        if !outfmt.is_sqlite() {
-            let split_header = format!("{}\n", T::csv_header(sep));
-            let body = match outfmt {
-                OutputFormat::Json => serde_json::to_string_pretty(&data)? + "\n",
-                _ => {
-                    data.to_flat_row(sep)
-                        .lines()
-                        .skip(1)
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                        + "\n"
-                }
-            };
-            writer.write_item(item, split_header.as_bytes(), body.as_bytes())?;
-        }
-
-        bar_inc(bar);
-        results.push(data);
-    }
-
-    if outfmt.is_sqlite() {
-        let path = sqlite_out.expect("sqlite_out must be Some when outfmt is Sqlite");
-        let db = SqliteWriter::open(path)?;
-        db.write_batch(&results, T::create_table_sql(), T::insert_sql())?;
-    }
-
-    Ok(results)
-}
-
 // Tolerant deserialization helpers
 // To prevent GTDB API breaking changes
 //
